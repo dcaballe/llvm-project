@@ -667,7 +667,7 @@ struct GPUFuncOpLowering : LLVMOpLowering {
 
         BlockArgument arg = block.getArgument(en.index());
         Value loaded = rewriter.create<LLVM::LoadOp>(loc, arg);
-        rewriter.replaceUsesOfBlockArgument(arg, loaded);
+        rewriter.replaceUsesOfWith(arg, loaded);
       }
     }
 

@@ -321,7 +321,7 @@ public:
                            TypeConverter::SignatureConversion &conversion);
 
   /// Replace all the uses of the block argument `from` with value `to`.
-  void replaceUsesOfBlockArgument(BlockArgument from, Value to);
+  void replaceUsesOfWith(Value from, Value to);
 
   /// Return the converted value that replaces 'key'. Return 'key' if there is
   /// no such a converted value.

@@ -861,8 +861,7 @@ Block *ConversionPatternRewriter::applySignatureConversion(
   return impl->applySignatureConversion(region, conversion);
 }
 
-void ConversionPatternRewriter::replaceUsesOfBlockArgument(BlockArgument from,
-                                                           Value to) {
+void ConversionPatternRewriter::replaceUsesOfWith(Value from, Value to) {
   for (auto &u : from.getUses()) {
     if (u.getOwner() == to.getDefiningOp())
       continue;

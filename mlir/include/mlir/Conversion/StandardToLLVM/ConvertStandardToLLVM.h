@@ -47,8 +47,9 @@ public:
   /// Convert a function type.  The arguments and results are converted one by
   /// one and results are packed into a wrapped LLVM IR structure type. `result`
   /// is populated with argument mapping.
-  LLVM::LLVMType convertFunctionSignature(FunctionType type, bool isVariadic,
-                                          SignatureConversion &result);
+  virtual LLVM::LLVMType convertFunctionSignature(FunctionType type,
+                                                  bool isVariadic,
+                                                  SignatureConversion &result);
 
   /// Convert a non-empty list of types to be returned from a function into a
   /// supported LLVM IR type.  In particular, if more than one values is
@@ -80,6 +81,9 @@ protected:
   /// LLVM IR module used to parse/create types.
   llvm::Module *module;
   LLVM::LLVMDialect *llvmDialect;
+
+  // Extract an LLVM IR dialect type.
+  LLVM::LLVMType unwrap(Type type);
 
 private:
   Type convertStandardType(Type type);
@@ -120,9 +124,24 @@ private:
   // Get the LLVM representation of the index type based on the bitwidth of the
   // pointer as defined by the data layout of the module.
   LLVM::LLVMType getIndexType();
+};
 
-  // Extract an LLVM IR dialect type.
-  LLVM::LLVMType unwrap(Type type);
+/// Custom LLVMTypeConverter that overrides `convertFunctionSignature` to
+/// replace the type of MemRef function arguments with bare pointer to the
+/// MemRef element type.
+class BarePtrTypeConverter : public mlir::LLVMTypeConverter {
+public:
+  using LLVMTypeConverter::LLVMTypeConverter;
+
+  /// Converts function signature following LLVMTypeConverter approach but
+  /// replacing the type of MemRef arguments with a bare LLVM pointer to
+  /// the MemRef element type.
+  mlir::LLVM::LLVMType convertFunctionSignature(
+      mlir::FunctionType type, bool isVariadic,
+      mlir::LLVMTypeConverter::SignatureConversion &result) override;
+
+private:
+  mlir::Type convertMemRefTypeToBarePtr(mlir::MemRefType type);
 };
 
 /// Helper class to produce LLVM dialect operations extracting or inserting

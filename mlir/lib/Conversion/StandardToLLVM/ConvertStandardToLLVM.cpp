@@ -44,6 +44,12 @@ static llvm::cl::opt<bool>
                 llvm::cl::desc("Replace emission of malloc/free by alloca"),
                 llvm::cl::init(false));
 
+static llvm::cl::opt<bool> clUseBarePtrCallConv(
+    PASS_NAME "-use-bare-ptr-memref-call-conv",
+    llvm::cl::desc("Replace FuncOp's MemRef arguments with "
+                   "bare pointers to the MemRef element types"),
+    llvm::cl::init(false));
+
 LLVMTypeConverter::LLVMTypeConverter(MLIRContext *ctx)
     : llvmDialect(ctx->getRegisteredDialect<LLVM::LLVMDialect>()) {
   assert(llvmDialect && "LLVM IR dialect is not registered");
@@ -237,6 +243,60 @@ Type LLVMTypeConverter::convertStandardType(Type t) {
       .Case([&](VectorType type) { return convertVectorType(type); })
       .Case([](LLVM::LLVMType type) { return type; })
       .Default([](Type) { return Type(); });
+}
+
+// Converts function signature following LLVMTypeConverter approach but
+// replacing the type of MemRef arguments with a bare LLVM pointer to
+// the MemRef element type.
+LLVM::LLVMType BarePtrTypeConverter::convertFunctionSignature(
+    FunctionType type, bool isVariadic,
+    LLVMTypeConverter::SignatureConversion &result) {
+  // Convert argument types one by one and check for errors.
+  for (auto &en : llvm::enumerate(type.getInputs())) {
+    Type type = en.value();
+    Type converted;
+    if (auto memrefTy = type.dyn_cast<MemRefType>())
+      converted = convertMemRefTypeToBarePtr(memrefTy)
+                      .dyn_cast_or_null<LLVM::LLVMType>();
+    else
+      converted = convertType(type).dyn_cast_or_null<LLVM::LLVMType>();
+
+    if (!converted)
+      return {};
+    result.addInputs(en.index(), converted);
+  }
+
+  SmallVector<LLVM::LLVMType, 8> argTypes;
+  argTypes.reserve(llvm::size(result.getConvertedTypes()));
+  for (Type type : result.getConvertedTypes())
+    argTypes.push_back(unwrap(type));
+
+  // If function does not return anything, create the void result type, if it
+  // returns on element, convert it, otherwise pack the result types into a
+  // struct.
+  LLVM::LLVMType resultType =
+      type.getNumResults() == 0
+          ? LLVM::LLVMType::getVoidTy(llvmDialect)
+          : unwrap(packFunctionResults(type.getResults()));
+  if (!resultType)
+    return {};
+  return LLVM::LLVMType::getFunctionTy(resultType, argTypes, isVariadic);
+}
+
+// Converts MemRefType to a bare LLVM pointer to the MemRef element type.
+Type BarePtrTypeConverter::convertMemRefTypeToBarePtr(MemRefType type) {
+  int64_t offset;
+  SmallVector<int64_t, 4> strides;
+  bool strideSuccess = succeeded(getStridesAndOffset(type, strides, offset));
+  assert(strideSuccess &&
+         "Non-strided layout maps must have been normalized away");
+  (void)strideSuccess;
+
+  LLVM::LLVMType elementType = unwrap(convertType(type.getElementType()));
+  if (!elementType)
+    return {};
+  auto ptrTy = elementType.getPointerTo(type.getMemorySpace());
+  return ptrTy;
 }
 
 LLVMOpLowering::LLVMOpLowering(StringRef rootOpName, MLIRContext *context,
@@ -548,7 +608,84 @@ struct FuncOpConversion : public LLVMLegalizationPattern<FuncOp> {
       for (unsigned idx : promotedArgIndices) {
         BlockArgument arg = firstBlock->getArgument(idx);
         Value loaded = rewriter.create<LLVM::LoadOp>(funcOp.getLoc(), arg);
-        rewriter.replaceUsesOfBlockArgument(arg, loaded);
+        rewriter.replaceUsesOfWith(arg, loaded);
+      }
+    }
+
+    rewriter.eraseOp(op);
+    return matchSuccess();
+  }
+};
+
+// FuncOp conversion that converts MemRef arguments to bare pointers to the type
+// of the MemRef.
+struct BarePtrFuncOpConversion : public LLVMLegalizationPattern<FuncOp> {
+  using LLVMLegalizationPattern<FuncOp>::LLVMLegalizationPattern;
+
+  PatternMatchResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto funcOp = cast<FuncOp>(op);
+    FunctionType type = funcOp.getType();
+    auto funcLoc = funcOp.getLoc();
+
+    // Store the positions of memref-typed arguments so that we can promote them
+    // to MemRef descriptor structs at the beginning of the function.
+    SmallVector<std::pair<unsigned, Type>, 4> promotedArgIndices;
+    promotedArgIndices.reserve(type.getNumInputs());
+    for (auto en : llvm::enumerate(type.getInputs())) {
+      if (en.value().isa<MemRefType>())
+        promotedArgIndices.push_back({en.index(), en.value()});
+    }
+
+    // Convert the original function arguments. MemRef types are lowered to bare
+    // pointers to the MemRef element type.
+    auto varargsAttr = funcOp.getAttrOfType<BoolAttr>("std.varargs");
+    TypeConverter::SignatureConversion result(funcOp.getNumArguments());
+    auto llvmType = lowering.convertFunctionSignature(
+        funcOp.getType(), varargsAttr && varargsAttr.getValue(), result);
+
+    // Only retain those attributes that are not constructed by build.
+    SmallVector<NamedAttribute, 4> attributes;
+    for (const auto &attr : funcOp.getAttrs()) {
+      if (attr.first.is(SymbolTable::getSymbolAttrName()) ||
+          attr.first.is(impl::getTypeAttrName()) ||
+          attr.first.is("std.varargs"))
+        continue;
+      attributes.push_back(attr);
+    }
+
+    // Create an LLVM function, use external linkage by default until MLIR
+    // functions have linkage.
+    auto newFuncOp =
+        rewriter.create<LLVM::LLVMFuncOp>(funcLoc, funcOp.getName(), llvmType,
+                                          LLVM::Linkage::External, attributes);
+    rewriter.inlineRegionBefore(funcOp.getBody(), newFuncOp.getBody(),
+                                newFuncOp.end());
+
+    // Tell the rewriter to convert the region signature.
+    rewriter.applySignatureConversion(&newFuncOp.getBody(), result);
+
+    // Promote bare pointers from MemRef arguments to a MemRef descriptor struct
+    // at the beginning of the function so that all the MemRefs in the function
+    // have a uniform representation.
+    if (!newFuncOp.getBody().empty()) {
+      Block *firstBlock = &newFuncOp.getBody().front();
+      rewriter.setInsertionPoint(firstBlock, firstBlock->begin());
+      for (auto argIdxTypePair : promotedArgIndices) {
+        // Replace argument with a placeholder (undef), promote argument to a
+        // MemRef descriptor and replace placeholder with the last instruction
+        // of the MemRef descriptor. The placeholder is needed to avoid
+        // replacing argument uses in the MemRef descriptor instructions.
+        BlockArgument arg = firstBlock->getArgument(argIdxTypePair.first);
+        Value placeHolder =
+            rewriter.create<LLVM::UndefOp>(funcLoc, arg.getType());
+        rewriter.replaceUsesOfWith(arg, placeHolder);
+        auto desc = MemRefDescriptor::fromStaticShape(
+            rewriter, funcLoc, lowering,
+            argIdxTypePair.second.cast<MemRefType>(), arg);
+        rewriter.replaceUsesOfWith(placeHolder, desc);
+        placeHolder.getDefiningOp()->erase();
       }
     }
 
@@ -2126,7 +2263,6 @@ void mlir::populateStdToLLVMMemoryConversionPatters(
   // clang-format off
   patterns.insert<
       DimOpLowering,
-      FuncOpConversion,
       LoadOpLowering,
       MemRefCastOpLowering,
       StoreOpLowering,
@@ -2139,8 +2275,26 @@ void mlir::populateStdToLLVMMemoryConversionPatters(
   // clang-format on
 }
 
+void mlir::populateStdToLLVMDefaultFuncOpConversionPattern(
+    LLVMTypeConverter &converter, OwningRewritePatternList &patterns) {
+  patterns.insert<FuncOpConversion>(*converter.getDialect(), converter);
+}
+
 void mlir::populateStdToLLVMConversionPatterns(
     LLVMTypeConverter &converter, OwningRewritePatternList &patterns) {
+  populateStdToLLVMDefaultFuncOpConversionPattern(converter, patterns);
+  populateStdToLLVMNonMemoryConversionPatterns(converter, patterns);
+  populateStdToLLVMMemoryConversionPatters(converter, patterns);
+}
+
+void mlir::populateStdToLLVMBarePtrFuncOpConversionPattern(
+    LLVMTypeConverter &converter, OwningRewritePatternList &patterns) {
+  patterns.insert<BarePtrFuncOpConversion>(*converter.getDialect(), converter);
+}
+
+void mlir::populateStdToLLVMBarePtrConversionPatterns(
+    LLVMTypeConverter &converter, OwningRewritePatternList &patterns) {
+  populateStdToLLVMBarePtrFuncOpConversionPattern(converter, patterns);
   populateStdToLLVMNonMemoryConversionPatterns(converter, patterns);
   populateStdToLLVMMemoryConversionPatters(converter, patterns);
 }
@@ -2210,6 +2364,12 @@ makeStandardToLLVMTypeConverter(MLIRContext *context) {
   return std::make_unique<LLVMTypeConverter>(context);
 }
 
+/// Create an instance of BarePtrTypeConverter in the given context.
+static std::unique_ptr<LLVMTypeConverter>
+makeStandardToLLVMBarePtrTypeConverter(MLIRContext *context) {
+  return std::make_unique<BarePtrTypeConverter>(context);
+}
+
 namespace {
 /// A pass converting MLIR operations into the LLVM IR dialect.
 struct LLVMLoweringPass : public ModulePass<LLVMLoweringPass> {
@@ -2274,6 +2434,9 @@ static PassRegistration<LLVMLoweringPass>
          "Standard to the LLVM dialect",
          [] {
            return std::make_unique<LLVMLoweringPass>(
-               clUseAlloca.getValue(), populateStdToLLVMConversionPatterns,
-               makeStandardToLLVMTypeConverter);
+               clUseAlloca.getValue(),
+               clUseBarePtrCallConv ? populateStdToLLVMBarePtrConversionPatterns
+                                    : populateStdToLLVMConversionPatterns,
+               clUseBarePtrCallConv ? makeStandardToLLVMBarePtrTypeConverter
+                                    : makeStandardToLLVMTypeConverter);
          });
