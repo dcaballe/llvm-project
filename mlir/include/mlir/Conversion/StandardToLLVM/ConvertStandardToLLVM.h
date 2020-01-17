@@ -47,9 +47,8 @@ public:
   /// Convert a function type.  The arguments and results are converted one by
   /// one and results are packed into a wrapped LLVM IR structure type. `result`
   /// is populated with argument mapping.
-  virtual LLVM::LLVMType convertFunctionSignature(FunctionType type,
-                                                  bool isVariadic,
-                                                  SignatureConversion &result);
+  LLVM::LLVMType convertFunctionSignature(FunctionType type, bool isVariadic,
+                                          SignatureConversion &result);
 
   /// Convert a non-empty list of types to be returned from a function into a
   /// supported LLVM IR type.  In particular, if more than one values is
@@ -78,6 +77,10 @@ public:
                                    OpBuilder &builder);
 
 protected:
+  /// Convert a function argument type to an LLVM types using 'convertType'.
+  /// MemRef arguments are promoted to a pointer to the converted type.
+  virtual LLVM::LLVMType convertArgType(Type type);
+
   /// LLVM IR module used to parse/create types.
   llvm::Module *module;
   LLVM::LLVMDialect *llvmDialect;
@@ -133,14 +136,12 @@ class BarePtrTypeConverter : public mlir::LLVMTypeConverter {
 public:
   using LLVMTypeConverter::LLVMTypeConverter;
 
-  /// Converts function signature following LLVMTypeConverter approach but
-  /// replacing the type of MemRef arguments with a bare LLVM pointer to
-  /// the MemRef element type.
-  mlir::LLVM::LLVMType convertFunctionSignature(
-      mlir::FunctionType type, bool isVariadic,
-      mlir::LLVMTypeConverter::SignatureConversion &result) override;
-
 private:
+  /// Convert a function argument type to an LLVM type using 'convertType'
+  /// except for MemRef arguments. MemRef type is converted to a bare LLVM
+  /// pointer to the MemRef element type.
+  LLVM::LLVMType convertArgType(Type type) override;
+
   mlir::Type convertMemRefTypeToBarePtr(mlir::MemRefType type);
 };
 
