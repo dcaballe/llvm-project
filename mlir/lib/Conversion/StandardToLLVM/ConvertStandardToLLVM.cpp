@@ -113,7 +113,7 @@ Type LLVMTypeConverter::convertFunctionType(FunctionType type) {
   return converted.getPointerTo();
 }
 
-// Convert a function argument type to an LLVM types using 'convertType'. MemRef
+// Convert a function argument type to an LLVM type using 'convertType'. MemRef
 // arguments are promoted to a pointer to the converted type.
 LLVM::LLVMType LLVMTypeConverter::convertArgType(Type type) {
   auto converted = convertType(type).dyn_cast_or_null<LLVM::LLVMType>();
@@ -255,7 +255,7 @@ Type LLVMTypeConverter::convertStandardType(Type t) {
 }
 
 // Convert a function argument type to an LLVM type using 'convertType' except
-// for MemRef arguments. MemRef type is converted to a bare LLVM pointer to the
+// for MemRef arguments. MemRef types are converted to LLVM bare pointers to the
 // MemRef element type.
 LLVM::LLVMType BarePtrTypeConverter::convertArgType(Type type) {
   // TODO: Add support for unranked memref.
@@ -265,7 +265,7 @@ LLVM::LLVMType BarePtrTypeConverter::convertArgType(Type type) {
   return convertType(type).dyn_cast_or_null<LLVM::LLVMType>();
 }
 
-// Converts MemRefType to a bare LLVM pointer to the MemRef element type.
+// Converts MemRef type to an LLVM bare pointer to the MemRef element type.
 Type BarePtrTypeConverter::convertMemRefTypeToBarePtr(MemRefType type) {
   int64_t offset;
   SmallVector<int64_t, 4> strides;

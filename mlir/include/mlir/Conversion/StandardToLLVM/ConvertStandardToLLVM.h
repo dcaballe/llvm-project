@@ -77,7 +77,7 @@ public:
                                    OpBuilder &builder);
 
 protected:
-  /// Convert a function argument type to an LLVM types using 'convertType'.
+  /// Convert a function argument type to an LLVM type using 'convertType'.
   /// MemRef arguments are promoted to a pointer to the converted type.
   virtual LLVM::LLVMType convertArgType(Type type);
 
@@ -130,7 +130,7 @@ private:
 };
 
 /// Custom LLVMTypeConverter that overrides `convertFunctionSignature` to
-/// replace the type of MemRef function arguments with bare pointer to the
+/// replace the type of MemRef function arguments with a bare pointer to the
 /// MemRef element type.
 class BarePtrTypeConverter : public mlir::LLVMTypeConverter {
 public:
@@ -138,10 +138,11 @@ public:
 
 private:
   /// Convert a function argument type to an LLVM type using 'convertType'
-  /// except for MemRef arguments. MemRef type is converted to a bare LLVM
-  /// pointer to the MemRef element type.
+  /// except for MemRef arguments. MemRef types are converted to LLVM bare
+  /// pointers to the MemRef element type.
   LLVM::LLVMType convertArgType(Type type) override;
 
+  /// Converts MemRef type to an LLVM bare pointer to the MemRef element type.
   mlir::Type convertMemRefTypeToBarePtr(mlir::MemRefType type);
 };
 
