@@ -50,19 +50,8 @@ static llvm::cl::opt<bool> clUseBarePtrCallConv(
                    "bare pointers to the MemRef element types"),
     llvm::cl::init(false));
 
-LLVMTypeConverter::LLVMTypeConverter(MLIRContext *ctx)
-    : llvmDialect(ctx->getRegisteredDialect<LLVM::LLVMDialect>()) {
-  assert(llvmDialect && "LLVM IR dialect is not registered");
-  module = &llvmDialect->getLLVMModule();
-}
-
-// Get the LLVM context.
-llvm::LLVMContext &LLVMTypeConverter::getLLVMContext() {
-  return module->getContext();
-}
-
 // Extract an LLVM IR type from the LLVM IR dialect type.
-LLVM::LLVMType LLVMTypeConverter::unwrap(Type type) {
+static LLVM::LLVMType unwrap(Type type) {
   if (!type)
     return nullptr;
   auto *mlirContext = type.getContext();
@@ -71,6 +60,70 @@ LLVM::LLVMType LLVMTypeConverter::unwrap(Type type) {
     emitError(UnknownLoc::get(mlirContext),
               "conversion resulted in a non-LLVM type");
   return wrappedLLVMType;
+}
+
+// Initialize customizations to default callbaks.
+LLVMTypeConverterCustomization::LLVMTypeConverterCustomization() {
+  funcArgConverter = structFuncArgTypeConverter;
+}
+
+// Callback to convert function arguments. It converts a MemRef function
+// arguments to a struct that contains the descriptor information. All the
+// function arguments are promoted to a pointer to the converted type.
+LLVM::LLVMType mlir::structFuncArgTypeConverter(LLVMTypeConverter &converter,
+                                                Type type) {
+  auto converted =
+      converter.convertType(type).dyn_cast_or_null<LLVM::LLVMType>();
+  if (!converted)
+    return {};
+  if (type.isa<MemRefType>() || type.isa<UnrankedMemRefType>())
+    converted = converted.getPointerTo();
+  return converted;
+}
+
+// Convert a MemRef type to a bare pointer to the MemRef element type.
+static Type convertMemRefTypeToBarePtr(LLVMTypeConverter &converter,
+                                       MemRefType type) {
+  int64_t offset;
+  SmallVector<int64_t, 4> strides;
+  bool strideSuccess = succeeded(getStridesAndOffset(type, strides, offset));
+  assert(strideSuccess &&
+         "Non-strided layout maps must have been normalized away");
+  (void)strideSuccess;
+
+  LLVM::LLVMType elementType = unwrap(converter.convertType(type.getElementType()));
+  if (!elementType)
+    return {};
+  auto ptrTy = elementType.getPointerTo(type.getMemorySpace());
+  return ptrTy;
+}
+
+// Callback to convert function arguments. It converts MemRef function
+// arguments to bare pointers to the MemRef element type. Converted types are
+// not promoted to pointers.
+LLVM::LLVMType mlir::barePtrFuncArgTypeConverter(LLVMTypeConverter &converter,
+                                                 Type type) {
+  // TODO: Add support for unranked memref.
+  if (auto memrefTy = type.dyn_cast<MemRefType>())
+    return convertMemRefTypeToBarePtr(converter, memrefTy)
+        .dyn_cast_or_null<LLVM::LLVMType>();
+  return converter.convertType(type).dyn_cast_or_null<LLVM::LLVMType>();
+}
+
+LLVMTypeConverter::LLVMTypeConverter(MLIRContext *ctx)
+    : LLVMTypeConverter(ctx, LLVMTypeConverterCustomization()) {}
+
+LLVMTypeConverter::LLVMTypeConverter(
+    MLIRContext *ctx, const LLVMTypeConverterCustomization &customs)
+    : llvmDialect(ctx->getRegisteredDialect<LLVM::LLVMDialect>()),
+      customizations(customs) {
+  assert(llvmDialect && "LLVM IR dialect is not registered");
+  module = &llvmDialect->getLLVMModule();
+}
+
+// Get the LLVM context.
+llvm::LLVMContext &LLVMTypeConverter::getLLVMContext() {
+  return module->getContext();
 }
 
 LLVM::LLVMType LLVMTypeConverter::getIndexType() {
@@ -113,17 +166,6 @@ Type LLVMTypeConverter::convertFunctionType(FunctionType type) {
   return converted.getPointerTo();
 }
 
-// Convert a function argument type to an LLVM type using 'convertType'. MemRef
-// arguments are promoted to a pointer to the converted type.
-LLVM::LLVMType LLVMTypeConverter::convertArgType(Type type) {
-  auto converted = convertType(type).dyn_cast_or_null<LLVM::LLVMType>();
-  if (!converted)
-    return {};
-  if (type.isa<MemRefType>() || type.isa<UnrankedMemRefType>())
-    converted = converted.getPointerTo();
-  return converted;
-}
-
 // Function types are converted to LLVM Function types by recursively converting
 // argument and result types.  If MLIR Function has zero results, the LLVM
 // Function has one VoidType result.  If MLIR Function has more than one result,
@@ -134,7 +176,8 @@ LLVM::LLVMType LLVMTypeConverter::convertFunctionSignature(
   // Convert argument types one by one and check for errors.
   for (auto &en : llvm::enumerate(type.getInputs())) {
     Type type = en.value();
-    auto converted = convertArgType(type).dyn_cast_or_null<LLVM::LLVMType>();
+    auto converted = customizations.funcArgConverter(*this, type)
+                         .dyn_cast_or_null<LLVM::LLVMType>();
     if (!converted)
       return {};
     result.addInputs(en.index(), converted);
@@ -252,33 +295,6 @@ Type LLVMTypeConverter::convertStandardType(Type t) {
       .Case([&](VectorType type) { return convertVectorType(type); })
       .Case([](LLVM::LLVMType type) { return type; })
       .Default([](Type) { return Type(); });
-}
-
-// Convert a function argument type to an LLVM type using 'convertType' except
-// for MemRef arguments. MemRef types are converted to LLVM bare pointers to the
-// MemRef element type.
-LLVM::LLVMType BarePtrTypeConverter::convertArgType(Type type) {
-  // TODO: Add support for unranked memref.
-  if (auto memrefTy = type.dyn_cast<MemRefType>())
-    return convertMemRefTypeToBarePtr(memrefTy)
-        .dyn_cast_or_null<LLVM::LLVMType>();
-  return convertType(type).dyn_cast_or_null<LLVM::LLVMType>();
-}
-
-// Converts MemRef type to an LLVM bare pointer to the MemRef element type.
-Type BarePtrTypeConverter::convertMemRefTypeToBarePtr(MemRefType type) {
-  int64_t offset;
-  SmallVector<int64_t, 4> strides;
-  bool strideSuccess = succeeded(getStridesAndOffset(type, strides, offset));
-  assert(strideSuccess &&
-         "Non-strided layout maps must have been normalized away");
-  (void)strideSuccess;
-
-  LLVM::LLVMType elementType = unwrap(convertType(type.getElementType()));
-  if (!elementType)
-    return {};
-  auto ptrTy = elementType.getPointerTo(type.getMemorySpace());
-  return ptrTy;
 }
 
 LLVMOpLowering::LLVMOpLowering(StringRef rootOpName, MLIRContext *context,
@@ -661,7 +677,6 @@ struct BarePtrFuncOpConversion : public FuncOpConversionBase {
           auto desc = MemRefDescriptor::fromStaticShape(
               rewriter, funcLoc, lowering, memrefType, arg);
           rewriter.replaceUsesOfWith(placeHolder, desc);
-          placeHolder.getDefiningOp()->erase();
         }
       }
     }
@@ -2338,13 +2353,17 @@ LLVMTypeConverter::promoteMemRefDescriptors(Location loc, ValueRange opOperands,
 /// Create an instance of LLVMTypeConverter in the given context.
 static std::unique_ptr<LLVMTypeConverter>
 makeStandardToLLVMTypeConverter(MLIRContext *context) {
-  return std::make_unique<LLVMTypeConverter>(context);
+  LLVMTypeConverterCustomization customs;
+  customs.funcArgConverter = structFuncArgTypeConverter;
+  return std::make_unique<LLVMTypeConverter>(context, customs);
 }
 
 /// Create an instance of BarePtrTypeConverter in the given context.
 static std::unique_ptr<LLVMTypeConverter>
 makeStandardToLLVMBarePtrTypeConverter(MLIRContext *context) {
-  return std::make_unique<BarePtrTypeConverter>(context);
+  LLVMTypeConverterCustomization customs;
+  customs.funcArgConverter = barePtrFuncArgTypeConverter;
+  return std::make_unique<LLVMTypeConverter>(context, customs);
 }
 
 namespace {

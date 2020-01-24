@@ -26,6 +26,7 @@ class Type;
 
 namespace mlir {
 
+class LLVMTypeConverter;
 class UnrankedMemRefType;
 
 namespace LLVM {
@@ -33,12 +34,40 @@ class LLVMDialect;
 class LLVMType;
 } // namespace LLVM
 
+/// Set of callbacks that allows the customization of LLVMTypeConverter.
+struct LLVMTypeConverterCustomization {
+  using CustomCallback =
+      std::function<LLVM::LLVMType(LLVMTypeConverter &, Type)>;
+
+  /// Customize the type conversion of function arguments.
+  CustomCallback funcArgConverter;
+
+  /// Initialize customizations to default.
+  LLVMTypeConverterCustomization();
+};
+
+/// Callback to convert function arguments. It converts a MemRef function
+/// argument to a struct that contain the descriptor information. All the
+/// function arguments are promoted to a pointer to the converted type.
+LLVM::LLVMType structFuncArgTypeConverter(LLVMTypeConverter &converter,
+                                          Type type);
+
+// Callback to convert function arguments. It converts MemRef function
+// arguments to bare pointers to the MemRef element type. Converted types are
+// not promoted to pointers.
+LLVM::LLVMType barePtrFuncArgTypeConverter(LLVMTypeConverter &converter,
+                                           Type type);
+
 /// Conversion from types in the Standard dialect to the LLVM IR dialect.
 class LLVMTypeConverter : public TypeConverter {
 public:
   using TypeConverter::convertType;
 
+  /// Constructor that uses default LLVMTypeConverterCustomization.
   LLVMTypeConverter(MLIRContext *ctx);
+
+  LLVMTypeConverter(MLIRContext *ctx,
+                    const LLVMTypeConverterCustomization &custom);
 
   /// Convert types to LLVM IR.  This calls `convertAdditionalType` to convert
   /// non-standard or non-builtin types.
@@ -77,16 +106,9 @@ public:
                                    OpBuilder &builder);
 
 protected:
-  /// Convert a function argument type to an LLVM type using 'convertType'.
-  /// MemRef arguments are promoted to a pointer to the converted type.
-  virtual LLVM::LLVMType convertArgType(Type type);
-
   /// LLVM IR module used to parse/create types.
   llvm::Module *module;
   LLVM::LLVMDialect *llvmDialect;
-
-  // Extract an LLVM IR dialect type.
-  LLVM::LLVMType unwrap(Type type);
 
 private:
   Type convertStandardType(Type type);
@@ -127,23 +149,9 @@ private:
   // Get the LLVM representation of the index type based on the bitwidth of the
   // pointer as defined by the data layout of the module.
   LLVM::LLVMType getIndexType();
-};
 
-/// Custom LLVMTypeConverter that overrides `convertFunctionSignature` to
-/// replace the type of MemRef function arguments with a bare pointer to the
-/// MemRef element type.
-class BarePtrTypeConverter : public mlir::LLVMTypeConverter {
-public:
-  using LLVMTypeConverter::LLVMTypeConverter;
-
-private:
-  /// Convert a function argument type to an LLVM type using 'convertType'
-  /// except for MemRef arguments. MemRef types are converted to LLVM bare
-  /// pointers to the MemRef element type.
-  LLVM::LLVMType convertArgType(Type type) override;
-
-  /// Converts MemRef type to an LLVM bare pointer to the MemRef element type.
-  mlir::Type convertMemRefTypeToBarePtr(mlir::MemRefType type);
+  // Callbacks for customizing the type conversion.
+  LLVMTypeConverterCustomization customizations;
 };
 
 /// Helper class to produce LLVM dialect operations extracting or inserting
