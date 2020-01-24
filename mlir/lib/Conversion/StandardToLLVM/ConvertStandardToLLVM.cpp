@@ -2279,7 +2279,7 @@ void mlir::populateStdToLLVMConversionPatterns(
   populateStdToLLVMMemoryConversionPatters(converter, patterns);
 }
 
-void mlir::populateStdToLLVMBarePtrFuncOpConversionPattern(
+static void populateStdToLLVMBarePtrFuncOpConversionPattern(
     LLVMTypeConverter &converter, OwningRewritePatternList &patterns) {
   patterns.insert<BarePtrFuncOpConversion>(*converter.getDialect(), converter);
 }

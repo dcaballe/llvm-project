@@ -63,11 +63,6 @@ void populateStdToLLVMDefaultFuncOpConversionPattern(
 void populateStdToLLVMConversionPatterns(LLVMTypeConverter &converter,
                                          OwningRewritePatternList &patterns);
 
-/// Collect the pattern to convert a FuncOp to the LLVM dialect using the bare
-/// pointer calling convertion for MemRef function arguments.
-void populateStdToLLVMBarePtrFuncOpConversionPattern(
-    LLVMTypeConverter &converter, OwningRewritePatternList &patterns);
-
 /// Collect a set of patterns to convert from the Standard dialect to
 /// LLVM using the bare pointer calling convention for MemRef function
 /// arguments.
