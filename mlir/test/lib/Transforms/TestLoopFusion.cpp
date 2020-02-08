@@ -19,6 +19,7 @@
 #include "mlir/IR/Builders.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/LoopFusionUtils.h"
+#include "mlir/Transforms/LoopUtils.h"
 #include "mlir/Transforms/Passes.h"
 
 #include "llvm/ADT/STLExtras.h"
@@ -51,19 +52,6 @@ struct TestLoopFusion : public FunctionPass<TestLoopFusion> {
 
 std::unique_ptr<OpPassBase<FuncOp>> mlir::createTestLoopFusionPass() {
   return std::make_unique<TestLoopFusion>();
-}
-
-// Gathers all AffineForOps in 'block' at 'currLoopDepth' in 'depthToLoops'.
-static void
-gatherLoops(Block *block, unsigned currLoopDepth,
-            DenseMap<unsigned, SmallVector<AffineForOp, 2>> &depthToLoops) {
-  auto &loopsAtDepth = depthToLoops[currLoopDepth];
-  for (auto &op : *block) {
-    if (auto forOp = dyn_cast<AffineForOp>(op)) {
-      loopsAtDepth.push_back(forOp);
-      gatherLoops(forOp.getBody(), currLoopDepth + 1, depthToLoops);
-    }
-  }
 }
 
 // Run fusion dependence check on 'loops[i]' and 'loops[j]' at loop depths
@@ -140,9 +128,7 @@ static void testSliceComputation(SmallVector<AffineForOp, 2> &loops, unsigned i,
 void TestLoopFusion::runOnFunction() {
   // Gather all AffineForOps by loop depth.
   DenseMap<unsigned, SmallVector<AffineForOp, 2>> depthToLoops;
-  for (auto &block : getFunction()) {
-    gatherLoops(&block, /*currLoopDepth=*/0, depthToLoops);
-  }
+  gatherLoops(getFunction(), depthToLoops);
 
   // Run tests on all combinations of src/dst loop nests in 'depthToLoops'.
   for (auto &depthAndLoops : depthToLoops) {

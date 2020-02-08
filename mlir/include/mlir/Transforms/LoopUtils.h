@@ -15,6 +15,7 @@
 #ifndef MLIR_TRANSFORMS_LOOP_UTILS_H
 #define MLIR_TRANSFORMS_LOOP_UTILS_H
 
+#include "mlir/IR/AffineMap.h"
 #include "mlir/IR/Block.h"
 #include "mlir/Support/LLVM.h"
 #include "mlir/Support/LogicalResult.h"
@@ -174,6 +175,7 @@ struct AffineCopyOptions {
 /// processing this block range.
 uint64_t affineDataCopyGenerate(Block::iterator begin, Block::iterator end,
                                 const AffineCopyOptions &copyOptions,
+                                Optional<Value> filterMemRef,
                                 DenseSet<Operation *> &copyNests);
 
 /// Tile a nest of standard for loops rooted at `rootForOp` by finding such
@@ -220,6 +222,15 @@ void coalesceLoops(MutableArrayRef<loop::ForOp> loops);
 /// ```
 void mapLoopToProcessorIds(loop::ForOp forOp, ArrayRef<Value> processorId,
                            ArrayRef<Value> numProcessors);
+
+/// Gathers all AffineForOps in 'block' at 'currLoopDepth' in 'depthToLoops'.
+void gatherLoops(Block *block, unsigned currLoopDepth,
+                 DenseMap<unsigned, SmallVector<AffineForOp, 2>> &depthToLoops);
+
+/// Gathers all AffineForOps in 'func' grouped by loop depth.
+void gatherLoops(FuncOp func,
+                 DenseMap<unsigned, SmallVector<AffineForOp, 2>> &depthToLoops);
+
 } // end namespace mlir
 
 #endif // MLIR_TRANSFORMS_LOOP_UTILS_H

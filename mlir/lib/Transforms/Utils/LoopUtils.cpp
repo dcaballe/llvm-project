@@ -1595,6 +1595,7 @@ static bool getFullMemRefAsRegion(Operation *opInst, unsigned numParamLoopIVs,
 uint64_t mlir::affineDataCopyGenerate(Block::iterator begin,
                                       Block::iterator end,
                                       const AffineCopyOptions &copyOptions,
+                                      Optional<Value> filterMemRef,
                                       DenseSet<Operation *> &copyNests) {
   if (begin == end)
     return 0;
@@ -1631,12 +1632,16 @@ uint64_t mlir::affineDataCopyGenerate(Block::iterator begin,
   block->walk(begin, end, [&](Operation *opInst) {
     // Gather regions to allocate to buffers in faster memory space.
     if (auto loadOp = dyn_cast<AffineLoadOp>(opInst)) {
-      if ((loadOp.getMemRefType().getMemorySpace() !=
+      if ((filterMemRef.hasValue() &&
+           filterMemRef.getValue() != loadOp.getMemRef()) ||
+          (loadOp.getMemRefType().getMemorySpace() !=
            copyOptions.slowMemorySpace))
         return;
     } else if (auto storeOp = dyn_cast<AffineStoreOp>(opInst)) {
-      if (storeOp.getMemRefType().getMemorySpace() !=
-          copyOptions.slowMemorySpace)
+      if ((filterMemRef.hasValue() &&
+           filterMemRef.getValue() != storeOp.getMemRef()) ||
+          storeOp.getMemRefType().getMemorySpace() !=
+              copyOptions.slowMemorySpace)
         return;
     } else {
       // Neither load nor a store op.
@@ -1775,4 +1780,26 @@ uint64_t mlir::affineDataCopyGenerate(Block::iterator begin,
   }
 
   return totalCopyBuffersSizeInBytes;
+}
+
+/// Gathers all AffineForOps in 'block' at 'currLoopDepth' in 'depthToLoops'.
+void mlir::gatherLoops(
+    Block *block, unsigned currLoopDepth,
+    DenseMap<unsigned, SmallVector<AffineForOp, 2>> &depthToLoops) {
+  auto &loopsAtDepth = depthToLoops[currLoopDepth];
+  for (auto &op : *block) {
+    if (auto forOp = dyn_cast<AffineForOp>(op)) {
+      loopsAtDepth.push_back(forOp);
+      gatherLoops(forOp.getBody(), currLoopDepth + 1, depthToLoops);
+    }
+  }
+}
+
+/// Gathers all AffineForOps in 'func' grouped by loop depth.
+void mlir::gatherLoops(
+    FuncOp func,
+    DenseMap<unsigned, SmallVector<AffineForOp, 2>> &depthToLoops) {
+  for (auto &block : func) {
+    gatherLoops(&block, /*currLoopDepth=*/0, depthToLoops);
+  }
 }
