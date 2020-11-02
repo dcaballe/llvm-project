@@ -50,11 +50,9 @@ struct FusionStrategy {
     None,             // Generic fusion. No assumtions are made.
     ProducerConsumer, // Producer-consumer fusion from AffineLoopFusion pass.
     Sibling           // Sibling fusion from AffineLoopFusion pass.
-  } strategy;
+  } value;
 
-  Value memref;
-  FusionStrategy(StrategyEnum strategy, Value memref)
-      : strategy(strategy), memref(memref) {}
+  FusionStrategy(StrategyEnum value) : value(value) {}
 };
 
 /// Checks the feasibility of fusing the loop nest rooted at 'srcForOp' into the
@@ -65,10 +63,10 @@ struct FusionStrategy {
 /// NOTE: This function is not feature complete and should only be used in
 /// testing.
 /// TODO: Update comments when this function is fully implemented.
-FusionResult
-canFuseLoops(AffineForOp srcForOp, AffineForOp dstForOp, unsigned dstLoopDepth,
-             ComputationSliceState *srcSlice,
-             FusionStrategy fusionStrategy = {FusionStrategy::None, Value()});
+FusionResult canFuseLoops(AffineForOp srcForOp, AffineForOp dstForOp,
+                          unsigned dstLoopDepth,
+                          ComputationSliceState *srcSlice,
+                          FusionStrategy fusionStrategy = FusionStrategy::None);
 
 /// Fuses 'srcForOp' into 'dstForOp' with destination loop block insertion point
 /// and source slice loop bounds specified in 'srcSlice'.
@@ -111,6 +109,11 @@ bool getFusionComputeCost(AffineForOp srcForOp, LoopNestStats &srcStats,
                           AffineForOp dstForOp, LoopNestStats &dstStats,
                           const ComputationSliceState &slice,
                           int64_t *computeCost);
+
+// TODO.
+void gatherProducerConsumerMemrefs(ArrayRef<Operation *> srcOps,
+                                   ArrayRef<Operation *> dstOps,
+                                   DenseSet<Value> &producerConsumerMemrefs);
 
 } // end namespace mlir
 

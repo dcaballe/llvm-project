@@ -378,14 +378,16 @@ func @should_fuse_with_private_memref_if_top_level_access() {
 
   %c0 = constant 4 : index
   %v1 = affine.load %m[%c0] : memref<10xf32>
-  // Top-level load to '%{{.*}}' should prevent fusion.
-  // CHECK:      affine.for %{{.*}} = 0 to 10 {
-  // CHECK-NEXT:   affine.store %{{.*}}, %{{.*}}[%{{.*}}] : memref<10xf32>
+  // Top-level load to '%{{.*}}' should prevent creating a private memref but
+  // loop nests should be fused and 'i0' should be removed.
+  // CHECK:      %[[alloc:.*]] = alloc() : memref<10xf32>
+  // CHECK-NOT:  alloc
+
+  // CHECK:      affine.for %[[i1:.*]] = 0 to 10 {
+  // CHECK-NEXT:   affine.store %{{.*}}, %[[alloc]][%[[i1]]] : memref<10xf32>
+  // CHECK-NEXT:   affine.load %{{.*}}[%[[i1]]] : memref<10xf32>
   // CHECK-NEXT: }
-  // CHECK-NEXT: affine.for %{{.*}} = 0 to 10 {
-  // CHECK-NEXT:   affine.store %{{.*}}, %{{.*}}[0] : memref<1xf32>
-  // CHECK-NEXT:   affine.load %{{.*}}[0] : memref<1xf32>
-  // CHECK-NEXT: }
+  // CHECK-NOT:  affine.for
   return
 }
 

@@ -191,11 +191,8 @@ gatherLoadsAndStores(AffineForOp forOp,
 // 'srcForOp' into consumer loop 'dstForOp' without violating data dependences.
 // TODO: Generalize this check for sibling and more generic fusion scenarios.
 // TODO: Support forward slice fusion.
-static unsigned getMaxLoopDepth(ArrayRef<Operation *> dstOps,
-                                FusionStrategy fusionStrategy) {
-  assert(fusionStrategy.strategy == FusionStrategy::ProducerConsumer &&
-         "Fusion strategy not supported");
-
+static unsigned getMaxLoopDepth(ArrayRef<Operation *> srcOps,
+                                ArrayRef<Operation *> dstOps) {
   if (dstOps.empty())
     // Expected at least one memory operation.
     // TODO: Revisit this case with a specific example.
@@ -203,15 +200,14 @@ static unsigned getMaxLoopDepth(ArrayRef<Operation *> dstOps,
 
   // Filter out ops in 'dstOps' that do not use the producer-consumer memref so
   // that they are not considered for analysis.
-  // TODO: Currently, we pass the producer-consumer memref through
-  // fusionStrategy. We will retrieve the memrefs from 'srcOps' once we
-  // generalize the algorithm.
+  DenseSet<Value> producerConsumerMemrefs;
+  gatherProducerConsumerMemrefs(srcOps, dstOps, producerConsumerMemrefs);
   SmallVector<Operation *, 4> targetDstOps;
   for (Operation *dstOp : dstOps) {
     auto loadOp = dyn_cast<AffineReadOpInterface>(dstOp);
     Value memref = loadOp ? loadOp.getMemRef()
                           : cast<AffineWriteOpInterface>(dstOp).getMemRef();
-    if (memref == fusionStrategy.memref)
+    if (producerConsumerMemrefs.count(memref) > 0)
       targetDstOps.push_back(dstOp);
   }
 
@@ -308,10 +304,10 @@ FusionResult mlir::canFuseLoops(AffineForOp srcForOp, AffineForOp dstForOp,
   // loop dependences.
   // TODO: Enable this check for sibling and more generic loop fusion
   // strategies.
-  if (fusionStrategy.strategy == FusionStrategy::ProducerConsumer) {
+  if (fusionStrategy.value == FusionStrategy::ProducerConsumer) {
     // TODO: 'getMaxLoopDepth' does not support forward slice fusion.
     assert(isSrcForOpBeforeDstForOp && "Unexpected forward slice fusion");
-    if (getMaxLoopDepth(opsB, fusionStrategy) < dstLoopDepth) {
+    if (getMaxLoopDepth(opsA, opsB) < dstLoopDepth) {
       LLVM_DEBUG(llvm::dbgs() << "Fusion would violate loop dependences\n");
       return FusionResult::FailFusionDependence;
     }
@@ -324,7 +320,7 @@ FusionResult mlir::canFuseLoops(AffineForOp srcForOp, AffineForOp dstForOp,
   // Filter out ops in 'opsA' to compute the slice union based on the
   // assumptions expected by the fusion strategy.
   SmallVector<Operation *, 4> strategyOpsA;
-  switch (fusionStrategy.strategy) {
+  switch (fusionStrategy.value) {
   case FusionStrategy::None:
     // Generic fusion. Take into account all the memory operations to compute
     // the slice union.
@@ -332,19 +328,17 @@ FusionResult mlir::canFuseLoops(AffineForOp srcForOp, AffineForOp dstForOp,
     break;
   case FusionStrategy::ProducerConsumer:
     // Producer-consumer fusion (AffineLoopFusion pass) only takes into
-    // account stores to 'memref' in 'srcForOp' to compute the slice union.
+    // account stores in 'srcForOp' to compute the slice union.
     for (Operation *op : opsA) {
-      auto store = dyn_cast<AffineWriteOpInterface>(op);
-      if (store && store.getMemRef() == fusionStrategy.memref)
+      if (isa<AffineWriteOpInterface>(op))
         strategyOpsA.push_back(op);
     }
     break;
   case FusionStrategy::Sibling:
-    // Sibling fusion (AffineLoopFusion pass) only takes into account the loads
-    // to 'memref' in 'srcForOp' to compute the slice union.
+    // Sibling fusion (AffineLoopFusion pass) only takes into account loads
+    // in 'srcForOp' to compute the slice union.
     for (Operation *op : opsA) {
-      auto load = dyn_cast<AffineReadOpInterface>(op);
-      if (load && load.getMemRef() == fusionStrategy.memref)
+      if (isa<AffineReadOpInterface>(op))
         strategyOpsA.push_back(op);
     }
     break;
@@ -628,3 +622,22 @@ bool mlir::getFusionComputeCost(AffineForOp srcForOp, LoopNestStats &srcStats,
                            /*tripCountOverrideMap=*/nullptr, &computeCostMap);
   return true;
 }
+
+// TODO
+void mlir::gatherProducerConsumerMemrefs(
+    ArrayRef<Operation *> srcOps, ArrayRef<Operation *> dstOps,
+    DenseSet<Value> &producerConsumerMemrefs) {
+  // Gather memrefs from stores in 'srcOps'.
+  DenseSet<Value> srcStoreMemRefs;
+  for (Operation *op : srcOps)
+    if (auto storeOp = dyn_cast<AffineWriteOpInterface>(op))
+      srcStoreMemRefs.insert(storeOp.getMemRef());
+
+  // Compute the intersection between memrefs from stores in 'srcOps' and
+  // memrefs from loads in 'dstOps'.
+  for (Operation *op : dstOps)
+    if (auto loadOp = dyn_cast<AffineReadOpInterface>(op))
+      if (srcStoreMemRefs.count(loadOp.getMemRef()) > 0)
+        producerConsumerMemrefs.insert(loadOp.getMemRef());
+}
+
