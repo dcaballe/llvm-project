@@ -15,6 +15,7 @@
 #ifndef MLIR_TRANSFORMS_LOOP_FUSION_UTILS_H
 #define MLIR_TRANSFORMS_LOOP_FUSION_UTILS_H
 
+#include "mlir/IR/Value.h"
 #include "mlir/Support/LLVM.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallVector.h"
@@ -38,6 +39,24 @@ struct FusionResult {
   FusionResult(ResultEnum v) : value(v) {}
 };
 
+/// Temporary enum to distinguish between the different fusion strategies
+/// implemented in Affine. It is used to specialized the loop fusion utilities
+/// with the assumptions made in the AffineLoopFusion pass while sharing a
+/// single implementation.
+// TODO: Remove this enum once the producer-consumer and sibling loop fusion
+// strategies in AffineLoopFusion pass are generic enough.
+struct FusionStrategy {
+  enum StrategyEnum {
+    None,             // Generic fusion. No assumtions are made.
+    ProducerConsumer, // Producer-consumer fusion from AffineLoopFusion pass.
+    Sibling           // Sibling fusion from AffineLoopFusion pass.
+  } strategy;
+
+  Value memref;
+  FusionStrategy(StrategyEnum strategy, Value memref)
+      : strategy(strategy), memref(memref) {}
+};
+
 /// Checks the feasibility of fusing the loop nest rooted at 'srcForOp' into the
 /// loop nest rooted at 'dstForOp' at 'dstLoopDepth'. Returns FusionResult
 /// 'Success' if fusion of the src/dst loop nests is feasible (i.e. they are
@@ -46,14 +65,15 @@ struct FusionResult {
 /// NOTE: This function is not feature complete and should only be used in
 /// testing.
 /// TODO: Update comments when this function is fully implemented.
-FusionResult canFuseLoops(AffineForOp srcForOp, AffineForOp dstForOp,
-                          unsigned dstLoopDepth,
-                          ComputationSliceState *srcSlice);
+FusionResult
+canFuseLoops(AffineForOp srcForOp, AffineForOp dstForOp, unsigned dstLoopDepth,
+             ComputationSliceState *srcSlice,
+             FusionStrategy fusionStrategy = {FusionStrategy::None, Value()});
 
 /// Fuses 'srcForOp' into 'dstForOp' with destination loop block insertion point
 /// and source slice loop bounds specified in 'srcSlice'.
 void fuseLoops(AffineForOp srcForOp, AffineForOp dstForOp,
-               ComputationSliceState *srcSlice);
+               const ComputationSliceState &srcSlice);
 
 /// LoopNestStats aggregates various per-loop statistics (eg. loop trip count
 /// and operation count) for a loop nest up until (and including) the innermost
@@ -89,7 +109,8 @@ int64_t getComputeCost(AffineForOp forOp, LoopNestStats &stats);
 // TODO: Improve this cost model.
 bool getFusionComputeCost(AffineForOp srcForOp, LoopNestStats &srcStats,
                           AffineForOp dstForOp, LoopNestStats &dstStats,
-                          ComputationSliceState *slice, int64_t *computeCost);
+                          const ComputationSliceState &slice,
+                          int64_t *computeCost);
 
 } // end namespace mlir
 
