@@ -129,6 +129,9 @@ struct TiledLinalgOp {
 FailureOr<TiledLinalgOp> tileLinalgOp(RewriterBase &b, LinalgOp op,
                                       const LinalgTilingOptions &options);
 
+// TODO.
+void peelLoops(RewriterBase &rewriter, ArrayRef<scf::ForOp> loops);
+
 /// Peel the loops of a TiledLinalgOp.
 void peelTiledLinalgOp(RewriterBase &rewriter, TiledLinalgOp &res,
                        ArrayRef<int64_t> peeledLoops,
@@ -913,6 +916,44 @@ struct LinalgPromotionPattern : public LinalgBasePromotionPattern {
       LinalgTransformationFilter f = LinalgTransformationFilter(),
       PatternBenefit benefit = 1)
       : LinalgBasePromotionPattern(opName, context, options, f, benefit) {}
+};
+
+///
+/// Linalg peeling patterns.
+///
+
+using LoopsToPeelComputationFunction = std::function<void(
+    OpBuilder &, Operation *, SmallVectorImpl<scf::ForOp> &)>;
+
+struct LinalgPeelOptions {
+  LoopsToPeelComputationFunction loopsToPeelComputationFunction = nullptr;
+};
+
+/// `filter` controls LinalgTransformMarker matching and update when specified.
+/// See `vectorizeLinalgOp` for more details.
+struct LinalgPeelingPattern : public OpInterfaceRewritePattern<LinalgOp> {
+  /// Construct a generic pattern applied to all LinalgOp that verify `filter`.
+  LinalgPeelingPattern(
+      MLIRContext *context,
+      LinalgTransformationFilter f = LinalgTransformationFilter(),
+      LinalgPeelOptions options = LinalgPeelOptions(),
+      PatternBenefit benefit = 1);
+
+  /// Construct a pattern specifically applied to `opName`.
+  LinalgPeelingPattern(
+      StringRef opName, MLIRContext *context,
+      LinalgPeelOptions options = LinalgPeelOptions(),
+      LinalgTransformationFilter f = LinalgTransformationFilter(),
+      PatternBenefit benefit = 1);
+
+  LogicalResult matchAndRewrite(LinalgOp linalgOp,
+                                PatternRewriter &rewriter) const override;
+
+private:
+  /// LinalgTransformMarker handles special attribute manipulations.
+  LinalgTransformationFilter filter;
+  /// Peeling options.
+  LinalgPeelOptions options;
 };
 
 ///

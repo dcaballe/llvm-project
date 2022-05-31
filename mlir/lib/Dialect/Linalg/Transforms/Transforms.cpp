@@ -323,6 +323,21 @@ static SmallVector<Value, 4> peelLoop(RewriterBase &rewriter, Operation *op) {
       .Default([&](Operation *op) { return op->getResults(); });
 }
 
+/// TODO.
+void mlir::linalg::peelLoops(RewriterBase &rewriter,
+                             ArrayRef<scf::ForOp> loops) {
+  for (auto loopOp : loops) {
+    SmallVector<Value, 4> loopResults;
+    loopResults = peelLoop(rewriter, loopOp);
+
+    //// The result of the loop nest may change with peeling.
+    // if (res.tensorResults.size() == loopOp->getNumResults() &&
+    //     std::equal(res.tensorResults.begin(), res.tensorResults.end(),
+    //                loopOp->getResults().begin()))
+    //   res.tensorResults = loopResults;
+  }
+}
+
 /// Peel loops after tiling.
 void mlir::linalg::peelTiledLinalgOp(RewriterBase &rewriter, TiledLinalgOp &res,
                                      ArrayRef<int64_t> peeledLoops,
@@ -713,6 +728,78 @@ LogicalResult mlir::linalg::LinalgBasePromotionPattern::matchAndRewrite(
   }
   rewriter.finalizeRootUpdate(op);
   filter.replaceLinalgTransformationFilter(rewriter, op);
+  return success();
+}
+
+static bool loopNeedsPeeling(scf::ForOp loop) {
+  // TODO
+  Operation *stepOp = loop.getStep().getDefiningOp();
+  if (!stepOp)
+    return false;
+
+  if (auto constStep = dyn_cast<arith::ConstantIntOp>(stepOp)) {
+    int64_t intStep = constStep.value();
+    if (intStep > 0 && std::__popcount((intStep) == 1)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+static void getLoopsToPeelFromOp(LinalgOp linalgOp,
+                                 const LinalgPeelOptions& options,
+                                 SmallVectorImpl<scf::ForOp> &loopsToPeel) {
+  //auto inOutOperands = linalgOp.getInputAndOutputOperands();
+  //for (OpOperand *operand : inOutOperands) {
+  //  Operation *inOutDef = operand->get().getDefiningOp();
+  //  if (!inOutDef)
+  //    continue;
+
+  //  if (auto extractSliceOp = dyn_cast<tensor::ExtractSliceOp>(inOutDef)) {
+  //    for (auto offset : extractSliceOp.offsets()) {
+  //      Operation *offsetDef = offset.getDefiningOp();
+  //      if (offsetDef)
+  //        continue;
+  //      if (auto loop = dyn_cast<scf::ForOp>(offsetDef)) {
+  //        if (loopNeedsPeeling(loop)) {
+  //          loopsToPeel.push_back(loop);
+  //        }
+  //      }
+  //    }
+  //  }
+  //}
+}
+
+mlir::linalg::LinalgPeelingPattern::LinalgPeelingPattern(
+    MLIRContext *context, LinalgTransformationFilter f,
+    LinalgPeelOptions options, PatternBenefit benefit)
+    : OpInterfaceRewritePattern<LinalgOp>(context, benefit),
+      filter(std::move(f)), options(std::move(options)) {}
+
+mlir::linalg::LinalgPeelingPattern::LinalgPeelingPattern(
+    StringRef opName, MLIRContext *context, LinalgPeelOptions options,
+    LinalgTransformationFilter f, PatternBenefit benefit)
+    : OpInterfaceRewritePattern<LinalgOp>(context, benefit),
+      filter(f.addOpNameFilter(opName)), options(std::move(options)) {}
+
+LogicalResult mlir::linalg::LinalgPeelingPattern::matchAndRewrite(
+    LinalgOp linalgOp, PatternRewriter &rewriter) const {
+  if (failed(filter.checkAndNotify(rewriter, linalgOp)))
+    return failure();
+
+  // Increase marker counter even if peeling doesn't happen.
+  filter.replaceLinalgTransformationFilter(rewriter, linalgOp);
+
+  if (!options.loopsToPeelComputationFunction)
+    return failure();
+
+  SmallVector<scf::ForOp, 4> loopsToPeel;
+  options.loopsToPeelComputationFunction(rewriter, linalgOp, loopsToPeel);
+  peelLoops(rewriter, loopsToPeel);
+
+  // TODO
+
   return success();
 }
 
