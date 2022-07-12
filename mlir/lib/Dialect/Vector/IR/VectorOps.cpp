@@ -88,6 +88,12 @@ static MaskFormat get1DMaskFormat(Value mask) {
   return MaskFormat::Unknown;
 }
 
+/// Default callback to build a region with a vector.yield with no arguments as
+/// terminator.
+void mlir::vector::buildTerminatedBody(OpBuilder &builder, Location loc) {
+  builder.create<vector::YieldOp>(loc);
+}
+
 // Helper for verifying combining kinds in contractions and reductions.
 static bool isSupportedCombiningKind(CombiningKind combiningKind,
                                      Type elementType) {
@@ -4832,6 +4838,116 @@ public:
 void CreateMaskOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                                MLIRContext *context) {
   results.add<CreateMaskFolder>(context);
+}
+
+//===----------------------------------------------------------------------===//
+// MaskOp
+//===----------------------------------------------------------------------===//
+
+void MaskOp::build(
+    OpBuilder &builder, OperationState &result, Value mask,
+    function_ref<void(OpBuilder &, Location)> maskRegionBuilder) {
+  build(builder, result, mask, /*passthrough=*/Value(), maskRegionBuilder);
+}
+
+void MaskOp::build(
+    OpBuilder &builder, OperationState &result, Value mask, Value passthrough,
+    function_ref<void(OpBuilder &, Location)> maskRegionBuilder) {
+  assert(maskRegionBuilder &&
+         "builder callback for 'maskRegion' must be present");
+
+  result.addOperands(mask);
+  if (passthrough)
+    result.addOperands(passthrough);
+  OpBuilder::InsertionGuard guard(builder);
+  Region *maskRegion = result.addRegion();
+  builder.createBlock(maskRegion);
+  maskRegionBuilder(builder, result.location);
+}
+
+void MaskOp::build(
+    OpBuilder &builder, OperationState &result, TypeRange resultTypes,
+    Value mask,
+    function_ref<void(OpBuilder &, Location)> maskRegionBuilder) {
+  build(builder, result, resultTypes, mask, /*passthrough=*/Value(),
+        maskRegionBuilder);
+}
+
+void MaskOp::build(
+    OpBuilder &builder, OperationState &result, TypeRange resultTypes,
+    Value mask, Value passthrough,
+    function_ref<void(OpBuilder &, Location)> maskRegionBuilder) {
+  build(builder, result, mask, passthrough, maskRegionBuilder);
+  result.addTypes(resultTypes);
+}
+
+ParseResult MaskOp::parse(OpAsmParser &parser, OperationState &result) {
+  // Create the op region.
+  result.regions.reserve(1);
+  Region *maskRegion = result.addRegion();
+
+  auto &builder = parser.getBuilder();
+
+  // Parse all the operands.
+  OpAsmParser::UnresolvedOperand mask;
+  Type maskType;
+  if (parser.parseLParen() || parser.parseOperand(mask) ||
+      parser.parseColonType(maskType) || parser.parseRParen())
+    return failure();
+
+  if (parser.resolveOperands(mask, maskType, result.operands))
+    return failure();
+
+  // Parse optional results type list.
+  if (parser.parseOptionalArrowTypeList(result.types))
+    return failure();
+
+  // Parse op region.
+  if (parser.parseRegion(*maskRegion, /*arguments=*/{}, /*argTypes=*/{}))
+    return failure();
+
+  MaskOp::ensureTerminator(*maskRegion, builder, result.location);
+
+  // Parse the optional attribute list.
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return failure();
+  return success();
+}
+
+void mlir::vector::MaskOp::print(OpAsmPrinter &p) {
+  bool printBlockTerminators = false;
+
+  p << "(" << getMask() << " : " << getMask().getType() << ")";
+  if (!getResults().empty()) {
+    p << " -> (" << getResultTypes() << ")";
+    // Print yield explicitly if the op defines values.
+    printBlockTerminators = true;
+  }
+  p << " ";
+  p.printRegion(getMaskRegion(),
+                /*printEntryBlockArgs=*/false,
+                /*printBlockTerminators=*/printBlockTerminators);
+
+  p.printOptionalAttrDict(getOperation()->getAttrs());
+}
+
+/// Given the region at `index`, or the parent operation if `index` is None,
+/// return the successor regions. These are the regions that may be selected
+/// during the flow of control. `operands` is a set of optional attributes that
+/// correspond to a constant value for each operand, or null if that operand is
+/// not a constant.
+void MaskOp::getSuccessorRegions(
+    Optional<unsigned> index, ArrayRef<Attribute> operands,
+    SmallVectorImpl<RegionSuccessor> &regions) {
+  // The mask region branch back to the parent operation.
+  if (index.hasValue()) {
+    regions.push_back(RegionSuccessor(getResults()));
+    return;
+  }
+
+  // The mask region will always be executed since the mask is not modeling
+  // control.
+  regions.push_back(RegionSuccessor(&getMaskRegion()));
 }
 
 //===----------------------------------------------------------------------===//

@@ -1931,6 +1931,14 @@ void LinalgDialect::getCanonicalizationPatterns(
       getContext());
 }
 
+// TODO: Can't pass benefit to `getCanonicalizationPatterns`.
+void linalg::populateLinalgDialectCanonicalizationPatterns(
+    MLIRContext *context, RewritePatternSet &results, int benefit) {
+  results.add<EraseDeadLinalgOp, FoldTensorCastConsumerOp,
+              FoldTensorCastProducerOp, InferStaticShapeOfOperands>(
+      context, benefit);
+}
+
 Operation *LinalgDialect::materializeConstant(OpBuilder &builder,
                                               Attribute value, Type type,
                                               Location loc) {

@@ -46,6 +46,10 @@ namespace detail {
 struct BitmaskEnumStorage;
 } // namespace detail
 
+/// Default callback to build a region with a vector.yield with no arguments as
+/// terminator.
+void buildTerminatedBody(OpBuilder &builder, Location loc);
+
 /// Return whether `srcType` can be broadcast to `dstVectorType` under the
 /// semantics of the `vector.broadcast` op.
 enum class BroadcastableToResult {

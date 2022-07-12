@@ -343,7 +343,7 @@ def Vector_MultiDimReductionOp :
   }];
   let builders = [
     OpBuilder<(ins "Value":$source, "Value":$acc,
-                   "ArrayRef<bool>":$reductionMask, "CombiningKind":$kind)>                   
+                   "ArrayRef<bool>":$reductionMask, "CombiningKind":$kind)>
   ];
   let extraClassDeclaration = [{
     static StringRef getKindAttrStrName() { return "kind"; }
@@ -2222,6 +2222,45 @@ def Vector_CreateMaskOp :
   let hasCanonicalizer = 1;
   let hasVerifier = 1;
   let assemblyFormat = "$operands attr-dict `:` type(results)";
+}
+
+def Vector_MaskOp : Vector_Op<"mask",
+      [DeclareOpInterfaceMethods<RegionBranchOpInterface>,
+      SingleBlockImplicitTerminator<"vector::YieldOp">, RecursiveSideEffects,
+      NoRegionArguments]> {
+  let summary = "TODO: vector.predicate operation";
+  let description = [{ TODO }];
+
+  // TODO: incomingMask must be optional.
+  let arguments = (ins VectorOf<[I1]>:$mask,
+                   Optional<AnyType>:$passthrough);
+  let results = (outs Variadic<AnyType>:$results);
+  let regions = (region SizedRegion<1>:$maskRegion);
+
+  let skipDefaultBuilders = 1;
+  let builders = [
+    OpBuilder<(ins "Value":$mask,
+                   CArg<"function_ref<void(OpBuilder &, Location)>",
+                        "buildTerminatedBody">:$maskRegion)>,
+    OpBuilder<(ins "Value":$mask, "Value":$passthrough,
+                   CArg<"function_ref<void(OpBuilder &, Location)>",
+                        "buildTerminatedBody">:$maskRegion)>,
+    OpBuilder<(ins "TypeRange":$resultTypes, "Value":$mask,
+                   CArg<"function_ref<void(OpBuilder &, Location)>",
+                        "buildTerminatedBody">:$maskRegion)>,
+    OpBuilder<(ins "TypeRange":$resultTypes, "Value":$mask,
+                   "Value":$passthrough,
+                   CArg<"function_ref<void(OpBuilder &, Location)>",
+                        "buildTerminatedBody">:$maskRegion)>
+  ];
+
+  let extraClassDeclaration = [{
+    bool hasPassthrough() {
+      return static_cast<bool>(getPassthrough());
+    }
+  }];
+
+  let hasCustomAssemblyFormat = 1;
 }
 
 def Vector_TransposeOp :

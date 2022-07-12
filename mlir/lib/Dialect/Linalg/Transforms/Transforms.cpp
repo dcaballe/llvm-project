@@ -590,6 +590,29 @@ LogicalResult mlir::linalg::LinalgPeelingPattern::matchAndRewrite(
   return success();
 }
 
+mlir::linalg::LinalgVectorMaskingPreProcessingPattern::
+    LinalgVectorMaskingPreProcessingPattern(
+        MLIRContext *context, LinalgTransformationFilter f,
+        LinalgVectorMaskingPreProcessingOptions options, PatternBenefit benefit)
+    : OpInterfaceRewritePattern<LinalgOp>(context, benefit),
+      filter(std::move(f)) {}
+
+mlir::linalg::LinalgVectorMaskingPreProcessingPattern::
+    LinalgVectorMaskingPreProcessingPattern(
+        StringRef opName, MLIRContext *context,
+        LinalgVectorMaskingPreProcessingOptions options,
+        LinalgTransformationFilter f, PatternBenefit benefit)
+    : OpInterfaceRewritePattern<LinalgOp>(context, benefit),
+      filter(f.addOpNameFilter(opName)) {}
+
+LogicalResult
+mlir::linalg::LinalgVectorMaskingPreProcessingPattern::matchAndRewrite(
+    LinalgOp linalgOp, PatternRewriter &rewriter) const {
+  if (failed(filter.checkAndNotify(rewriter, linalgOp)))
+    return failure();
+  return vectorMaskingPreProcessing(rewriter, linalgOp);
+}
+
 mlir::linalg::LinalgVectorizationPattern::LinalgVectorizationPattern(
     MLIRContext *context, LinalgTransformationFilter f,
     LinalgVectorizationOptions options, PatternBenefit benefit)

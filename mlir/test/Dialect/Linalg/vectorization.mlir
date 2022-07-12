@@ -1083,7 +1083,7 @@ func.func @reduce_1d(%arg0: tensor<32xf32>) -> tensor<f32> {
 // -----
 
 // This test checks that vectorization does not occur when an input indexing map
-// is not a projected permutation. In the future, this can be converted to a 
+// is not a projected permutation. In the future, this can be converted to a
 // positive test when support is added.
 
 // CHECK-LABEL:   func @not_projected_permutation

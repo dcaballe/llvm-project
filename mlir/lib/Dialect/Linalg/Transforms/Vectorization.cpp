@@ -28,6 +28,7 @@
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Support/LLVM.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "mlir/Transforms/RegionUtils.h"
 #include "llvm/ADT/ScopeExit.h"
 #include "llvm/ADT/Sequence.h"
@@ -63,6 +64,66 @@ static OpType getSingleOpOfType(Block &block) {
     return WalkResult::advance();
   });
   return res;
+}
+
+/// Move the operation range `opRange` before operation `dest`.
+static void moveOperationsBefore(llvm::iterator_range<Block::iterator> opRange,
+                                 Operation *dest) {
+  if (opRange.empty())
+    return;
+  dest->getBlock()->getOperations().splice(
+      Block::iterator(dest), opRange.begin()->getBlock()->getOperations(),
+      opRange.begin(), opRange.end());
+}
+
+/// Iterate over all the definitions produced by the operation range `opRange`
+/// and gather those with users outside the range.
+//static void
+//getDefsWithUsesOutside(llvm::iterator_range<Block::iterator> opRange,
+//                       SmallVectorImpl<Value> &defsWithUsesOutside,
+//                       SmallVectorImpl<Type> &defTypes) {
+//  SmallPtrSet<Operation *, 16> rangeSet;
+//  for (Operation &op : opRange)
+//    rangeSet.insert(&op);
+//
+//  for (Operation &op : opRange)
+//    for (Value res : op.getResults())
+//      for (Operation *user : res.getUsers())
+//        if (rangeSet.count(user) == 0) {
+//          defsWithUsesOutside.push_back(res);
+//          defTypes.push_back(res.getType());
+//          break;
+//        }
+//}
+
+// TODO
+struct VectorizationState {
+  Value activeMask;
+
+  Operation *maskOperation(OpBuilder &builder, Operation *op);
+};
+
+Operation *VectorizationState::maskOperation(OpBuilder &builder,
+                                             Operation *op) {
+  assert(op && "Expected Operation");
+
+  if (!activeMask)
+    return op;
+
+  auto maskOp = builder.create<vector::MaskOp>(
+      op->getLoc(), op->getResultTypes(), activeMask,
+      [op](OpBuilder &builder, Location loc) {
+        Block *insBlock = builder.getInsertionBlock();
+        insBlock->getOperations().splice(insBlock->begin(),
+                                         op->getBlock()->getOperations(), op);
+        builder.create<vector::YieldOp>(loc, op->getResults());
+      });
+
+  Operation *maskOpTerminator = &maskOp.getMaskRegion().front().back();
+  for (auto &en : llvm::enumerate(op->getResults()))
+    en.value().replaceAllUsesExcept(maskOp.getResult(en.index()), maskOpTerminator);
+
+  return maskOp;
 }
 
 /// Given an indexing `map` coming from a LinalgOp indexing, restricted to a
@@ -198,8 +259,8 @@ static SmallVector<bool> getReductionMask(LinalgOp linalgOp) {
 /// to all `0`; where `outputOperand` is an output operand of the LinalgOp
 /// currently being vectorized. If `dest` has null rank, build an memref.store.
 /// Return the produced value or null if no value is produced.
-static Value buildVectorWrite(OpBuilder &b, Value value,
-                              OpOperand *outputOperand) {
+static Operation *buildVectorWrite(OpBuilder &b, Value value,
+                                   OpOperand *outputOperand) {
   Operation *write;
   Location loc = value.getLoc();
   auto linalgOp = cast<LinalgOp>(outputOperand->getOwner());
@@ -227,9 +288,7 @@ static Value buildVectorWrite(OpBuilder &b, Value value,
                                               ValueRange{});
   }
   LDBG("vectorized op: " << *write);
-  if (!write->getResults().empty())
-    return write->getResult(0);
-  return Value();
+  return write;
 }
 
 // Custom vectorization function type. Produce a vector form of Operation*
@@ -247,8 +306,8 @@ using CustomVectorizationHook = std::function<VectorizationResult(
 /// CustomVectorizationHook.
 static VectorizationResult
 vectorizeLinalgYield(OpBuilder &b, Operation *op,
-                     const BlockAndValueMapping &bvm, LinalgOp linalgOp,
-                     SmallVectorImpl<Value> &newResults) {
+                     const BlockAndValueMapping &bvm, VectorizationState &state,
+                     LinalgOp linalgOp, SmallVectorImpl<Value> &newResults) {
   auto yieldOp = dyn_cast<linalg::YieldOp>(op);
   if (!yieldOp)
     return VectorizationResult{VectorizationStatus::Failure, nullptr};
@@ -256,11 +315,16 @@ vectorizeLinalgYield(OpBuilder &b, Operation *op,
     // TODO: Scan for an opportunity for reuse.
     // TODO: use a map.
     Value vectorValue = bvm.lookup(outputs.value());
-    Value newResult = buildVectorWrite(
+    Operation *write = buildVectorWrite(
         b, vectorValue, linalgOp.getOutputOperand(outputs.index()));
-    if (newResult)
-      newResults.push_back(newResult);
+    // TODO: We mask the transfer.transfer_write here because this op is
+    // special-cased. A linalg.yield may produced multiple vector.transfer_write
+    // ops and can't be mapped uwing BlockAndValueMapping.
+    Operation *maybeMaskedOp = state.maskOperation(b, write);
+    newResults.append(maybeMaskedOp->result_begin(),
+                      maybeMaskedOp->result_end());
   }
+
   return VectorizationResult{VectorizationStatus::NoReplace, nullptr};
 }
 
@@ -437,7 +501,8 @@ vectorizeOneOp(OpBuilder &b, LinalgOp linalgOp, Operation *op,
 /// This is not deemed a problem as we expect canonicalizations and foldings to
 /// aggressively clean up the useless work.
 static LogicalResult
-vectorizeAsLinalgGeneric(OpBuilder &b, LinalgOp linalgOp,
+vectorizeAsLinalgGeneric(OpBuilder &b, VectorizationState &state,
+                         LinalgOp linalgOp,
                          SmallVectorImpl<Value> &newResults) {
   Block *block = linalgOp.getBlock();
 
@@ -493,6 +558,8 @@ vectorizeAsLinalgGeneric(OpBuilder &b, LinalgOp linalgOp,
     if (readValue.getType().cast<VectorType>().getRank() == 0)
       readValue = b.create<vector::ExtractElementOp>(loc, readValue);
 
+    readValue = state.maskOperation(b, readValue.getDefiningOp())->getResult(0);
+
     LDBG("new vectorized bbarg(" << bbarg.getArgNumber() << "): " << readValue);
     bvm.map(bbarg, readValue);
     bvm.map(opOperand->get(), readValue);
@@ -503,7 +570,7 @@ vectorizeAsLinalgGeneric(OpBuilder &b, LinalgOp linalgOp,
   CustomVectorizationHook vectorizeYield =
       [&](Operation *op,
           const BlockAndValueMapping &bvm) -> VectorizationResult {
-    return vectorizeLinalgYield(b, op, bvm, linalgOp, newResults);
+    return vectorizeLinalgYield(b, op, bvm, state, linalgOp, newResults);
   };
   hooks.push_back(vectorizeYield);
 
@@ -523,8 +590,9 @@ vectorizeAsLinalgGeneric(OpBuilder &b, LinalgOp linalgOp,
       return failure();
     }
     if (result.status == VectorizationStatus::NewOp) {
-      LDBG("new vector op: " << *result.newOp;);
-      bvm.map(op.getResults(), result.newOp->getResults());
+      Operation *maybeMaskedOp = state.maskOperation(b, result.newOp);
+      LDBG("new vector op: " << *maybeMaskedOp;);
+      bvm.map(op.getResults(), maybeMaskedOp->getResults());
     }
   }
 
@@ -583,18 +651,96 @@ static LogicalResult vectorizeStaticLinalgOpPrecondition(linalg::LinalgOp op) {
   return success();
 }
 
+static LogicalResult vectorizeDynamicLinalgOpPrecondition(linalg::LinalgOp op) {
+  // TODO
+  if (!isa<GenericOp>(op) || !op.hasDynamicShape())
+    return failure();
+
+  if (llvm::all_of(op.getInputAndOutputOperands(), [](OpOperand *opOperand) {
+        TensorType operandType =
+            opOperand->get().getType().dyn_cast<TensorType>();
+        return !operandType || operandType.hasStaticShape();
+      }))
+    return failure();
+
+  return success();
+}
+
 static LogicalResult vectorizeLinalgOpPrecondition(LinalgOp linalgOp) {
-  // All types must be static shape to go to vector.
   if (linalgOp.hasDynamicShape()) {
-    LDBG("precondition failed: dynamic shape");
     return failure();
   }
   return vectorizeStaticLinalgOpPrecondition(linalgOp);
 }
 
+static void maskDynamicShapes(LinalgOp linalgOp) {
+  OpBuilder builder(linalgOp);
+  Location loc = linalgOp.getLoc();
+
+  for (auto *opOperand : linalgOp.getInputAndOutputOperands()) {
+    Value operand = opOperand->get();
+    TensorType operandType = operand.getType().dyn_cast<TensorType>();
+    if (!operandType)
+      continue;
+
+    // TODO.
+    if (operandType.getShape().size() != 2)
+      return;
+
+    // TODO
+    SmallVector<int64_t, 2> shape;
+    shape.append({4, 8});
+    auto statTensorType = operandType.cloneWith(
+        Optional<ArrayRef<int64_t>>(shape), operandType.getElementType());
+
+    auto dynToStatCast =
+        builder.create<tensor::CastOp>(loc, statTensorType, operand);
+    auto statToDynCast =
+        builder.create<tensor::CastOp>(loc, operand.getType(), dynToStatCast);
+
+    operand.replaceAllUsesExcept(statToDynCast, dynToStatCast);
+  }
+}
+
+LogicalResult mlir::linalg::vectorMaskingPreProcessing(RewriterBase &rewriter,
+                                                       LinalgOp linalgOp) {
+  if (failed(vectorizeDynamicLinalgOpPrecondition(linalgOp)))
+    return failure();
+
+  // TODO
+  maskDynamicShapes(linalgOp);
+  return success();
+}
+
+static LogicalResult createNewActiveMask(LinalgOp linalgOp, VectorizationState& state) {
+
+  //MaskableOp maskableOp = linalgOp.dyn_cast<MaskableOp>();
+  //if (!maskableOp)
+  //  return success();
+
+  OpBuilder builder(linalgOp);
+  Location loc = linalgOp->getLoc();
+  // TODO
+  auto maskType = VectorType::get({4, 8}, builder.getI1Type());
+  // TODO
+  auto dummyConst = builder.create<arith::ConstantOp>(
+      loc, builder.getIndexType(), builder.getZeroAttr(builder.getIndexType()));
+  auto createMaskOp = builder.create<vector::CreateMaskOp>(
+      loc, maskType,
+      ValueRange{dummyConst.getResult(), dummyConst.getResult()});
+
+  state.activeMask = createMaskOp;
+
+  return success();
+}
+
 LogicalResult mlir::linalg::vectorize(RewriterBase &rewriter,
                                       LinalgOp linalgOp) {
   if (failed(vectorizeLinalgOpPrecondition(linalgOp)))
+    return failure();
+
+  VectorizationState state;
+  if (failed(createNewActiveMask(linalgOp, state)))
     return failure();
 
   SmallVector<Value> results;
@@ -607,14 +753,23 @@ LogicalResult mlir::linalg::vectorize(RewriterBase &rewriter,
     if (failed(vectorizeLinalgOpPrecondition(linalgOp)))
       return failure();
     LDBG("Vectorize generic by broadcasting to a common shape: " << linalgOp);
-    if (failed(vectorizeAsLinalgGeneric(rewriter, linalgOp, results)))
+    // TODO: 'vectorize' takes in a 'RewriterBase' which is up-casted to
+    // 'OpBuilder' when it is passed over to some methods like
+    // 'vectorizeAsLinalgGeneric'. This is highly problematic: if we erase an op
+    // within these methods, the actual rewriter won't be notified and we will
+    // end up with read-after-free issues!
+    if (failed(vectorizeAsLinalgGeneric(rewriter, state, linalgOp, results)))
       return failure();
   }
+
+  //Operation *parentOp = linalgOp->getParentOp();
 
   if (!results.empty())
     rewriter.replaceOp(linalgOp, results);
   else
     rewriter.eraseOp(linalgOp);
+
+  //llvm::outs() << "ParentOp: " << *parentOp << "\n";
 
   return success();
 }

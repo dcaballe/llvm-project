@@ -26,9 +26,15 @@
 #include "mlir/Interfaces/ViewLikeInterface.h"
 
 namespace mlir {
+
+class RewritePatternSet;
+
 namespace linalg {
 
 class LinalgOp;
+
+void populateLinalgDialectCanonicalizationPatterns(
+    MLIRContext *context, mlir::RewritePatternSet &results, int benefit = 1);
 
 /// Returns the name mangled library call name to disambiguate between different
 /// overloads at the C level. The name mangling scheme is basic and uses MLIR
@@ -58,21 +64,21 @@ std::string generateLibraryCallName(Operation *op);
 /// Returns `num` AffineDimExpr dimensions at positions
 ///   [startIdx, startIdx + num) and increments `startIdx` to `startIdx + num`.
 SmallVector<AffineExpr, 4> makeAffineDimExprs(unsigned num, unsigned &startIdx,
-                                              MLIRContext *context);
+                                            MLIRContext *context);
 
 /// Returns `maybeMap.get()` if `maybeMap` is set, otherwise returns the
 /// symbol-less identity map of `rank`.
 AffineMap extractOrIdentityMap(Optional<AffineMap> maybeMap, unsigned rank,
-                               MLIRContext *context);
+                             MLIRContext *context);
 
 /// Return the vector that is the concatenation of `a` and `b`.
 SmallVector<AffineExpr, 4> concat(ArrayRef<AffineExpr> a,
-                                  ArrayRef<AffineExpr> b);
+                                ArrayRef<AffineExpr> b);
 
 /// Return the dims that are `iteratorTypeName` loops in the LinalgOp `op`.
 /// Assumes `op` is a LinalgOp.
 void getDimsOfType(Operation *op, StringRef iteratorTypeName,
-                   SmallVectorImpl<unsigned> &res);
+                 SmallVectorImpl<unsigned> &res);
 
 } // namespace linalg
 } // namespace mlir

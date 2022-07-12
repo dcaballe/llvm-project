@@ -225,6 +225,9 @@ static void applyPatterns(func::FuncOp funcOp) {
   //===--------------------------------------------------------------------===//
   // Linalg to vector contraction patterns.
   //===--------------------------------------------------------------------===//
+  patterns.add<LinalgVectorMaskingPreProcessingPattern>(
+      ctx, LinalgTransformationFilter(StringAttr::get(ctx, "VECTORIZE"))
+               .addOpFilter<MatmulOp, FillOp, GenericOp>());
   patterns.add<LinalgVectorizationPattern>(
       ctx, LinalgTransformationFilter(StringAttr::get(ctx, "VECTORIZE"))
                .addOpFilter<MatmulOp, FillOp, GenericOp>());
@@ -441,6 +444,12 @@ static void applyVectorTransferForwardingPatterns(func::FuncOp funcOp) {
 static void applyLinalgToVectorPatterns(func::FuncOp funcOp) {
   RewritePatternSet patterns(funcOp.getContext());
   auto *ctx = funcOp.getContext();
+  patterns.add<LinalgVectorMaskingPreProcessingPattern>(
+      ctx, LinalgTransformationFilter()
+               .addOpFilter<ContractionOpInterface, FillOp, GenericOp>());
+  // TODO
+  populateLinalgDialectCanonicalizationPatterns(ctx, patterns, /*benefit=*/100);
+
   patterns.add<LinalgVectorizationPattern>(
       ctx, LinalgTransformationFilter()
                .addOpFilter<ContractionOpInterface, FillOp, GenericOp>());
