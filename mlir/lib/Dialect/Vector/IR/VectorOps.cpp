@@ -4917,18 +4917,20 @@ ParseResult MaskOp::parse(OpAsmParser &parser, OperationState &result) {
 void mlir::vector::MaskOp::print(OpAsmPrinter &p) {
   bool printBlockTerminators = false;
 
-  p << "(" << getMask() << " : " << getMask().getType() << ")";
-  if (!getResults().empty()) {
-    p << " -> (" << getResultTypes() << ")";
-    // Print yield explicitly if the op defines values.
-    printBlockTerminators = true;
+  p << " " << getMask() << " { ";
+  Block *singleBlock = &getMaskRegion().getBlocks().front();
+  // Print single masked operation and skip terminator.
+  if (singleBlock->getOperations().size() > 1) {
+    p << singleBlock->front();
   }
-  p << " ";
-  p.printRegion(getMaskRegion(),
-                /*printEntryBlockArgs=*/false,
-                /*printBlockTerminators=*/printBlockTerminators);
+
+  p << " }";
 
   p.printOptionalAttrDict(getOperation()->getAttrs());
+
+  p << " : " << getMask().getType();
+  if (!getResults().empty())
+    p << ", " << getResultTypes();
 }
 
 /// Given the region at `index`, or the parent operation if `index` is None,
