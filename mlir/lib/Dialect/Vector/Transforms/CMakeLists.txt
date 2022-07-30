@@ -4,6 +4,7 @@ add_mlir_dialect_library(MLIRVectorTransforms
   VectorDistribute.cpp
   VectorDropLeadUnitDim.cpp
   VectorInsertExtractStridedSliceRewritePatterns.cpp
+  VectorMasking.cpp
   VectorMultiDimReductionTransforms.cpp
   VectorTransferOpTransforms.cpp
   VectorTransferSplitRewritePatterns.cpp

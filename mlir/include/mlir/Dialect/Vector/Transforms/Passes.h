@@ -16,6 +16,9 @@ namespace vector {
 /// Creates an instance of the `vector` dialect bufferization pass.
 std::unique_ptr<Pass> createVectorBufferizePass();
 
+/// Creates an instance of the `vector.mask` lowering pass.
+std::unique_ptr<Pass> createLowerVectorMaskPass();
+
 //===----------------------------------------------------------------------===//
 // Registration
 //===----------------------------------------------------------------------===//
