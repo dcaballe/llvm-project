@@ -315,10 +315,13 @@ FailureOr<LinalgOp> promoteSubViews(OpBuilder &b, LinalgOp op,
                                     const LinalgPromotionOptions &options);
 
 /// Prepare a LinalgOp for vectorization with masking.
-LogicalResult vectorMaskingPreProcessing(RewriterBase &builder, LinalgOp linalgOp);
+LogicalResult vectorMaskingPreProcessing(RewriterBase &builder,
+                                         LinalgOp linalgOp,
+                                         ArrayRef<int64_t> vectorSizes);
 
 /// Emit a suitable vector form for a Linalg op with fully static shape.
-LogicalResult vectorize(RewriterBase &builder, LinalgOp linalgOp);
+LogicalResult vectorize(RewriterBase &builder, LinalgOp linalgOp,
+                        ArrayRef<int64_t> vectorSizes);
 
 /// Emit a suitable vector form for a Copy op with fully static shape.
 LogicalResult vectorizeCopy(RewriterBase &builder, memref::CopyOp copyOp);
@@ -923,7 +926,9 @@ private:
 /// Linalg vectorization patterns.
 ///
 /// Empty for now, used for SFINAE purposes only.
-struct LinalgVectorizationOptions {};
+struct LinalgVectorizationOptions {
+  SmallVector<int64_t, 4> maskedVectorSizes;
+};
 
 /// `filter` controls LinalgTransformMarker matching and update when specified.
 /// See `vectorizeLinalgOp` for more details.
@@ -948,13 +953,18 @@ struct LinalgVectorizationPattern : public OpInterfaceRewritePattern<LinalgOp> {
 private:
   /// LinalgTransformMarker handles special attribute manipulations.
   LinalgTransformationFilter filter;
+  /// Options to control vectorization.
+  /// masking pre-procesing.
+  LinalgVectorizationOptions options;
 };
 
 ///
 /// Linalg vector masking pre-processing patterns.
 ///
 /// Empty for now, used for SFINAE purposes only.
-struct LinalgVectorMaskingPreProcessingOptions {};
+struct LinalgVectorMaskingPreProcessingOptions {
+  SmallVector<int64_t, 4> vectorSizes;
+};
 
 /// `filter` controls LinalgTransformMarker matching and update when specified.
 struct LinalgVectorMaskingPreProcessingPattern
@@ -981,6 +991,8 @@ struct LinalgVectorMaskingPreProcessingPattern
 private:
   /// LinalgTransformMarker handles special attribute manipulations.
   LinalgTransformationFilter filter;
+  /// Options to control vector masking pre-procesing.
+  LinalgVectorMaskingPreProcessingOptions options;
 };
 
 /// `filter` controls LinalgTransformMarker matching and update when specified.

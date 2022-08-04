@@ -45,6 +45,7 @@ using namespace mlir::linalg;
 
 #define DBGS() (llvm::dbgs() << '[' << DEBUG_TYPE << "] ")
 #define LDBG(X) LLVM_DEBUG(DBGS() << X)
+#define LDBG_CONT(X) LLVM_DEBUG(llvm::dbgs() << X)
 
 /// Try to vectorize `convOp` as a convolution.
 static FailureOr<Operation *> vectorizeConvolution(OpBuilder &b,
@@ -99,6 +100,7 @@ static void moveOperationsBefore(llvm::iterator_range<Block::iterator> opRange,
 // TODO
 struct VectorizationState {
   Value activeMask;
+  SmallVector<int64_t, 4> maskedVectorSizes;
 
   Operation *maskOperation(OpBuilder &builder, Operation *op);
 };
@@ -656,13 +658,15 @@ static LogicalResult vectorizeDynamicLinalgOpPrecondition(linalg::LinalgOp op) {
   if (!isa<GenericOp>(op) || !op.hasDynamicShape())
     return failure();
 
-  if (llvm::all_of(op.getInputAndOutputOperands(), [](OpOperand *opOperand) {
+  // Only ops with fully dynamic tensors are supported for now.
+  if (llvm::any_of(op.getInputAndOutputOperands(), [](OpOperand *opOperand) {
         TensorType operandType =
             opOperand->get().getType().dyn_cast<TensorType>();
         return !operandType || operandType.hasStaticShape();
       }))
     return failure();
 
+  LDBG("Dynamically-shaped op meets vectorization pre-conditions\n");
   return success();
 }
 
@@ -673,74 +677,101 @@ static LogicalResult vectorizeLinalgOpPrecondition(LinalgOp linalgOp) {
   return vectorizeStaticLinalgOpPrecondition(linalgOp);
 }
 
-static void maskDynamicShapes(LinalgOp linalgOp) {
+static void maskDynamicShapes(LinalgOp linalgOp,
+                              ArrayRef<int64_t> vectorSizes) {
   OpBuilder builder(linalgOp);
   Location loc = linalgOp.getLoc();
 
-  for (auto *opOperand : linalgOp.getInputAndOutputOperands()) {
-    Value operand = opOperand->get();
-    TensorType operandType = operand.getType().dyn_cast<TensorType>();
-    if (!operandType)
+  for (auto &en : llvm::enumerate(linalgOp.getInputAndOutputOperands())) {
+    Value operand = en.value()->get();
+    Type origType = operand.getType();
+    TensorType maskedType =
+        linalgOp.getOperandTypeAfterMasking(en.index(), vectorSizes)
+            .dyn_cast_or_null<TensorType>();
+    if (!maskedType || origType == maskedType)
       continue;
 
-    // TODO.
-    if (operandType.getShape().size() != 2)
-      return;
-
-    // TODO
-    SmallVector<int64_t, 2> shape;
-    shape.append({4, 8});
-    auto statTensorType = operandType.cloneWith(
-        Optional<ArrayRef<int64_t>>(shape), operandType.getElementType());
-
-    auto dynToStatCast =
-        builder.create<tensor::CastOp>(loc, statTensorType, operand);
-    auto statToDynCast =
-        builder.create<tensor::CastOp>(loc, operand.getType(), dynToStatCast);
-
-    operand.replaceAllUsesExcept(statToDynCast, dynToStatCast);
+    LDBG("Casting " << origType << " to " << maskedType
+                    << " for masking vectorization\n");
+    auto origToMaskedCast =
+        builder.create<tensor::CastOp>(loc, maskedType, operand);
+    auto maskedToOrigCast =
+        builder.create<tensor::CastOp>(loc, origType, origToMaskedCast);
+    operand.replaceAllUsesExcept(maskedToOrigCast, origToMaskedCast);
   }
 }
 
-LogicalResult mlir::linalg::vectorMaskingPreProcessing(RewriterBase &rewriter,
-                                                       LinalgOp linalgOp) {
+LogicalResult mlir::linalg::vectorMaskingPreProcessing(
+    RewriterBase &rewriter, LinalgOp linalgOp, ArrayRef<int64_t> vectorSizes) {
+  LDBG("Pre-procesing op for masking vectorization:\n");
+  LDBG("  Vector sizes: ");
+  for (auto size : vectorSizes)
+    LDBG_CONT(size << " ");
+  LDBG_CONT("\n");
+  LDBG("  Op:\n" << linalgOp << "\n");
+
   if (failed(vectorizeDynamicLinalgOpPrecondition(linalgOp)))
     return failure();
 
   // TODO
-  maskDynamicShapes(linalgOp);
+  maskDynamicShapes(linalgOp, vectorSizes);
   return success();
 }
 
-static LogicalResult createNewActiveMask(LinalgOp linalgOp, VectorizationState& state) {
-
-  //MaskableOp maskableOp = linalgOp.dyn_cast<MaskableOp>();
-  //if (!maskableOp)
-  //  return success();
+static LogicalResult createNewActiveIdentityMask(LinalgOp linalgOp,
+                                                 VectorizationState &state) {
+  // No vector sizes provided so no mask needed.
+  if (state.maskedVectorSizes.empty())
+    return success();
 
   OpBuilder builder(linalgOp);
   Location loc = linalgOp->getLoc();
-  // TODO
-  auto maskType = VectorType::get({4, 8}, builder.getI1Type());
-  // TODO
-  auto dummyConst = builder.create<arith::ConstantOp>(
-      loc, builder.getIndexType(), builder.getZeroAttr(builder.getIndexType()));
-  auto createMaskOp = builder.create<vector::CreateMaskOp>(
-      loc, maskType,
-      ValueRange{dummyConst.getResult(), dummyConst.getResult()});
+
+  // Extract the value of the dynamic dimensions to be vectorized. We use an
+  // interface to map the iteration space dimension to a specific dimension in
+  // an operand of the LinalgOp.
+  SmallVector<Value, 4> dynamicVecDims;
+  for (auto &en : llvm::enumerate(state.maskedVectorSizes)) {
+    Value operand;
+    unsigned operandDim = std::numeric_limits<unsigned>::max();
+    linalgOp.mapMaskedDimToOperandDim(en.index(), operand, operandDim);
+    assert(operand && operandDim != std::numeric_limits<unsigned>::max() &&
+           "Masked dimension mapping didn't happen");
+
+    // Retrieve the cast operation that the masking pre-processing
+    // transformation should have introduced.
+    auto castOp =
+        llvm::dyn_cast_or_null<tensor::CastOp>(operand.getDefiningOp());
+    if (!castOp)
+      return failure();
+
+    // TODO: Verify castOp properties.
+
+    auto dynDim =
+        builder.create<tensor::DimOp>(loc, castOp.getSource(), operandDim);
+    dynamicVecDims.push_back(dynDim);
+  }
+
+  // Create the mask based on the runtime value of the dimensions to be
+  // vectorized.
+  auto maskType = VectorType::get(state.maskedVectorSizes, builder.getI1Type());
+  auto createMaskOp =
+      builder.create<vector::CreateMaskOp>(loc, maskType, dynamicVecDims);
 
   state.activeMask = createMaskOp;
-
   return success();
 }
 
-LogicalResult mlir::linalg::vectorize(RewriterBase &rewriter,
-                                      LinalgOp linalgOp) {
+LogicalResult mlir::linalg::vectorize(RewriterBase &rewriter, LinalgOp linalgOp,
+                                      ArrayRef<int64_t> maskedVectorSizes) {
+  LDBG("Attempting to vectorize:\n" << linalgOp);
   if (failed(vectorizeLinalgOpPrecondition(linalgOp)))
     return failure();
 
   VectorizationState state;
-  if (failed(createNewActiveMask(linalgOp, state)))
+  state.maskedVectorSizes.append(maskedVectorSizes.begin(),
+                                 maskedVectorSizes.end());
+  if (failed(createNewActiveIdentityMask(linalgOp, state)))
     return failure();
 
   SmallVector<Value> results;

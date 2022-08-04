@@ -595,7 +595,7 @@ mlir::linalg::LinalgVectorMaskingPreProcessingPattern::
         MLIRContext *context, LinalgTransformationFilter f,
         LinalgVectorMaskingPreProcessingOptions options, PatternBenefit benefit)
     : OpInterfaceRewritePattern<LinalgOp>(context, benefit),
-      filter(std::move(f)) {}
+      filter(std::move(f)), options(std::move(options)) {}
 
 mlir::linalg::LinalgVectorMaskingPreProcessingPattern::
     LinalgVectorMaskingPreProcessingPattern(
@@ -603,33 +603,33 @@ mlir::linalg::LinalgVectorMaskingPreProcessingPattern::
         LinalgVectorMaskingPreProcessingOptions options,
         LinalgTransformationFilter f, PatternBenefit benefit)
     : OpInterfaceRewritePattern<LinalgOp>(context, benefit),
-      filter(f.addOpNameFilter(opName)) {}
+      filter(f.addOpNameFilter(opName)), options(std::move(options)) {}
 
 LogicalResult
 mlir::linalg::LinalgVectorMaskingPreProcessingPattern::matchAndRewrite(
     LinalgOp linalgOp, PatternRewriter &rewriter) const {
   if (failed(filter.checkAndNotify(rewriter, linalgOp)))
     return failure();
-  return vectorMaskingPreProcessing(rewriter, linalgOp);
+  return vectorMaskingPreProcessing(rewriter, linalgOp, options.vectorSizes);
 }
 
 mlir::linalg::LinalgVectorizationPattern::LinalgVectorizationPattern(
     MLIRContext *context, LinalgTransformationFilter f,
     LinalgVectorizationOptions options, PatternBenefit benefit)
     : OpInterfaceRewritePattern<LinalgOp>(context, benefit),
-      filter(std::move(f)) {}
+      filter(std::move(f)), options(std::move(options)) {}
 
 mlir::linalg::LinalgVectorizationPattern::LinalgVectorizationPattern(
     StringRef opName, MLIRContext *context, LinalgVectorizationOptions options,
     LinalgTransformationFilter f, PatternBenefit benefit)
     : OpInterfaceRewritePattern<LinalgOp>(context, benefit),
-      filter(f.addOpNameFilter(opName)) {}
+      filter(f.addOpNameFilter(opName)), options(std::move(options)) {}
 
 LogicalResult mlir::linalg::LinalgVectorizationPattern::matchAndRewrite(
     LinalgOp linalgOp, PatternRewriter &rewriter) const {
   if (failed(filter.checkAndNotify(rewriter, linalgOp)))
     return failure();
-  return vectorize(rewriter, linalgOp);
+  return vectorize(rewriter, linalgOp, options.maskedVectorSizes);
 }
 
 LogicalResult mlir::linalg::CopyVectorizationPattern::matchAndRewrite(

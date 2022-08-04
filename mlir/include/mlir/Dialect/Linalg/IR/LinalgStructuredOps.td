@@ -211,6 +211,12 @@ def GenericOp : LinalgStructuredBase_Op<"generic", [AttrSizedOperandSegments]> {
     getRegionBuilder() {
       return nullptr;
     }
+
+    // Masking vectorization interfaces.
+    Type getOperandTypeAfterMasking(unsigned operandNum,
+                                    ArrayRef<int64_t> vectorSizes);
+    void mapMaskedDimToOperandDim(unsigned vectorDim, Value &operand,
+                                  unsigned &operandDim);
   }];
 
   let hasCanonicalizer = 1;
