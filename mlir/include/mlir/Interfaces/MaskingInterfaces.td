@@ -31,10 +31,8 @@ def MaskableOpInterface : OpInterface<"MaskableOpInterface"> {
     /*args=*/(ins),
     /*methodBody=*/"",
     /*defaultImplementation=*/[{
-      Operation *op = $_op.getOperation();
-      if (!op)
-        return false;
-      return isa<vector::MaskOp>(op->getParentOp());
+      return ::mlir::vector::detail::isMaskedDefaultImplementation(
+        $_op.getOperation());
     }]>,
     InterfaceMethod<
     /*desc=*/"TODO",

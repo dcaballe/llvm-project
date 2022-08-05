@@ -13,7 +13,6 @@
 #ifndef MLIR_INTERFACES_MASKINGINTERFACES_H_
 #define MLIR_INTERFACES_MASKINGINTERFACES_H_
 
-//#include "mlir/Dialect/Utils/StructuredOpsUtils.h"
 //#include "mlir/IR/AffineMap.h"
 //#include "mlir/IR/BlockAndValueMapping.h"
 //#include "mlir/IR/BuiltinTypes.h"
@@ -24,7 +23,9 @@
 
 namespace mlir {
 namespace vector {
-class MaskOp;
+namespace detail {
+bool isMaskedDefaultImplementation(Operation *op);
+} // namespace detail
 } // namespace vector
 } // namespace mlir
 

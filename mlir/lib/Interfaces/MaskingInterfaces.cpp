@@ -7,8 +7,17 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Interfaces/MaskingInterfaces.h"
+#include "mlir/Dialect/Vector/IR/VectorOps.h"
 
 using namespace mlir;
+using namespace vector;
+
+bool vector::detail::isMaskedDefaultImplementation(Operation *op) {
+  if (!op)
+    return false;
+  return isa<vector::MaskOp>(op->getParentOp());
+}
+
 
 //===----------------------------------------------------------------------===//
 // Masking Interfaces
