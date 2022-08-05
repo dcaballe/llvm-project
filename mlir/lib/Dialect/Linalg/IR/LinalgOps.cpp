@@ -1197,13 +1197,19 @@ Type GenericOp::getOperandTypeAfterMasking(unsigned operandNum,
 
 void GenericOp::mapMaskedDimToOperandDim(unsigned vectorDim, Value &operand,
                                          unsigned &operandDim) {
-  // TODO: Support permutations.
-  auto isNotIdentityMap = [](AffineMap map) { return !map.isIdentity(); };
-  if (llvm::any_of(getIndexingMapsArray(), isNotIdentityMap))
-    return;
+  // TODO: Move to default implementation?
+  // Retrieve the operand and operand's dimension from the first operand with a
+  // permutation map, including identity map.
+  for (auto &en : llvm::enumerate(getIndexingMapsArray())) {
+    AffineMap map = en.value();
+    if (map.isPermutation()) {
+      operand = getOperand(en.index());
+      operandDim = map.getPermutedPosition(vectorDim);
+      return;
+    }
+  }
 
-  operand = getOutputOperand(0)->get();
-  operandDim = vectorDim;
+  llvm_unreachable("Unsupported generic op");
 }
 
 //===----------------------------------------------------------------------===//

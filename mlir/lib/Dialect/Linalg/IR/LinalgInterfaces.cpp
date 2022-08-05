@@ -835,3 +835,4 @@ LogicalResult mlir::linalg::detail::verifyStructuredOpInterface(Operation *op) {
 
   return success();
 }
+

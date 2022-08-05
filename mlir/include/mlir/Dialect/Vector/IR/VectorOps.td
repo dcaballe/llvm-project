@@ -16,6 +16,7 @@
 include "mlir/IR/EnumAttr.td"
 include "mlir/Interfaces/ControlFlowInterfaces.td"
 include "mlir/Interfaces/InferTypeOpInterface.td"
+include "mlir/Interfaces/MaskingInterfaces.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/Interfaces/VectorInterfaces.td"
 include "mlir/Interfaces/ViewLikeInterface.td"
@@ -1160,6 +1161,7 @@ def Vector_TransferReadOp :
       DeclareOpInterfaceMethods<VectorTransferOpInterface>,
       DeclareOpInterfaceMethods<VectorUnrollOpInterface, ["getShapeForUnroll"]>,
       DeclareOpInterfaceMethods<MemoryEffectsOpInterface>,
+      DeclareOpInterfaceMethods<MaskableOpInterface>,
       AttrSizedOperandSegments
     ]>,
     Arguments<(ins AnyShaped:$source,
@@ -1355,6 +1357,13 @@ def Vector_TransferReadOp :
                    "ValueRange":$indices,
                    CArg<"Optional<ArrayRef<bool>>", "::llvm::None">:$inBounds)>,
   ];
+
+  let extraClassDeclaration = [{
+    // MaskableOpInterface methods.
+    bool isMasked();
+    AffineMap getPermutationMapForMask();
+  }];
+
   let hasCanonicalizer = 1;
   let hasCustomAssemblyFormat = 1;
   let hasFolder = 1;
@@ -1366,6 +1375,7 @@ def Vector_TransferWriteOp :
       DeclareOpInterfaceMethods<VectorTransferOpInterface>,
       DeclareOpInterfaceMethods<VectorUnrollOpInterface, ["getShapeForUnroll"]>,
       DeclareOpInterfaceMethods<MemoryEffectsOpInterface>,
+      DeclareOpInterfaceMethods<MaskableOpInterface>,
       AttrSizedOperandSegments
   ]>,
     Arguments<(ins AnyVectorOfAnyRank:$vector,
@@ -1484,6 +1494,13 @@ def Vector_TransferWriteOp :
                    "ValueRange":$indices,
                    CArg<"Optional<ArrayRef<bool>>", "::llvm::None">:$inBounds)>,
   ];
+
+  let extraClassDeclaration = [{
+    // MaskableOpInterface methods.
+    bool isMasked();
+    AffineMap getPermutationMapForMask();
+  }];
+
   let hasFolder = 1;
   let hasCanonicalizer = 1;
   let hasCustomAssemblyFormat = 1;

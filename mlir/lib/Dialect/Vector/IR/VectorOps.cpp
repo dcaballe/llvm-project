@@ -3067,6 +3067,23 @@ LogicalResult TransferReadOp::verify() {
                               [&](Twine t) { return emitOpError(t); });
 }
 
+//
+// MaskableOpInterface methods.
+//
+
+bool TransferReadOp::isMasked() {
+  // Check if xfer op has a native mask.
+  if (getMask())
+    return true;
+
+  // Check interface mask.
+  return isa<vector::MaskOp>(getOperation()->getParentOp());
+}
+
+AffineMap TransferReadOp::getPermutationMapForMask() {
+  return getPermutationMap();
+}
+
 /// This is a common class used for patterns of the form
 /// ```
 ///    someop(memrefcast) -> someop
@@ -3509,6 +3526,23 @@ LogicalResult TransferWriteOp::verify() {
 
   return verifyPermutationMap(permutationMap,
                               [&](Twine t) { return emitOpError(t); });
+}
+
+//
+// MaskableOpInterface methods.
+//
+
+bool TransferWriteOp::isMasked() {
+  // Check if xfer op has a native mask.
+  if (getMask())
+    return true;
+
+  // Check interface mask.
+  return isa<vector::MaskOp>(getOperation()->getParentOp());
+}
+
+AffineMap TransferWriteOp::getPermutationMapForMask() {
+  return getPermutationMap();
 }
 
 /// Fold:

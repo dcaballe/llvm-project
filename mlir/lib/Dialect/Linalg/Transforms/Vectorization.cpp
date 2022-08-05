@@ -26,6 +26,7 @@
 #include "mlir/IR/AffineExpr.h"
 #include "mlir/IR/Matchers.h"
 #include "mlir/IR/PatternMatch.h"
+#include "mlir/Interfaces/MaskingInterfaces.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Support/LLVM.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
@@ -99,21 +100,156 @@ static void moveOperationsBefore(llvm::iterator_range<Block::iterator> opRange,
 
 // TODO
 struct VectorizationState {
-  Value activeMask;
-  SmallVector<int64_t, 4> maskedVectorSizes;
+  // TODO: doc.
+  DenseMap<AffineMap, Value> activeMaskCache;
+  SmallVector<int64_t, 4> maskingVecSizes;
+  SmallVector<Value, 4> dynVecDimValues;
 
-  Operation *maskOperation(OpBuilder &builder, Operation *op);
+  LogicalResult initState(OpBuilder &builder, LinalgOp linalgOp,
+                          ArrayRef<int64_t> inMaskingVecSizes);
+  Value getOrCreateMaskFor(OpBuilder &builder, Operation *opToMask,
+                           LinalgOp linalgOp);
+  Operation *maskOperation(OpBuilder &builder, Operation *op, Value mask);
 };
 
-Operation *VectorizationState::maskOperation(OpBuilder &builder,
-                                             Operation *op) {
-  assert(op && "Expected Operation");
+// TODO: There has to be a utility for this somewhere.
+template <class T>
+static void permuteArray(ArrayRef<T> inputArray, ArrayRef<unsigned> permPattern,
+                         SmallVectorImpl<T> &outputArray) {
+  assert(inputArray.size() == permPattern.size());
+  outputArray.resize(inputArray.size());
+  for (auto &en : llvm::enumerate(permPattern))
+    outputArray[en.index()] = inputArray[en.value()];
+}
 
-  if (!activeMask)
+// TODO.
+static LogicalResult extractDynamicVectorDimValues(
+    OpBuilder &builder, ArrayRef<int64_t> maskingVecSizes, LinalgOp linalgOp,
+    SmallVectorImpl<Value> &dynVecDimValues) {
+  for (int vecDim = 0, end = maskingVecSizes.size(); vecDim < end; ++vecDim) {
+    Value operand;
+    unsigned operandDim = std::numeric_limits<unsigned>::max();
+    linalgOp.mapMaskedDimToOperandDim(vecDim, operand, operandDim);
+    assert(operand && operandDim != std::numeric_limits<unsigned>::max() &&
+           "Masked dimension mapping didn't happen");
+
+    // Retrieve the cast operation that the masking pre-processing
+    // transformation should have introduced.
+    auto castOp =
+        llvm::dyn_cast_or_null<tensor::CastOp>(operand.getDefiningOp());
+    if (!castOp)
+      return failure();
+
+    // TODO: Verify castOp properties.
+
+    auto dynDim = builder.create<tensor::DimOp>(linalgOp.getLoc(),
+                                                castOp.getSource(), operandDim);
+    dynVecDimValues.push_back(dynDim);
+  }
+
+  return success();
+}
+
+LogicalResult VectorizationState::initState(OpBuilder &builder,
+                                            LinalgOp linalgOp,
+                                            ArrayRef<int64_t> inMaskingVecSizes) {
+  if (!inMaskingVecSizes.empty()) {
+    maskingVecSizes.append(inMaskingVecSizes.begin(), inMaskingVecSizes.end());
+    return extractDynamicVectorDimValues(builder, maskingVecSizes, linalgOp,
+                                         dynVecDimValues);
+  }
+
+  return success();
+}
+
+// TODO: There has to be a utility for this.
+static void getPermutationPattern(AffineMap permMap,
+                                  SmallVectorImpl<unsigned> &permPattern) {
+  for (unsigned i = 0, end = permMap.getNumDims(); i < end; ++i)
+    permPattern.push_back(permMap.getDimPosition(i));
+}
+
+// TODO.
+Value VectorizationState::getOrCreateMaskFor(OpBuilder &builder,
+                                             Operation *opToMask,
+                                             LinalgOp linalgOp) {
+  // No mask is needed if no vector sizes provided.
+  if (maskingVecSizes.empty())
+    return Value();
+
+  // No mask is needed if the operation is not maskable.
+  auto maskableOp = dyn_cast<vector::MaskableOpInterface>(opToMask);
+  if (!maskableOp)
+    return Value();
+
+  assert(!maskableOp.isMasked() &&
+         "Masking an operation that is already masked");
+
+  // Retrieve the permutation map for the mask. If the operation doesn't have a
+  // permutation mask retrieve the one from their operands.
+  AffineMap maskPermMap = maskableOp.getPermutationMapForMask();
+  if (!maskPermMap) {
+    for (Value operand : opToMask->getOperands()) {
+      auto maskedOperand = operand.getDefiningOp<vector::MaskableOpInterface>();
+      if (!maskedOperand)
+        continue;
+
+      assert(maskedOperand.isMasked() && "Operand should be masked");
+      AffineMap operandMaskPermMap = maskedOperand.getPermutationMapForMask();
+      assert((!operandMaskPermMap || !maskPermMap ||
+              operandMaskPermMap == maskPermMap) &&
+             "Operands with different permutation maps");
+      if (!maskPermMap)
+        maskPermMap = operandMaskPermMap;
+    }
+  }
+
+  // TODO: This approach to propagate mask is not good!
+  assert(maskPermMap &&
+         "Couldn't determine mask for op. Missing MaskableOpInterface?");
+
+  // Return active mask for the indexing map of this operand if it was already
+  // created.
+  if (activeMaskCache.count(maskPermMap)) {
+    Value mask = activeMaskCache[maskPermMap];
+    LDBG("Reusing mask: " << mask << "\n");
+    return mask;
+  }
+
+  // Generate the mask pertumation pattern.
+  SmallVector<unsigned, 4> maskPermPattern;
+  getPermutationPattern(maskPermMap, maskPermPattern);
+
+  // Premute the dimension values and vector sizes so that they align with the
+  // dimension order of the mask.
+  SmallVector<Value> permVecDimValues;
+  permuteArray<Value>(dynVecDimValues, maskPermPattern, permVecDimValues);
+
+  SmallVector<int64_t> permVecSizes;
+  permuteArray<int64_t>(maskingVecSizes, maskPermPattern, permVecSizes);
+
+  // Create the mask based on the runtime value of the dimensions to be
+  // vectorized.
+  auto maskType = VectorType::get(permVecSizes, builder.getI1Type());
+  Value mask = builder.create<vector::CreateMaskOp>(linalgOp.getLoc(), maskType,
+                                                    permVecDimValues);
+  LDBG("Creating new mask: " << mask << "\n");
+  activeMaskCache[maskPermMap] = mask;
+  return mask;
+}
+
+// TODO.
+Operation *VectorizationState::maskOperation(
+    OpBuilder &builder, Operation *op, Value mask) {
+  // No masking required.
+  if (!mask) {
+    LDBG("No mask required for: " << *op << "\n");
     return op;
+  }
 
+  assert(op && "Expected a valid operation");
   auto maskOp = builder.create<vector::MaskOp>(
-      op->getLoc(), op->getResultTypes(), activeMask,
+      op->getLoc(), op->getResultTypes(), mask,
       [op](OpBuilder &builder, Location loc) {
         Block *insBlock = builder.getInsertionBlock();
         insBlock->getOperations().splice(insBlock->begin(),
@@ -125,6 +261,7 @@ Operation *VectorizationState::maskOperation(OpBuilder &builder,
   for (auto &en : llvm::enumerate(op->getResults()))
     en.value().replaceAllUsesExcept(maskOp.getResult(en.index()), maskOpTerminator);
 
+  LDBG("Masked operation: " << *maskOp << "\n");
   return maskOp;
 }
 
@@ -289,7 +426,7 @@ static Operation *buildVectorWrite(OpBuilder &b, Value value,
     write = b.create<vector::TransferWriteOp>(loc, value, outputOperand->get(),
                                               ValueRange{});
   }
-  LDBG("vectorized op: " << *write);
+  LDBG("vectorized op: " << *write << "\n");
   return write;
 }
 
@@ -321,8 +458,9 @@ vectorizeLinalgYield(OpBuilder &b, Operation *op,
         b, vectorValue, linalgOp.getOutputOperand(outputs.index()));
     // TODO: We mask the transfer.transfer_write here because this op is
     // special-cased. A linalg.yield may produced multiple vector.transfer_write
-    // ops and can't be mapped uwing BlockAndValueMapping.
-    Operation *maybeMaskedOp = state.maskOperation(b, write);
+    // ops and can't be mapped using BlockAndValueMapping.
+    Value mask = state.getOrCreateMaskFor(b, write, linalgOp);
+    Operation *maybeMaskedOp = state.maskOperation(b, write, mask);
     newResults.append(maybeMaskedOp->result_begin(),
                       maybeMaskedOp->result_end());
   }
@@ -407,7 +545,7 @@ static VectorizationResult
 vectorizeOneOp(OpBuilder &b, LinalgOp linalgOp, Operation *op,
                const BlockAndValueMapping &bvm,
                ArrayRef<CustomVectorizationHook> customVectorizationHooks) {
-  LDBG("vectorize op " << *op);
+  LDBG("vectorize op " << *op << "\n");
 
   // 1. Try to apply any CustomVectorizationHook.
   if (!customVectorizationHooks.empty()) {
@@ -506,6 +644,7 @@ static LogicalResult
 vectorizeAsLinalgGeneric(OpBuilder &b, VectorizationState &state,
                          LinalgOp linalgOp,
                          SmallVectorImpl<Value> &newResults) {
+  LDBG("Vectorizing operation as linalg generic\n");
   Block *block = linalgOp.getBlock();
 
   // 2. Values defined above the region can only be broadcast for now. Make them
@@ -553,16 +692,19 @@ vectorizeAsLinalgGeneric(OpBuilder &b, VectorizationState &state,
 
     auto shape = linalgOp.getShape(opOperand);
     SmallVector<Value> indices(shape.size(), zero);
-    Value readValue = b.create<vector::TransferReadOp>(
+    Operation *read = b.create<vector::TransferReadOp>(
         loc, readType, opOperand->get(), indices, map);
+    Value readValue = read->getResult(0);
     // Not all ops support 0-d vectors, extract the scalar for now.
     // TODO: remove this.
     if (readValue.getType().cast<VectorType>().getRank() == 0)
-      readValue = b.create<vector::ExtractElementOp>(loc, readValue);
+      read = b.create<vector::ExtractElementOp>(loc, readValue);
 
-    readValue = state.maskOperation(b, readValue.getDefiningOp())->getResult(0);
+    Value mask = state.getOrCreateMaskFor(b, read, linalgOp);
+    readValue = state.maskOperation(b, read, mask)->getResult(0);
 
-    LDBG("new vectorized bbarg(" << bbarg.getArgNumber() << "): " << readValue);
+    LDBG("new vectorized bbarg(" << bbarg.getArgNumber() << "): " << readValue
+                                 << "\n");
     bvm.map(bbarg, readValue);
     bvm.map(opOperand->get(), readValue);
   }
@@ -588,12 +730,13 @@ vectorizeAsLinalgGeneric(OpBuilder &b, VectorizationState &state,
   for (Operation &op : block->getOperations()) {
     VectorizationResult result = vectorizeOneOp(b, linalgOp, &op, bvm, hooks);
     if (result.status == VectorizationStatus::Failure) {
-      LDBG("failed to vectorize: " << op);
+      LDBG("failed to vectorize: " << op << "\n");
       return failure();
     }
     if (result.status == VectorizationStatus::NewOp) {
-      Operation *maybeMaskedOp = state.maskOperation(b, result.newOp);
-      LDBG("new vector op: " << *maybeMaskedOp;);
+      Value mask = state.getOrCreateMaskFor(b, &op, linalgOp);
+      Operation *maybeMaskedOp = state.maskOperation(b, result.newOp, mask);
+      LDBG("New vector op: " << *maybeMaskedOp << "\n");
       bvm.map(op.getResults(), maybeMaskedOp->getResults());
     }
   }
@@ -605,13 +748,13 @@ vectorizeAsLinalgGeneric(OpBuilder &b, VectorizationState &state,
 // ops that may not commute (e.g. linear reduction + non-linear instructions).
 static LogicalResult reductionPreconditions(LinalgOp op) {
   if (llvm::none_of(op.iterator_types(), isReductionIterator)) {
-    LDBG("reduction precondition failed: no reduction iterator");
+    LDBG("reduction precondition failed: no reduction iterator\n");
     return failure();
   }
   for (OpOperand *opOperand : op.getOutputOperands()) {
     Operation *reduceOp = matchLinalgReduction(opOperand);
     if (!reduceOp || !getCombinerOpKind(reduceOp)) {
-      LDBG("reduction precondition failed: reduction detection failed");
+      LDBG("reduction precondition failed: reduction detection failed\n");
       return failure();
     }
   }
@@ -643,11 +786,11 @@ static LogicalResult vectorizeStaticLinalgOpPrecondition(linalg::LinalgOp op) {
   // all indexing maps are projected permutations. For convs and stencils the
   // logic will need to evolve.
   if (!allIndexingsAreProjectedPermutation(op)) {
-    LDBG("precondition failed: not projected permutations");
+    LDBG("precondition failed: not projected permutations\n");
     return failure();
   }
   if (failed(reductionPreconditions(op))) {
-    LDBG("precondition failed: reduction preconditions");
+    LDBG("precondition failed: reduction preconditions\n");
     return failure();
   }
   return success();
@@ -677,6 +820,28 @@ static LogicalResult vectorizeLinalgOpPrecondition(LinalgOp linalgOp) {
   return vectorizeStaticLinalgOpPrecondition(linalgOp);
 }
 
+static ShapedType getOperandTypeAfterMasking(unsigned operandNum,
+                                             LinalgOp linalgOp,
+                                             ArrayRef<int64_t> vectorSizes) {
+  ShapedType shType =
+      linalgOp->getOperand(operandNum).getType().dyn_cast<ShapedType>();
+  if (!shType)
+    return Type();
+
+  if (shType.getRank() != vectorSizes.size())
+    return Type();
+
+  AffineMap indexingMap = linalgOp.getIndexingMapsArray()[operandNum];
+  SmallVector<unsigned> permPattern;
+  getPermutationPattern(indexingMap, permPattern);
+  SmallVector<int64_t> permVecSizes;
+  permuteArray(vectorSizes, permPattern, permVecSizes);
+
+  return shType.cloneWith(ArrayRef<int64_t>(permVecSizes),
+                          shType.getElementType());
+}
+
+// TODO: doc and rename.
 static void maskDynamicShapes(LinalgOp linalgOp,
                               ArrayRef<int64_t> vectorSizes) {
   OpBuilder builder(linalgOp);
@@ -685,9 +850,9 @@ static void maskDynamicShapes(LinalgOp linalgOp,
   for (auto &en : llvm::enumerate(linalgOp.getInputAndOutputOperands())) {
     Value operand = en.value()->get();
     Type origType = operand.getType();
-    TensorType maskedType =
-        linalgOp.getOperandTypeAfterMasking(en.index(), vectorSizes)
-            .dyn_cast_or_null<TensorType>();
+
+    ShapedType maskedType =
+        getOperandTypeAfterMasking(en.index(), linalgOp, vectorSizes);
     if (!maskedType || origType == maskedType)
       continue;
 
@@ -718,60 +883,15 @@ LogicalResult mlir::linalg::vectorMaskingPreProcessing(
   return success();
 }
 
-static LogicalResult createNewActiveIdentityMask(LinalgOp linalgOp,
-                                                 VectorizationState &state) {
-  // No vector sizes provided so no mask needed.
-  if (state.maskedVectorSizes.empty())
-    return success();
-
-  OpBuilder builder(linalgOp);
-  Location loc = linalgOp->getLoc();
-
-  // Extract the value of the dynamic dimensions to be vectorized. We use an
-  // interface to map the iteration space dimension to a specific dimension in
-  // an operand of the LinalgOp.
-  SmallVector<Value, 4> dynamicVecDims;
-  for (auto &en : llvm::enumerate(state.maskedVectorSizes)) {
-    Value operand;
-    unsigned operandDim = std::numeric_limits<unsigned>::max();
-    linalgOp.mapMaskedDimToOperandDim(en.index(), operand, operandDim);
-    assert(operand && operandDim != std::numeric_limits<unsigned>::max() &&
-           "Masked dimension mapping didn't happen");
-
-    // Retrieve the cast operation that the masking pre-processing
-    // transformation should have introduced.
-    auto castOp =
-        llvm::dyn_cast_or_null<tensor::CastOp>(operand.getDefiningOp());
-    if (!castOp)
-      return failure();
-
-    // TODO: Verify castOp properties.
-
-    auto dynDim =
-        builder.create<tensor::DimOp>(loc, castOp.getSource(), operandDim);
-    dynamicVecDims.push_back(dynDim);
-  }
-
-  // Create the mask based on the runtime value of the dimensions to be
-  // vectorized.
-  auto maskType = VectorType::get(state.maskedVectorSizes, builder.getI1Type());
-  auto createMaskOp =
-      builder.create<vector::CreateMaskOp>(loc, maskType, dynamicVecDims);
-
-  state.activeMask = createMaskOp;
-  return success();
-}
-
 LogicalResult mlir::linalg::vectorize(RewriterBase &rewriter, LinalgOp linalgOp,
-                                      ArrayRef<int64_t> maskedVectorSizes) {
-  LDBG("Attempting to vectorize:\n" << linalgOp);
+                                      ArrayRef<int64_t> maskingVecSizes) {
+  LDBG("Attempting to vectorize:\n" << linalgOp << "\n");
   if (failed(vectorizeLinalgOpPrecondition(linalgOp)))
     return failure();
 
+  // Initialize vectorization state.
   VectorizationState state;
-  state.maskedVectorSizes.append(maskedVectorSizes.begin(),
-                                 maskedVectorSizes.end());
-  if (failed(createNewActiveIdentityMask(linalgOp, state)))
+  if (failed(state.initState(rewriter, linalgOp, maskingVecSizes)))
     return failure();
 
   SmallVector<Value> results;
@@ -783,7 +903,8 @@ LogicalResult mlir::linalg::vectorize(RewriterBase &rewriter, LinalgOp linalgOp,
   } else {
     if (failed(vectorizeLinalgOpPrecondition(linalgOp)))
       return failure();
-    LDBG("Vectorize generic by broadcasting to a common shape: " << linalgOp);
+    LDBG("Vectorize generic by broadcasting to a common shape: " << linalgOp
+                                                                 << "\n");
     // TODO: 'vectorize' takes in a 'RewriterBase' which is up-casted to
     // 'OpBuilder' when it is passed over to some methods like
     // 'vectorizeAsLinalgGeneric'. This is highly problematic: if we erase an op
@@ -793,14 +914,10 @@ LogicalResult mlir::linalg::vectorize(RewriterBase &rewriter, LinalgOp linalgOp,
       return failure();
   }
 
-  //Operation *parentOp = linalgOp->getParentOp();
-
   if (!results.empty())
     rewriter.replaceOp(linalgOp, results);
   else
     rewriter.eraseOp(linalgOp);
-
-  //llvm::outs() << "ParentOp: " << *parentOp << "\n";
 
   return success();
 }
@@ -1289,7 +1406,7 @@ static bool mayExistInterleavedUses(Operation *firstOp, Operation *secondOp,
   if (firstOp->getBlock() != secondOp->getBlock() ||
       !firstOp->isBeforeInBlock(secondOp)) {
     LDBG("interleavedUses precondition failed, firstOp: "
-         << *firstOp << ", second op: " << *secondOp);
+         << *firstOp << ", second op: " << *secondOp << "\n");
     return true;
   }
   for (auto v : values) {
@@ -1302,7 +1419,7 @@ static bool mayExistInterleavedUses(Operation *firstOp, Operation *secondOp,
           (owner->isBeforeInBlock(firstOp) || secondOp->isBeforeInBlock(owner)))
         continue;
       LDBG(" found interleaved op " << *owner << ", firstOp: " << *firstOp
-                                    << ", second op: " << *secondOp);
+                                    << ", second op: " << *secondOp << "\n");
       return true;
     }
   }
@@ -1338,14 +1455,14 @@ LogicalResult LinalgCopyVTRForwardingPattern::matchAndRewrite(
       !viewOrAlloc.getDefiningOp<memref::AllocOp>())
     return failure();
 
-  LDBG(viewOrAlloc);
+  LDBG(viewOrAlloc << "\n");
 
   // Ensure there is exactly one subview of `viewOrAlloc` defining `subView`.
   memref::SubViewOp subViewOp = getSubViewUseIfUnique(viewOrAlloc);
   if (!subViewOp)
     return failure();
   Value subView = subViewOp.getResult();
-  LDBG("with subView " << subView);
+  LDBG("with subView " << subView << "\n");
 
   // Find the copy into `subView` without interleaved uses.
   memref::CopyOp copyOp;
@@ -1354,7 +1471,7 @@ LogicalResult LinalgCopyVTRForwardingPattern::matchAndRewrite(
       assert(newCopyOp.getTarget().getType().isa<MemRefType>());
       if (newCopyOp.getTarget() != subView)
         continue;
-      LDBG("copy candidate " << *newCopyOp);
+      LDBG("copy candidate " << *newCopyOp << "\n");
       if (mayExistInterleavedUses(newCopyOp, xferOp, {viewOrAlloc, subView}))
         continue;
       copyOp = newCopyOp;
@@ -1363,7 +1480,7 @@ LogicalResult LinalgCopyVTRForwardingPattern::matchAndRewrite(
   }
   if (!copyOp)
     return failure();
-  LDBG("with copy " << *copyOp);
+  LDBG("with copy " << *copyOp << "\n");
 
   // Find the fill into `viewOrAlloc` without interleaved uses before the
   // copy.
@@ -1373,7 +1490,7 @@ LogicalResult LinalgCopyVTRForwardingPattern::matchAndRewrite(
       assert(newFillOp.output().getType().isa<MemRefType>());
       if (newFillOp.output() != viewOrAlloc)
         continue;
-      LDBG("fill candidate " << *newFillOp);
+      LDBG("fill candidate " << *newFillOp << "\n");
       if (mayExistInterleavedUses(newFillOp, copyOp, {viewOrAlloc, subView}))
         continue;
       maybeFillOp = newFillOp;
@@ -1384,7 +1501,7 @@ LogicalResult LinalgCopyVTRForwardingPattern::matchAndRewrite(
   if (maybeFillOp && xferOp.getPadding() != maybeFillOp.value())
     return failure();
   if (maybeFillOp)
-    LDBG("with maybeFillOp " << *maybeFillOp);
+    LDBG("with maybeFillOp " << *maybeFillOp << "\n");
 
   // `in` is the subview that memref.copy reads. Replace it.
   Value in = copyOp.getSource();
