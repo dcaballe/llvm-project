@@ -1181,20 +1181,6 @@ LogicalResult GenericOp::fold(ArrayRef<Attribute>,
   return foldMemRefCast(*this);
 }
 
-Type GenericOp::getOperandTypeAfterMasking(unsigned operandNum,
-                                           ArrayRef<int64_t> vectorSizes) {
-  // TODO: Support memref types.
-  TensorType tensorType =
-      getOperand(operandNum).getType().dyn_cast<TensorType>();
-  if (!tensorType)
-    return Type();
-
-  if (tensorType.getRank() != vectorSizes.size())
-    return Type();
-
-  return tensorType.cloneWith(vectorSizes, tensorType.getElementType());
-}
-
 void GenericOp::mapMaskedDimToOperandDim(unsigned vectorDim, Value &operand,
                                          unsigned &operandDim) {
   // TODO: Move to default implementation?

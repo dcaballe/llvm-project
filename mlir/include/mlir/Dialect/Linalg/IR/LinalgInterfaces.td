@@ -781,20 +781,6 @@ def LinalgStructuredInterface : OpInterface<"LinalgOp"> {
     //===------------------------------------------------------------------===//
     // Masking interface methods.
     //===------------------------------------------------------------------===//
-    // TODO: Generalize this interface? getOperandStaticShape?
-    InterfaceMethod<
-      /*desc=*/[{
-        Return the static type of the operand number `operandNum` after applying
-        masking vectorization using `vectorSizes`.
-      }],
-      /*retTy=*/"Type",
-      /*methodName=*/"getOperandTypeAfterMasking",
-      /*args=*/(ins "unsigned":$operandNum, "ArrayRef<int64_t>":$vectorSizes),
-      /*methodBody=*/"",
-      /*defaultImplementation=*/[{
-        return Type();
-      }]
-    >,
     InterfaceMethod<
       /*desc=*/[{
         Return the static type of the operand number `operandNum` after applying

@@ -213,8 +213,6 @@ def GenericOp : LinalgStructuredBase_Op<"generic", [AttrSizedOperandSegments]> {
     }
 
     // Masking vectorization interfaces.
-    Type getOperandTypeAfterMasking(unsigned operandNum,
-                                    ArrayRef<int64_t> vectorSizes);
     void mapMaskedDimToOperandDim(unsigned vectorDim, Value &operand,
                                   unsigned &operandDim);
   }];
