@@ -140,7 +140,7 @@ static LogicalResult extractDynamicVectorDimValues(
     if (!castOp)
       return failure();
 
-    // TODO: Verify castOp properties.
+    // TODO: Verify cqastOp properties.
 
     auto dynDim = builder.create<tensor::DimOp>(linalgOp.getLoc(),
                                                 castOp.getSource(), operandDim);
@@ -185,28 +185,14 @@ Value VectorizationState::getOrCreateMaskFor(OpBuilder &builder,
   assert(!maskableOp.isMasked() &&
          "Masking an operation that is already masked");
 
+  // TODO: Revisit design.
+  // TODO: Support vector.transpose
   // Retrieve the permutation map for the mask. If the operation doesn't have a
   // permutation mask retrieve the one from their operands.
   AffineMap maskPermMap = maskableOp.getPermutationMapForMask();
-  if (!maskPermMap) {
-    for (Value operand : opToMask->getOperands()) {
-      auto maskedOperand = operand.getDefiningOp<vector::MaskableOpInterface>();
-      if (!maskedOperand)
-        continue;
-
-      assert(maskedOperand.isMasked() && "Operand should be masked");
-      AffineMap operandMaskPermMap = maskedOperand.getPermutationMapForMask();
-      assert((!operandMaskPermMap || !maskPermMap ||
-              operandMaskPermMap == maskPermMap) &&
-             "Operands with different permutation maps");
-      if (!maskPermMap)
-        maskPermMap = operandMaskPermMap;
-    }
-  }
-
-  // TODO: This approach to propagate mask is not good!
-  assert(maskPermMap &&
-         "Couldn't determine mask for op. Missing MaskableOpInterface?");
+  if (!maskPermMap)
+    maskPermMap = AffineMap::getMultiDimIdentityMap(linalgOp.getNumLoops(),
+                                                    builder.getContext());
 
   // Return active mask for the indexing map of this operand if it was already
   // created.
@@ -862,7 +848,11 @@ static void maskDynamicShapes(LinalgOp linalgOp,
         builder.create<tensor::CastOp>(loc, maskedType, operand);
     auto maskedToOrigCast =
         builder.create<tensor::CastOp>(loc, origType, origToMaskedCast);
-    operand.replaceAllUsesExcept(maskedToOrigCast, origToMaskedCast);
+    // Replace uses of operand that are part of LinalgOp.
+    operand.replaceUsesWithIf(maskedToOrigCast, [&](OpOperand &opOperand) {
+      Operation *ownerOp = opOperand.getOwner();
+      return ownerOp == linalgOp || ownerOp->isAncestor(linalgOp);
+    });
   }
 }
 
@@ -880,6 +870,7 @@ LogicalResult mlir::linalg::vectorMaskingPreProcessing(
 
   // TODO
   maskDynamicShapes(linalgOp, vectorSizes);
+  LDBG("Op after pre-procesing:\n" << linalgOp << "\n");
   return success();
 }
 
@@ -903,8 +894,8 @@ LogicalResult mlir::linalg::vectorize(RewriterBase &rewriter, LinalgOp linalgOp,
   } else {
     if (failed(vectorizeLinalgOpPrecondition(linalgOp)))
       return failure();
-    LDBG("Vectorize generic by broadcasting to a common shape: " << linalgOp
-                                                                 << "\n");
+    LDBG("Vectorize generic by broadcasting to a common shape: \n"
+         << linalgOp << "\n");
     // TODO: 'vectorize' takes in a 'RewriterBase' which is up-casted to
     // 'OpBuilder' when it is passed over to some methods like
     // 'vectorizeAsLinalgGeneric'. This is highly problematic: if we erase an op
@@ -913,6 +904,8 @@ LogicalResult mlir::linalg::vectorize(RewriterBase &rewriter, LinalgOp linalgOp,
     if (failed(vectorizeAsLinalgGeneric(rewriter, state, linalgOp, results)))
       return failure();
   }
+
+  LDBG("Parent after vectorization: \n" << *linalgOp->getParentOp() << "\n");
 
   if (!results.empty())
     rewriter.replaceOp(linalgOp, results);
