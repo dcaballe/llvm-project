@@ -102,8 +102,8 @@ static void moveOperationsBefore(llvm::iterator_range<Block::iterator> opRange,
 struct VectorizationState {
   // TODO: doc.
   DenseMap<AffineMap, Value> activeMaskCache;
-  SmallVector<int64_t, 4> maskingVecSizes;
-  SmallVector<Value, 4> dynVecDimValues;
+  SmallVector<int64_t> canonicalVecShape;
+  SmallVector<Value> dynVecDimValues;
 
   LogicalResult initState(OpBuilder &builder, LinalgOp linalgOp,
                           ArrayRef<int64_t> inMaskingVecSizes);
@@ -133,17 +133,8 @@ static LogicalResult extractDynamicVectorDimValues(
     assert(operand && operandDim != std::numeric_limits<unsigned>::max() &&
            "Masked dimension mapping didn't happen");
 
-    // Retrieve the cast operation that the masking pre-processing
-    // transformation should have introduced.
-    auto castOp =
-        llvm::dyn_cast_or_null<tensor::CastOp>(operand.getDefiningOp());
-    if (!castOp)
-      return failure();
-
-    // TODO: Verify cqastOp properties.
-
-    auto dynDim = builder.create<tensor::DimOp>(linalgOp.getLoc(),
-                                                castOp.getSource(), operandDim);
+    auto dynDim =
+        builder.create<tensor::DimOp>(linalgOp.getLoc(), operand, operandDim);
     dynVecDimValues.push_back(dynDim);
   }
 
@@ -152,11 +143,19 @@ static LogicalResult extractDynamicVectorDimValues(
 
 LogicalResult VectorizationState::initState(OpBuilder &builder,
                                             LinalgOp linalgOp,
-                                            ArrayRef<int64_t> inMaskingVecSizes) {
-  if (!inMaskingVecSizes.empty()) {
-    maskingVecSizes.append(inMaskingVecSizes.begin(), inMaskingVecSizes.end());
-    return extractDynamicVectorDimValues(builder, maskingVecSizes, linalgOp,
+                                            ArrayRef<int64_t> dynDimVecSizes) {
+  if (linalgOp.hasDynamicShape()) {
+    // TODO: Only support fully dynamic ops for now.
+    if (dynDimVecSizes.size() != linalgOp.getNumLoops())
+      return failure();
+
+    canonicalVecShape.append(dynDimVecSizes.begin(), dynDimVecSizes.end());
+    return extractDynamicVectorDimValues(builder, canonicalVecShape, linalgOp,
                                          dynVecDimValues);
+  }
+  else {
+    canonicalVecShape = linalgOp.getStaticLoopRanges();
+    // TODO: Init dynVecDimValues if needed.
   }
 
   return success();
@@ -174,7 +173,7 @@ Value VectorizationState::getOrCreateMaskFor(OpBuilder &builder,
                                              Operation *opToMask,
                                              LinalgOp linalgOp) {
   // No mask is needed if no vector sizes provided.
-  if (maskingVecSizes.empty())
+  if (dynVecDimValues.empty())
     return Value();
 
   // No mask is needed if the operation is not maskable.
@@ -211,12 +210,12 @@ Value VectorizationState::getOrCreateMaskFor(OpBuilder &builder,
   SmallVector<Value> permVecDimValues;
   permuteArray<Value>(dynVecDimValues, maskPermPattern, permVecDimValues);
 
-  SmallVector<int64_t> permVecSizes;
-  permuteArray<int64_t>(maskingVecSizes, maskPermPattern, permVecSizes);
+  SmallVector<int64_t> permVecShape;
+  permuteArray<int64_t>(canonicalVecShape, maskPermPattern, permVecShape);
 
   // Create the mask based on the runtime value of the dimensions to be
   // vectorized.
-  auto maskType = VectorType::get(permVecSizes, builder.getI1Type());
+  auto maskType = VectorType::get(permVecShape, builder.getI1Type());
   Value mask = builder.create<vector::CreateMaskOp>(linalgOp.getLoc(), maskType,
                                                     permVecDimValues);
   LDBG("Creating new mask: " << mask << "\n");
@@ -385,27 +384,36 @@ static SmallVector<bool> getReductionMask(LinalgOp linalgOp) {
 /// currently being vectorized. If `dest` has null rank, build an memref.store.
 /// Return the produced value or null if no value is produced.
 static Operation *buildVectorWrite(OpBuilder &b, Value value,
-                                   OpOperand *outputOperand) {
+                                   OpOperand *outputOperand,
+                                   VectorizationState &state) {
   Operation *write;
   Location loc = value.getLoc();
   auto linalgOp = cast<LinalgOp>(outputOperand->getOwner());
-  ArrayRef<int64_t> shape = linalgOp.getShape(outputOperand);
-  auto vectorType = VectorType::get(
-      shape, getElementTypeOrSelf(outputOperand->get().getType()));
+  AffineMap opOperandMap = linalgOp.getTiedIndexingMap(outputOperand);
+  auto vectorType =
+      VectorType::get(opOperandMap.compose(state.canonicalVecShape),
+                      getElementTypeOrSelf(outputOperand->get().getType()));
+
   if (vectorType.getRank() > 0) {
-    // 0-d case is still special: do not invert the reindexing map.
-    AffineMap map =
-        reindexIndexingMap(linalgOp.getTiedIndexingMap(outputOperand));
-    SmallVector<int64_t> transposeShape =
-        applyPermutationMap(inversePermutation(map), vectorType.getShape());
-    assert(!transposeShape.empty() && "unexpected empty transpose shape");
-    vectorType = VectorType::get(transposeShape, vectorType.getElementType());
+    AffineMap writeMap = reindexIndexingMap(opOperandMap);
+    //SmallVector<int64_t> transposeShape = applyPermutationMap(
+    //    inversePermutation(writeMap), vectorType.getShape());
+    //assert(!transposeShape.empty() && "unexpected empty transpose shape");
+    //vectorType = VectorType::get(transposeShape, vectorType.getElementType());
     SmallVector<Value> indices(linalgOp.getRank(outputOperand),
                                b.create<arith::ConstantIndexOp>(loc, 0));
     value = broadcastIfNeeded(b, value, vectorType.getShape());
+    // If masked, set in-bounds to true. Masking guarantees that the access will
+    // be in-bounds.
+    SmallVector<bool> inBounds;
+    if (!state.dynVecDimValues.empty())
+      inBounds.append(vectorType.getRank(), true);
+
     write = b.create<vector::TransferWriteOp>(loc, value, outputOperand->get(),
-                                              indices, map);
+                                              indices, writeMap,
+                                              ArrayRef<bool>(inBounds));
   } else {
+    // 0-d case is still special: do not invert the reindexing writeMap.
     if (!value.getType().isa<VectorType>())
       value = b.create<vector::BroadcastOp>(loc, vectorType, value);
     assert(value.getType() == vectorType && "incorrect type");
@@ -441,7 +449,7 @@ vectorizeLinalgYield(OpBuilder &b, Operation *op,
     // TODO: use a map.
     Value vectorValue = bvm.lookup(outputs.value());
     Operation *write = buildVectorWrite(
-        b, vectorValue, linalgOp.getOutputOperand(outputs.index()));
+        b, vectorValue, linalgOp.getOutputOperand(outputs.index()), state);
     // TODO: We mask the transfer.transfer_write here because this op is
     // special-cased. A linalg.yield may produced multiple vector.transfer_write
     // ops and can't be mapped using BlockAndValueMapping.
@@ -643,10 +651,7 @@ vectorizeAsLinalgGeneric(OpBuilder &b, VectorizationState &state,
   if (linalgOp.getNumOutputs() == 0)
     return failure();
 
-  // TODO: the common vector shape is equal to the static loop sizes only when
-  // all indexing maps are projected permutations. For convs and stencils the
-  // logic will need to evolve.
-  SmallVector<int64_t> commonVectorShape = linalgOp.computeStaticLoopSizes();
+  // TODO: Update doc about common vector shape.
 
   // 3. Turn all BBArgs into vector.transfer_read / load.
   Location loc = linalgOp.getLoc();
@@ -658,38 +663,48 @@ vectorizeAsLinalgGeneric(OpBuilder &b, VectorizationState &state,
       continue;
     }
     VectorType readType;
-    AffineMap map;
+    AffineMap readMap;
+    AffineMap opOperandMap = linalgOp.getTiedIndexingMap(opOperand);
     // TODO: can we keep this simplification?
     // if (linalgOp.getShape(opOperand).empty()) {
     //   readType = VectorType::get({}, bbarg.getType());
     // } else {
+
     if (opOperand->getOperandNumber() < linalgOp.getNumInputs()) {
-      map = inverseAndBroadcastProjectedPermutation(
-          linalgOp.getTiedIndexingMap(opOperand));
-      readType = VectorType::get(commonVectorShape,
+      readMap = inverseAndBroadcastProjectedPermutation(opOperandMap);
+      readType = VectorType::get(state.canonicalVecShape,
                                  getElementTypeOrSelf(opOperand->get()));
     } else {
-      map = inversePermutation(
+//      map = inversePermutation(
+//          reindexIndexingMap(linalgOp.getTiedIndexingMap(opOperand)));
+      readMap = inversePermutation(
           reindexIndexingMap(linalgOp.getTiedIndexingMap(opOperand)));
-      readType = VectorType::get(map.compose(linalgOp.getShape(opOperand)),
+      readType = VectorType::get(opOperandMap.compose(state.canonicalVecShape),
                                  getElementTypeOrSelf(opOperand->get()));
     }
     // }
 
     auto shape = linalgOp.getShape(opOperand);
     SmallVector<Value> indices(shape.size(), zero);
+    // If masked, set in-bounds to true. Masking guarantees that the access will
+    // be in-bounds.
+    SmallVector<bool> inBounds;
+    if (!state.dynVecDimValues.empty())
+      inBounds.append(readType.getRank(), true);
+
     Operation *read = b.create<vector::TransferReadOp>(
-        loc, readType, opOperand->get(), indices, map);
+        loc, readType, opOperand->get(), indices, readMap,
+        ArrayRef<bool>(inBounds));
     Value readValue = read->getResult(0);
     // Not all ops support 0-d vectors, extract the scalar for now.
     // TODO: remove this.
-    if (readValue.getType().cast<VectorType>().getRank() == 0)
+    if (readType.getRank() == 0)
       read = b.create<vector::ExtractElementOp>(loc, readValue);
 
     Value mask = state.getOrCreateMaskFor(b, read, linalgOp);
     readValue = state.maskOperation(b, read, mask)->getResult(0);
 
-    LDBG("new vectorized bbarg(" << bbarg.getArgNumber() << "): " << readValue
+    LDBG("New vectorized bbarg(" << bbarg.getArgNumber() << "): " << readValue
                                  << "\n");
     bvm.map(bbarg, readValue);
     bvm.map(opOperand->get(), readValue);
@@ -747,47 +762,12 @@ static LogicalResult reductionPreconditions(LinalgOp op) {
   return success();
 }
 
-static LogicalResult vectorizeStaticLinalgOpPrecondition(linalg::LinalgOp op) {
-  // All types in the body should be a supported element type for VectorType.
-  for (Operation &innerOp : op->getRegion(0).front()) {
-    if (llvm::any_of(innerOp.getOperandTypes(), [](Type type) {
-          return !VectorType::isValidElementType(type);
-        })) {
-      return failure();
-    }
-    if (llvm::any_of(innerOp.getResultTypes(), [](Type type) {
-          return !VectorType::isValidElementType(type);
-        })) {
-      return failure();
-    }
-  }
-  if (isElementwise(op))
-    return success();
-  // TODO: isaConvolutionOpInterface that can also infer from generic features.
-  // But we will still need stride/dilation attributes that will be annoying to
-  // reverse-engineer...
-  if (isa<ConvolutionOpInterface>(op.getOperation()))
-    return success();
-  // TODO: the common vector shape is equal to the static loop sizes only when
-  // all indexing maps are projected permutations. For convs and stencils the
-  // logic will need to evolve.
-  if (!allIndexingsAreProjectedPermutation(op)) {
-    LDBG("precondition failed: not projected permutations\n");
-    return failure();
-  }
-  if (failed(reductionPreconditions(op))) {
-    LDBG("precondition failed: reduction preconditions\n");
-    return failure();
-  }
-  return success();
-}
-
 static LogicalResult vectorizeDynamicLinalgOpPrecondition(linalg::LinalgOp op) {
-  // TODO
-  if (!isa<GenericOp>(op) || !op.hasDynamicShape())
+  // TODO: Only dynamic generic ops are supported for now.
+  if (!isa<GenericOp>(op))
     return failure();
 
-  // Only ops with fully dynamic tensors are supported for now.
+  // TODO: Only ops with fully dynamic tensors are supported for now.
   if (llvm::any_of(op.getInputAndOutputOperands(), [](OpOperand *opOperand) {
         TensorType operandType =
             opOperand->get().getType().dyn_cast<TensorType>();
@@ -800,10 +780,42 @@ static LogicalResult vectorizeDynamicLinalgOpPrecondition(linalg::LinalgOp op) {
 }
 
 static LogicalResult vectorizeLinalgOpPrecondition(LinalgOp linalgOp) {
-  if (linalgOp.hasDynamicShape()) {
+  if (linalgOp.hasDynamicShape() &&
+      failed(vectorizeDynamicLinalgOpPrecondition(linalgOp)))
+    return failure();
+
+  // All types in the body should be a supported element type for VectorType.
+  for (Operation &innerOp : linalgOp->getRegion(0).front()) {
+    if (llvm::any_of(innerOp.getOperandTypes(), [](Type type) {
+          return !VectorType::isValidElementType(type);
+        })) {
+      return failure();
+    }
+    if (llvm::any_of(innerOp.getResultTypes(), [](Type type) {
+          return !VectorType::isValidElementType(type);
+        })) {
+      return failure();
+    }
+  }
+  if (isElementwise(linalgOp))
+    return success();
+  // TODO: isaConvolutionOpInterface that can also infer from generic features.
+  // But we will still need stride/dilation attributes that will be annoying to
+  // reverse-engineer...
+  if (isa<ConvolutionOpInterface>(linalgOp.getOperation()))
+    return success();
+  // TODO: the common vector shape is equal to the static lolinalgOp sizes only when
+  // all indexing maps are projected permutations. For convs and stencils the
+  // logic will need to evolve.
+  if (!allIndexingsAreProjectedPermutation(linalgOp)) {
+    LDBG("precondition failed: not projected permutations\n");
     return failure();
   }
-  return vectorizeStaticLinalgOpPrecondition(linalgOp);
+  if (failed(reductionPreconditions(linalgOp))) {
+    LDBG("precondition failed: reduction preconditions\n");
+    return failure();
+  }
+  return success();
 }
 
 static ShapedType getOperandTypeAfterMasking(unsigned operandNum,
@@ -827,52 +839,52 @@ static ShapedType getOperandTypeAfterMasking(unsigned operandNum,
                           shType.getElementType());
 }
 
-// TODO: doc and rename.
-static void maskDynamicShapes(LinalgOp linalgOp,
-                              ArrayRef<int64_t> vectorSizes) {
-  OpBuilder builder(linalgOp);
-  Location loc = linalgOp.getLoc();
+//// TODO: doc and rename.
+//static void maskDynamicShapes(LinalgOp linalgOp,
+//                              ArrayRef<int64_t> vectorSizes) {
+//  OpBuilder builder(linalgOp);
+//  Location loc = linalgOp.getLoc();
+//
+//  for (auto &en : llvm::enumerate(linalgOp.getInputAndOutputOperands())) {
+//    Value operand = en.value()->get();
+//    Type origType = operand.getType();
+//
+//    ShapedType maskedType =
+//        getOperandTypeAfterMasking(en.index(), linalgOp, vectorSizes);
+//    if (!maskedType || origType == maskedType)
+//      continue;
+//
+//    LDBG("Casting " << origType << " to " << maskedType
+//                    << " for masking vectorization\n");
+//    auto origToMaskedCast =
+//        builder.create<tensor::CastOp>(loc, maskedType, operand);
+//    auto maskedToOrigCast =
+//        builder.create<tensor::CastOp>(loc, origType, origToMaskedCast);
+//    // Replace uses of operand that are part of LinalgOp.
+//    operand.replaceUsesWithIf(maskedToOrigCast, [&](OpOperand &opOperand) {
+//      Operation *ownerOp = opOperand.getOwner();
+//      return ownerOp == linalgOp || ownerOp->isAncestor(linalgOp);
+//    });
+//  }
+//}
 
-  for (auto &en : llvm::enumerate(linalgOp.getInputAndOutputOperands())) {
-    Value operand = en.value()->get();
-    Type origType = operand.getType();
-
-    ShapedType maskedType =
-        getOperandTypeAfterMasking(en.index(), linalgOp, vectorSizes);
-    if (!maskedType || origType == maskedType)
-      continue;
-
-    LDBG("Casting " << origType << " to " << maskedType
-                    << " for masking vectorization\n");
-    auto origToMaskedCast =
-        builder.create<tensor::CastOp>(loc, maskedType, operand);
-    auto maskedToOrigCast =
-        builder.create<tensor::CastOp>(loc, origType, origToMaskedCast);
-    // Replace uses of operand that are part of LinalgOp.
-    operand.replaceUsesWithIf(maskedToOrigCast, [&](OpOperand &opOperand) {
-      Operation *ownerOp = opOperand.getOwner();
-      return ownerOp == linalgOp || ownerOp->isAncestor(linalgOp);
-    });
-  }
-}
-
-LogicalResult mlir::linalg::vectorMaskingPreProcessing(
-    RewriterBase &rewriter, LinalgOp linalgOp, ArrayRef<int64_t> vectorSizes) {
-  LDBG("Pre-procesing op for masking vectorization:\n");
-  LDBG("  Vector sizes: ");
-  for (auto size : vectorSizes)
-    LDBG_CONT(size << " ");
-  LDBG_CONT("\n");
-  LDBG("  Op:\n" << linalgOp << "\n");
-
-  if (failed(vectorizeDynamicLinalgOpPrecondition(linalgOp)))
-    return failure();
-
-  // TODO
-  maskDynamicShapes(linalgOp, vectorSizes);
-  LDBG("Op after pre-procesing:\n" << linalgOp << "\n");
-  return success();
-}
+//LogicalResult mlir::linalg::vectorMaskingPreProcessing(
+//    RewriterBase &rewriter, LinalgOp linalgOp, ArrayRef<int64_t> vectorSizes) {
+//  LDBG("Pre-procesing op for masking vectorization:\n");
+//  LDBG("  Vector sizes: ");
+//  for (auto size : vectorSizes)
+//    LDBG_CONT(size << " ");
+//  LDBG_CONT("\n");
+//  LDBG("  Op:\n" << linalgOp << "\n");
+//
+//  if (failed(vectorizeDynamicLinalgOpPrecondition(linalgOp)))
+//    return failure();
+//
+//  // TODO
+//  maskDynamicShapes(linalgOp, vectorSizes);
+//  LDBG("Op after pre-procesing:\n" << linalgOp << "\n");
+//  return success();
+//}
 
 LogicalResult mlir::linalg::vectorize(RewriterBase &rewriter, LinalgOp linalgOp,
                                       ArrayRef<int64_t> maskingVecSizes) {
@@ -904,8 +916,6 @@ LogicalResult mlir::linalg::vectorize(RewriterBase &rewriter, LinalgOp linalgOp,
     if (failed(vectorizeAsLinalgGeneric(rewriter, state, linalgOp, results)))
       return failure();
   }
-
-  LDBG("Parent after vectorization: \n" << *linalgOp->getParentOp() << "\n");
 
   if (!results.empty())
     rewriter.replaceOp(linalgOp, results);

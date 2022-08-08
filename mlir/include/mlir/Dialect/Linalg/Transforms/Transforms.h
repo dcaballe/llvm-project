@@ -314,11 +314,6 @@ promoteSubviewAsNewBuffer(OpBuilder &b, Location loc, memref::SubViewOp subView,
 FailureOr<LinalgOp> promoteSubViews(OpBuilder &b, LinalgOp op,
                                     const LinalgPromotionOptions &options);
 
-/// Prepare a LinalgOp for vectorization with masking.
-LogicalResult vectorMaskingPreProcessing(RewriterBase &builder,
-                                         LinalgOp linalgOp,
-                                         ArrayRef<int64_t> vectorSizes);
-
 /// Emit a suitable vector form for a Linalg op with fully static shape.
 LogicalResult vectorize(RewriterBase &builder, LinalgOp linalgOp,
                         ArrayRef<int64_t> vectorSizes);
@@ -956,43 +951,6 @@ private:
   /// Options to control vectorization.
   /// masking pre-procesing.
   LinalgVectorizationOptions options;
-};
-
-///
-/// Linalg vector masking pre-processing patterns.
-///
-/// Empty for now, used for SFINAE purposes only.
-struct LinalgVectorMaskingPreProcessingOptions {
-  SmallVector<int64_t, 4> vectorSizes;
-};
-
-/// `filter` controls LinalgTransformMarker matching and update when specified.
-struct LinalgVectorMaskingPreProcessingPattern
-    : public OpInterfaceRewritePattern<LinalgOp> {
-  /// Construct a generic pattern applied to all LinalgOp that verify `filter`.
-  LinalgVectorMaskingPreProcessingPattern(
-      MLIRContext *context,
-      LinalgTransformationFilter f = LinalgTransformationFilter(),
-      LinalgVectorMaskingPreProcessingOptions options =
-          LinalgVectorMaskingPreProcessingOptions(),
-      PatternBenefit benefit = 1);
-
-  /// Construct a pattern specifically applied to `opName`.
-  LinalgVectorMaskingPreProcessingPattern(
-      StringRef opName, MLIRContext *context,
-      LinalgVectorMaskingPreProcessingOptions options =
-          LinalgVectorMaskingPreProcessingOptions(),
-      LinalgTransformationFilter f = LinalgTransformationFilter(),
-      PatternBenefit benefit = 1);
-
-  LogicalResult matchAndRewrite(LinalgOp linalgOp,
-                                PatternRewriter &rewriter) const override;
-
-private:
-  /// LinalgTransformMarker handles special attribute manipulations.
-  LinalgTransformationFilter filter;
-  /// Options to control vector masking pre-procesing.
-  LinalgVectorMaskingPreProcessingOptions options;
 };
 
 /// `filter` controls LinalgTransformMarker matching and update when specified.

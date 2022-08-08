@@ -225,16 +225,6 @@ static void applyPatterns(func::FuncOp funcOp) {
   //===--------------------------------------------------------------------===//
   // Linalg to vector contraction patterns.
   //===--------------------------------------------------------------------===//
-  LinalgVectorMaskingPreProcessingOptions maskingOptions;
-  maskingOptions.vectorSizes = {4, 8};
-  patterns.add<LinalgVectorMaskingPreProcessingPattern>(
-      ctx,
-      LinalgTransformationFilter(StringAttr::get(ctx, "VECTORIZE"))
-          .addOpFilter<MatmulOp, FillOp, GenericOp>(),
-      maskingOptions);
-  // TODO
-  populateLinalgDialectCanonicalizationPatterns(ctx, patterns, /*benefit=*/100);
-
   LinalgVectorizationOptions vectorizationOptions;
   vectorizationOptions.maskedVectorSizes = {4, 8};
   patterns.add<LinalgVectorizationPattern>(
@@ -455,16 +445,6 @@ static void applyVectorTransferForwardingPatterns(func::FuncOp funcOp) {
 static void applyLinalgToVectorPatterns(func::FuncOp funcOp) {
   RewritePatternSet patterns(funcOp.getContext());
   auto *ctx = funcOp.getContext();
-
-  LinalgVectorMaskingPreProcessingOptions maskingOptions;
-  maskingOptions.vectorSizes = {4, 8};
-  patterns.add<LinalgVectorMaskingPreProcessingPattern>(
-      ctx,
-      LinalgTransformationFilter()
-          .addOpFilter<ContractionOpInterface, FillOp, GenericOp>(),
-      maskingOptions);
-  // TODO
-  populateLinalgDialectCanonicalizationPatterns(ctx, patterns, /*benefit=*/100);
 
   LinalgVectorizationOptions vectorizationOptions;
   vectorizationOptions.maskedVectorSizes = {4, 8};
