@@ -1181,23 +1181,6 @@ LogicalResult GenericOp::fold(ArrayRef<Attribute>,
   return foldMemRefCast(*this);
 }
 
-void GenericOp::mapMaskedDimToOperandDim(unsigned vectorDim, Value &operand,
-                                         unsigned &operandDim) {
-  // TODO: Move to default implementation?
-  // Retrieve the operand and operand's dimension from the first operand with a
-  // permutation map, including identity map.
-  for (auto &en : llvm::enumerate(getIndexingMapsArray())) {
-    AffineMap map = en.value();
-    if (map.isPermutation()) {
-      operand = getOperand(en.index());
-      operandDim = map.getPermutedPosition(vectorDim);
-      return;
-    }
-  }
-
-  llvm_unreachable("Unsupported generic op");
-}
-
 //===----------------------------------------------------------------------===//
 // InitTensorOp
 //===----------------------------------------------------------------------===//

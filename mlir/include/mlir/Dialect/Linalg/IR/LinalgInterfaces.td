@@ -778,22 +778,23 @@ def LinalgStructuredInterface : OpInterface<"LinalgOp"> {
         return &yieldOp->getOpOperand(resultIndex);
       }]
     >,
-    //===------------------------------------------------------------------===//
-    // Masking interface methods.
-    //===------------------------------------------------------------------===//
-    InterfaceMethod<
-      /*desc=*/[{
-        Return the static type of the operand number `operandNum` after applying
-        masking vectorization using `vectorSizes`.
-      }],
-      /*retTy=*/"void",
-      /*methodName=*/"mapMaskedDimToOperandDim",
-      /*args=*/(ins "unsigned":$vectorDim, "Value &":$operand, "unsigned &":$operandDim),
-      /*methodBody=*/"",
-      /*defaultImplementation=*/[{
-        llvm_unreachable("Unsupported operation");
-      }]
-    >,
+//    //===------------------------------------------------------------------===//
+//    // Masking interface methods.
+//    //===------------------------------------------------------------------===//
+//    InterfaceMethod<
+//      /*desc=*/[{
+//        Return the static type of the operand number `operandNum` after applying
+//        masking vectorization using `vectorSizes`.
+//      }],
+//      /*retTy=*/"void",
+//      /*methodName=*/"mapMaskedDimToOperandDim",
+//      /*args=*/(ins "unsigned":$vectorDim, "Value &":$operand, "unsigned &":$operandDim),
+//      /*methodBody=*/"",
+//      /*defaultImplementation=*/""
+//      [{
+//        llvm_unreachable("Unsupported operation");
+//      }]
+//    >,
     //===------------------------------------------------------------------===//
     // Other interface methods.
     //===------------------------------------------------------------------===//

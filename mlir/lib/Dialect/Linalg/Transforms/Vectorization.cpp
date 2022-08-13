@@ -108,18 +108,48 @@ struct VectorizationState {
   LogicalResult initState(OpBuilder &builder, LinalgOp linalgOp,
                           ArrayRef<int64_t> inMaskingVecSizes);
   Value getOrCreateMaskFor(OpBuilder &builder, Operation *opToMask,
-                           LinalgOp linalgOp);
+                           LinalgOp linalgOp,
+                           Optional<AffineMap> maybeMaskPermMap = llvm::None);
   Operation *maskOperation(OpBuilder &builder, Operation *op, Value mask);
 };
 
-// TODO: There has to be a utility for this somewhere.
-template <class T>
-static void permuteArray(ArrayRef<T> inputArray, ArrayRef<unsigned> permPattern,
-                         SmallVectorImpl<T> &outputArray) {
-  assert(inputArray.size() == permPattern.size());
-  outputArray.resize(inputArray.size());
-  for (auto &en : llvm::enumerate(permPattern))
-    outputArray[en.index()] = inputArray[en.value()];
+//template <class T>
+//static void permuteArray(ArrayRef<T> inputArray, ArrayRef<int32_t> permPattern,
+//                         SmallVectorImpl<T> &outputArray) {
+//  llvm::outs() << "Permuting array:\n";
+//  for (T element : inputArray)
+//    llvm::outs() << element << " ";
+//  llvm::outs() << "\n";
+//
+//  assert(inputArray.size() == permPattern.size());
+//  for (int32_t idx : permPattern)
+//    if (idx >= 0)
+//      outputArray.push_back(inputArray[idx]);
+//
+//  llvm::outs() << "Result:\n";
+//  for (T element : outputArray)
+//    llvm::outs() << element << " ";
+//  llvm::outs() << "\n";
+//}
+
+// TODO.
+static void mapLoopDimToOperandDim(unsigned dim, LinalgOp linalgOp,
+                                   Value &operand, unsigned &operandDim) {
+  // Retrieve the operand and operand's dimension from the first operand with a
+  // permutation map, including identity map.
+  for (auto &en : llvm::enumerate(linalgOp.getIndexingMapsArray())) {
+    AffineMap idxMap = en.value();
+    if (idxMap.isProjectedPermutation()) {
+      auto mayOperandDim = idxMap.getProjectedPermutedPosition(dim);
+      if (mayOperandDim) {
+        operand = linalgOp->getOperand(en.index());
+        operandDim = *mayOperandDim;
+        return;
+      }
+    }
+  }
+
+  llvm_unreachable("Unsupported linalg op");
 }
 
 // TODO.
@@ -129,7 +159,7 @@ static LogicalResult extractDynamicVectorDimValues(
   for (int vecDim = 0, end = maskingVecSizes.size(); vecDim < end; ++vecDim) {
     Value operand;
     unsigned operandDim = std::numeric_limits<unsigned>::max();
-    linalgOp.mapMaskedDimToOperandDim(vecDim, operand, operandDim);
+    mapLoopDimToOperandDim(vecDim, linalgOp, operand, operandDim);
     assert(operand && operandDim != std::numeric_limits<unsigned>::max() &&
            "Masked dimension mapping didn't happen");
 
@@ -161,17 +191,10 @@ LogicalResult VectorizationState::initState(OpBuilder &builder,
   return success();
 }
 
-// TODO: There has to be a utility for this.
-static void getPermutationPattern(AffineMap permMap,
-                                  SmallVectorImpl<unsigned> &permPattern) {
-  for (unsigned i = 0, end = permMap.getNumDims(); i < end; ++i)
-    permPattern.push_back(permMap.getDimPosition(i));
-}
-
 // TODO.
-Value VectorizationState::getOrCreateMaskFor(OpBuilder &builder,
-                                             Operation *opToMask,
-                                             LinalgOp linalgOp) {
+Value VectorizationState::getOrCreateMaskFor(
+    OpBuilder &builder, Operation *opToMask, LinalgOp linalgOp,
+    Optional<AffineMap> maybeMaskPermMap) {
   // No mask is needed if no vector sizes provided.
   if (dynVecDimValues.empty())
     return Value();
@@ -184,14 +207,13 @@ Value VectorizationState::getOrCreateMaskFor(OpBuilder &builder,
   assert(!maskableOp.isMasked() &&
          "Masking an operation that is already masked");
 
-  // TODO: Revisit design.
-  // TODO: Support vector.transpose
-  // Retrieve the permutation map for the mask. If the operation doesn't have a
-  // permutation mask retrieve the one from their operands.
-  AffineMap maskPermMap = maskableOp.getPermutationMapForMask();
-  if (!maskPermMap)
-    maskPermMap = AffineMap::getMultiDimIdentityMap(linalgOp.getNumLoops(),
-                                                    builder.getContext());
+  // TODO: This is wrong.
+  // If no mask permutation map was provided, use an identify map with the loop
+  // dims.
+  AffineMap maskPermMap =
+      maybeMaskPermMap ? *maybeMaskPermMap
+                       : AffineMap::getMultiDimIdentityMap(
+                             linalgOp.getNumLoops(), builder.getContext());
 
   // Return active mask for the indexing map of this operand if it was already
   // created.
@@ -201,17 +223,17 @@ Value VectorizationState::getOrCreateMaskFor(OpBuilder &builder,
     return mask;
   }
 
-  // Generate the mask pertumation pattern.
-  SmallVector<unsigned, 4> maskPermPattern;
-  getPermutationPattern(maskPermMap, maskPermPattern);
-
   // Premute the dimension values and vector sizes so that they align with the
   // dimension order of the mask.
-  SmallVector<Value> permVecDimValues;
-  permuteArray<Value>(dynVecDimValues, maskPermPattern, permVecDimValues);
-
-  SmallVector<int64_t> permVecShape;
-  permuteArray<int64_t>(canonicalVecShape, maskPermPattern, permVecShape);
+  llvm::outs() << "AffineMap: " << maskPermMap << "\n";
+  SmallVector<Value> permVecDimValues =
+      applyPermutationMap(maskPermMap, ArrayRef<Value>(dynVecDimValues));
+  SmallVector<int64_t> permVecShape =
+      applyPermutationMap(maskPermMap, ArrayRef<int64_t>(canonicalVecShape));
+  llvm::outs() << "Result:\n";
+  for (auto val : permVecShape)
+    llvm::outs() << val << " ";
+  llvm::outs() << "\n";
 
   // Create the mask based on the runtime value of the dimensions to be
   // vectorized.
@@ -675,10 +697,9 @@ vectorizeAsLinalgGeneric(OpBuilder &b, VectorizationState &state,
       readType = VectorType::get(state.canonicalVecShape,
                                  getElementTypeOrSelf(opOperand->get()));
     } else {
-//      map = inversePermutation(
-//          reindexIndexingMap(linalgOp.getTiedIndexingMap(opOperand)));
-      readMap = inversePermutation(
-          reindexIndexingMap(linalgOp.getTiedIndexingMap(opOperand)));
+      // TODO
+      // readMap = inversePermutation(reindexIndexingMap(opOperandMap));
+      readMap = inversePermutation(reindexIndexingMap(opOperandMap));
       readType = VectorType::get(opOperandMap.compose(state.canonicalVecShape),
                                  getElementTypeOrSelf(opOperand->get()));
     }
@@ -701,7 +722,7 @@ vectorizeAsLinalgGeneric(OpBuilder &b, VectorizationState &state,
     if (readType.getRank() == 0)
       read = b.create<vector::ExtractElementOp>(loc, readValue);
 
-    Value mask = state.getOrCreateMaskFor(b, read, linalgOp);
+    Value mask = state.getOrCreateMaskFor(b, read, linalgOp, opOperandMap);
     readValue = state.maskOperation(b, read, mask)->getResult(0);
 
     LDBG("New vectorized bbarg(" << bbarg.getArgNumber() << "): " << readValue
@@ -764,7 +785,7 @@ static LogicalResult reductionPreconditions(LinalgOp op) {
 
 static LogicalResult vectorizeDynamicLinalgOpPrecondition(linalg::LinalgOp op) {
   // TODO: Only dynamic generic ops are supported for now.
-  if (!isa<GenericOp>(op))
+  if (!isa<GenericOp>(op) && !isa<MatmulOp>(op))
     return failure();
 
   // TODO: Only ops with fully dynamic tensors are supported for now.
@@ -818,26 +839,29 @@ static LogicalResult vectorizeLinalgOpPrecondition(LinalgOp linalgOp) {
   return success();
 }
 
-static ShapedType getOperandTypeAfterMasking(unsigned operandNum,
-                                             LinalgOp linalgOp,
-                                             ArrayRef<int64_t> vectorSizes) {
-  ShapedType shType =
-      linalgOp->getOperand(operandNum).getType().dyn_cast<ShapedType>();
-  if (!shType)
-    return Type();
-
-  if (shType.getRank() != vectorSizes.size())
-    return Type();
-
-  AffineMap indexingMap = linalgOp.getIndexingMapsArray()[operandNum];
-  SmallVector<unsigned> permPattern;
-  getPermutationPattern(indexingMap, permPattern);
-  SmallVector<int64_t> permVecSizes;
-  permuteArray(vectorSizes, permPattern, permVecSizes);
-
-  return shType.cloneWith(ArrayRef<int64_t>(permVecSizes),
-                          shType.getElementType());
-}
+//static ShapedType getOperandTypeAfterMasking(unsigned operandNum,
+//                                             LinalgOp linalgOp,
+//                                             ArrayRef<int64_t> vectorSizes) {
+//  ShapedType shType =
+//      linalgOp->getOperand(operandNum).getType().dyn_cast<ShapedType>();
+//  if (!shType)
+//    return Type();
+//
+//  if (shType.getRank() != vectorSizes.size())
+//    return Type();
+//
+//  llvm::outs() << "AffineMap: " << maskPermMap << "\n";
+//  AffineMap indexingMap = linalgOp.getIndexingMapsArray()[operandNum];
+//  SmallVector<int64_t> permVecSizes =
+//      applyPermutationMap(indexingMap, ArrayRef<int64_t>(vectorSizes));
+//
+//  return shType.cloneWith(ArrayRef<int64_t>(permVecSizes),
+//                          shType.getElementType());
+//  llvm::outs() << "Result:\n";
+//  for (auto val : permVecShape)
+//    llvm::outs() << val << " ";
+//  llvm::outs() << "\n";
+//}
 
 //// TODO: doc and rename.
 //static void maskDynamicShapes(LinalgOp linalgOp,

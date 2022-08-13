@@ -226,7 +226,7 @@ static void applyPatterns(func::FuncOp funcOp) {
   // Linalg to vector contraction patterns.
   //===--------------------------------------------------------------------===//
   LinalgVectorizationOptions vectorizationOptions;
-  vectorizationOptions.maskedVectorSizes = {4, 8};
+  vectorizationOptions.maskedVectorSizes = {2, 4, 8};
   patterns.add<LinalgVectorizationPattern>(
       ctx,
       LinalgTransformationFilter(StringAttr::get(ctx, "VECTORIZE"))
@@ -447,7 +447,7 @@ static void applyLinalgToVectorPatterns(func::FuncOp funcOp) {
   auto *ctx = funcOp.getContext();
 
   LinalgVectorizationOptions vectorizationOptions;
-  vectorizationOptions.maskedVectorSizes = {4, 8};
+  vectorizationOptions.maskedVectorSizes = {2, 4, 8};
   patterns.add<LinalgVectorizationPattern>(
       ctx,
       LinalgTransformationFilter()

@@ -170,6 +170,9 @@ public:
   /// Fails when called on a non-permutation.
   unsigned getPermutedPosition(unsigned input) const;
 
+  // TODO
+  Optional<unsigned> getProjectedPermutedPosition(unsigned input) const;
+
   /// Return true if any affine expression involves AffineDimExpr `position`.
   bool isFunctionOfDim(unsigned position) const {
     return llvm::any_of(getResults(), [&](AffineExpr e) {

@@ -324,6 +324,15 @@ unsigned AffineMap::getPermutedPosition(unsigned input) const {
   llvm_unreachable("incorrect permutation request");
 }
 
+Optional<unsigned>
+AffineMap::getProjectedPermutedPosition(unsigned input) const {
+  assert(isProjectedPermutation() && "invalid permutation request");
+  for (unsigned i = 0, numResults = getNumResults(); i < numResults; i++)
+    if (getDimPosition(i) == input)
+      return i;
+  return llvm::None;
+}
+
 /// Folds the results of the application of an affine map on the provided
 /// operands to a constant if possible. Returns false if the folding happens,
 /// true otherwise.

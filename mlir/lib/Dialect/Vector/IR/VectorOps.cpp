@@ -3081,6 +3081,13 @@ bool TransferReadOp::isMasked() {
 }
 
 AffineMap TransferReadOp::getPermutationMapForMask() {
+  // By design, in a transfer read we encode the mask that applies to the load
+  // operation, before the data is transposed.
+  // TODO: Current assumptions:
+  //   * All the dims of the iteration space are vectorized.
+  //   * The input dims of the read's permutation map may be compressed but not
+  //     permuted with respect to the vectorized dims of the iteration space
+  //     (loop order).
   return getPermutationMap();
 }
 
