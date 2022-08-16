@@ -208,7 +208,7 @@ Value VectorizationState::getOrCreateMaskFor(
          "Masking an operation that is already masked");
 
   // TODO: This is wrong.
-  // If no mask permutation map was provided, use an identify map with the loop
+  // If no mask permutation map was provided, use an identity map with the loop
   // dims.
   AffineMap maskPermMap =
       maybeMaskPermMap ? *maybeMaskPermMap
@@ -466,16 +466,17 @@ vectorizeLinalgYield(OpBuilder &b, Operation *op,
   auto yieldOp = dyn_cast<linalg::YieldOp>(op);
   if (!yieldOp)
     return VectorizationResult{VectorizationStatus::Failure, nullptr};
-  for (const auto &outputs : llvm::enumerate(yieldOp.getValues())) {
+  for (const auto &output : llvm::enumerate(yieldOp.getValues())) {
     // TODO: Scan for an opportunity for reuse.
     // TODO: use a map.
-    Value vectorValue = bvm.lookup(outputs.value());
-    Operation *write = buildVectorWrite(
-        b, vectorValue, linalgOp.getOutputOperand(outputs.index()), state);
+    Value vectorValue = bvm.lookup(output.value());
+    OpOperand *opOperand = linalgOp.getOutputOperand(output.index());
+    Operation *write = buildVectorWrite(b, vectorValue, opOperand, state);
     // TODO: We mask the transfer.transfer_write here because this op is
     // special-cased. A linalg.yield may produced multiple vector.transfer_write
     // ops and can't be mapped using BlockAndValueMapping.
-    Value mask = state.getOrCreateMaskFor(b, write, linalgOp);
+    AffineMap opOperandMap = linalgOp.getTiedIndexingMap(opOperand);
+    Value mask = state.getOrCreateMaskFor(b, write, linalgOp, opOperandMap);
     Operation *maybeMaskedOp = state.maskOperation(b, write, mask);
     newResults.append(maybeMaskedOp->result_begin(),
                       maybeMaskedOp->result_end());
@@ -918,8 +919,10 @@ LogicalResult mlir::linalg::vectorize(RewriterBase &rewriter, LinalgOp linalgOp,
 
   // Initialize vectorization state.
   VectorizationState state;
-  if (failed(state.initState(rewriter, linalgOp, maskingVecSizes)))
+  if (failed(state.initState(rewriter, linalgOp, maskingVecSizes))) {
+    LDBG("Vectorization state couldn't be initialized\n");
     return failure();
+  }
 
   SmallVector<Value> results;
   // TODO: isaConvolutionOpInterface that can also infer from generic
