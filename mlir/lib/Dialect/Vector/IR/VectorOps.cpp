@@ -4925,33 +4925,37 @@ void MaskOp::build(
 ParseResult MaskOp::parse(OpAsmParser &parser, OperationState &result) {
   // Create the op region.
   result.regions.reserve(1);
-  Region *maskRegion = result.addRegion();
+  Region &maskRegion = *result.addRegion();
 
   auto &builder = parser.getBuilder();
 
   // Parse all the operands.
   OpAsmParser::UnresolvedOperand mask;
-  Type maskType;
-  if (parser.parseLParen() || parser.parseOperand(mask) ||
-      parser.parseColonType(maskType) || parser.parseRParen())
+  if (parser.parseOperand(mask))
     return failure();
-
-  if (parser.resolveOperands(mask, maskType, result.operands))
-    return failure();
-
-  // Parse optional results type list.
-  if (parser.parseOptionalArrowTypeList(result.types))
-    return failure();
+  // TODO: optional passthru.
 
   // Parse op region.
-  if (parser.parseRegion(*maskRegion, /*arguments=*/{}, /*argTypes=*/{}))
+  if (parser.parseRegion(maskRegion, /*arguments=*/{}, /*argTypes=*/{}))
     return failure();
 
-  MaskOp::ensureTerminator(*maskRegion, builder, result.location);
+  MaskOp::ensureTerminator(maskRegion, builder, result.location);
 
   // Parse the optional attribute list.
   if (parser.parseOptionalAttrDict(result.attributes))
     return failure();
+
+  // Parse all the types and clasify them.
+  SmallVector<Type> types;
+  if (parser.parseColonTypeList(types))
+      return failure();
+
+  Type maskType = types[0];
+  result.types.append(std::next(types.begin()), types.end());
+
+  if (parser.resolveOperands(mask, maskType, result.operands))
+    return failure();
+
   return success();
 }
 
@@ -4972,6 +4976,28 @@ void mlir::vector::MaskOp::print(OpAsmPrinter &p) {
   p << " : " << getMask().getType();
   if (!getResults().empty())
     p << ", " << getResultTypes();
+}
+
+void MaskOp::ensureTerminator(Region &region, Builder &builder, Location loc) {
+  OpTrait::SingleBlockImplicitTerminator<vector::YieldOp>::Impl<
+      MaskOp>::ensureTerminator(region, builder, loc);
+
+  // Keep the default yield terminator if the number of masked operations is not
+  // the expected.
+  if (region.front().getOperations().size() != 2)
+    return;
+
+  // Replace default yield terminator with a new one that returns the results
+  // from the masked operation.
+  OpBuilder opBuilder(builder.getContext());
+  Operation *maskedOp = &region.front().front();
+  Operation *oldYieldOp = &region.front().back();
+  assert(isa<vector::YieldOp>(oldYieldOp) && "Expected vector::YieldOp");
+
+  opBuilder.setInsertionPoint(oldYieldOp);
+  opBuilder.create<vector::YieldOp>(maskedOp->getLoc(), maskedOp->getResults());
+  oldYieldOp->dropAllReferences();
+  oldYieldOp->erase();
 }
 
 /// Given the region at `index`, or the parent operation if `index` is None,

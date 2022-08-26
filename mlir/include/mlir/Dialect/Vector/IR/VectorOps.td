@@ -2248,7 +2248,6 @@ def Vector_MaskOp : Vector_Op<"mask",
   let summary = "TODO: vector.predicate operation";
   let description = [{ TODO }];
 
-  // TODO: incomingMask must be optional.
   let arguments = (ins VectorOf<[I1]>:$mask,
                    Optional<AnyType>:$passthrough);
   let results = (outs Variadic<AnyType>:$results);
@@ -2275,6 +2274,9 @@ def Vector_MaskOp : Vector_Op<"mask",
     bool hasPassthrough() {
       return static_cast<bool>(getPassthrough());
     }
+
+    // TODO.
+    static void ensureTerminator(Region &region, Builder &builder, Location loc);
   }];
 
   let hasCustomAssemblyFormat = 1;
