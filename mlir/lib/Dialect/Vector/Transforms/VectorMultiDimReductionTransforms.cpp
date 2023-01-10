@@ -351,4 +351,6 @@ void mlir::vector::populateVectorMultiReductionLoweringPatterns(
   else
     patterns.add<TwoDimMultiReductionToElementWise>(patterns.getContext(),
                                                     benefit);
+  // Canonicalize mask operations after lowering multi-dim reduction ops.
+  vector::MaskOp::getCanonicalizationPatterns(patterns, patterns.getContext());
 }

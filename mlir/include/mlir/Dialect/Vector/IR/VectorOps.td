@@ -2349,6 +2349,7 @@ def Vector_MaskOp : Vector_Op<"mask", [
     static void ensureTerminator(Region &region, Builder &builder, Location loc);
   }];
 
+  let hasCanonicalizer = 1;
   let hasCustomAssemblyFormat = 1;
   let hasVerifier = 1;
 }

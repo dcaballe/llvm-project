@@ -344,6 +344,10 @@ LogicalResult MultiDimReductionOp::verify() {
 /// Returns the mask type expected by this operation.
 Type MultiDimReductionOp::getExpectedMaskType() {
   auto vecType = getSourceVectorType();
+
+  //this->dump();
+  llvm::errs() << "Exp type: " << vecType << "\n";
+
   return vecType.cloneWith(std::nullopt,
                            IntegerType::get(vecType.getContext(), /*width=*/1));
 }
@@ -5410,9 +5414,20 @@ LogicalResult MaskOp::verify() {
 
   // Mask checks.
   Type expectedMaskType = maskableOp.getExpectedMaskType();
-  if (getMask().getType() != expectedMaskType)
+  if (getMask().getType() != expectedMaskType) {
+    OpPrintingFlags flags;
+    flags.assumeVerified();
+
+    llvm::errs() << "Problematic op: \n";
+    maskableOp.print(llvm::errs(), flags);
+    llvm::errs() << "\n";
+    this->print(llvm::errs(), flags);
+    llvm::errs() << "\n";
+
     return emitOpError("expects a ")
-           << expectedMaskType << " mask for the maskable operation";
+           << expectedMaskType << " mask for the maskable operation and got "
+           << getMask().getType();
+  }
 
   // Passthru checks.
   Value passthru = getPassthru();
@@ -5430,6 +5445,112 @@ LogicalResult MaskOp::verify() {
 
   return success();
 }
+
+namespace {
+
+Optional<unsigned> getYieldOpUseOperandNum(Operation *op) {
+  auto isYieldOpUse = [](OpOperand &use) -> bool {
+    return isa<vector::YieldOp>(use.getOwner());
+  };
+
+  assert(llvm::count_if(op->getUses(), isYieldOpUse) <= 1 &&
+         "Yielding the same value multiple times is not supported yet");
+
+  for (OpOperand &use : op->getUses()) {
+    if (isYieldOpUse(use))
+        return use.getOperandNumber();
+  }
+
+  return std::nullopt;
+}
+
+struct FlattenMultiOpMaskOp : public OpRewritePattern<MaskOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(MaskOp maskOp,
+                                PatternRewriter &rewriter) const override {
+    Block &block = maskOp.getMaskRegion().getBlocks().front();
+    if (block.getOperations().size() <= 2)
+      return success();
+
+    PatternRewriter::InsertionGuard guard(rewriter);
+    rewriter.setInsertionPoint(maskOp);
+    Value activeMask = maskOp.getMask();
+
+    for (Operation &op : llvm::make_early_inc_range(block)) {
+      Operation *nestedOp = &op;
+      if (isa<vector::YieldOp>(nestedOp))
+        continue;
+
+      assert(nestedOp->getNumResults() <= 1 &&
+             "Multi-result ops are not supported");
+
+      // TODO: Revisit all of this. Esp. the use replacement.
+      auto maybeResultIdxToReplace = getYieldOpUseOperandNum(nestedOp);
+      unsigned resultIdxToReplace;
+      if (maybeResultIdxToReplace) {
+        resultIdxToReplace = *maybeResultIdxToReplace;
+        assert(resultIdxToReplace == 0 && "Multi-result ops are not supported");
+        nestedOp->dropAllUses();
+      }
+
+      if (auto maskableOp = dyn_cast<MaskableOpInterface>(nestedOp)) {
+        llvm::errs() << "Moving maskable op: " << *nestedOp << "\n";
+
+        auto createRegionMask = [nestedOp](OpBuilder &builder, Location loc) {
+          Block *insBlock = builder.getInsertionBlock();
+          // Create a block, put an op in that block. Look for a utility.
+          // Maybe in conversion pattern rewriter. Way to avoid splice.
+          // Set insertion point.
+          insBlock->getOperations().splice(
+              insBlock->begin(), nestedOp->getBlock()->getOperations(),
+              nestedOp);
+          builder.create<vector::YieldOp>(loc, nestedOp->getResults());
+        };
+
+        // TODO: Utility.
+        auto newMaskOp = maskableOp->getResults().empty()
+            ? rewriter.create<vector::MaskOp>(maskOp.getLoc(), activeMask,
+                                              createRegionMask)
+            : rewriter.create<vector::MaskOp>(
+                  maskOp.getLoc(), maskableOp->getResultTypes().front(),
+                  activeMask, createRegionMask);
+
+        Operation *newMaskOpTerminator = &newMaskOp.getMaskRegion().front().back();
+
+        for (auto [resIdx, resVal] : llvm::enumerate(maskableOp->getResults()))
+          rewriter.replaceAllUsesExcept(resVal, newMaskOp.getResult(resIdx),
+                                        newMaskOpTerminator);
+
+        if (maybeResultIdxToReplace)
+          rewriter.replaceAllUsesWith(maskOp.getResult(0),
+                                      newMaskOp.getResult(0));
+      } else {
+        llvm::errs() << "Moving non-maskable op: " << *nestedOp << "\n";
+        // No mask needed.
+        // Move the op outside of `vector.mask`.
+        maskOp->getBlock()->getOperations().splice(
+            Block::iterator(maskOp), nestedOp->getBlock()->getOperations(),
+            nestedOp);
+
+        if (maybeResultIdxToReplace) {
+          rewriter.replaceAllUsesWith(maskOp.getResult(0),
+                                      nestedOp->getResult(0));
+        }
+      }
+    }
+
+    rewriter.eraseOp(maskOp);
+    return success();
+  }
+};
+} // namespace
+
+void MaskOp::getCanonicalizationPatterns(
+    RewritePatternSet &results, MLIRContext *context) {
+  results.add<FlattenMultiOpMaskOp>(context);
+}
+
 
 // MaskingOpInterface definitions.
 
