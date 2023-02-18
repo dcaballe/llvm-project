@@ -1172,7 +1172,7 @@ def Vector_ExtractStridedSliceOp :
     static StringRef getSizesAttrStrName() { return "sizes"; }
     static StringRef getStridesAttrStrName() { return "strides"; }
     VectorType getSourceVectorType() {
-      return getVector().getType().cast<VectorType>(); 
+      return getVector().getType().cast<VectorType>();
     }
     void getOffsets(SmallVectorImpl<int64_t> &results);
     bool hasNonUnitStrides() {
@@ -2385,6 +2385,7 @@ def Vector_MaskOp : Vector_Op<"mask", [
     static void ensureTerminator(Region &region, Builder &builder, Location loc);
   }];
 
+  let hasCanonicalizer = 1;
   let hasCustomAssemblyFormat = 1;
   let hasVerifier = 1;
 }
