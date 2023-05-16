@@ -561,6 +561,52 @@ class FlattenContiguousRowMajorTransferWritePattern
   }
 };
 
+/// Base class for `vector.extract/vector.extract_element(vector.transfer_read)`
+/// to `memref.load` patterns. The `match` method is shared for both
+/// `vector.extract` and `vector.extract_element`.
+template <class VectorExtractOp>
+class RewriteScalarExtractOfTransferReadBase
+    : public OpRewritePattern<VectorExtractOp> {
+  using Base = OpRewritePattern<VectorExtractOp>;
+
+public:
+  RewriteScalarExtractOfTransferReadBase(MLIRContext *context,
+                                         PatternBenefit benefit,
+                                         bool allowMultipleUses)
+      : Base::OpRewritePattern(context, benefit),
+        allowMultipleUses(allowMultipleUses) {}
+
+  LogicalResult match(VectorExtractOp extractOp) const override {
+    auto xferOp =
+        extractOp.getVector().template getDefiningOp<vector::TransferReadOp>();
+    if (!xferOp)
+      return failure();
+    // If multiple uses are not allowed, check if xfer has a single use.
+    if (!allowMultipleUses && !xferOp.getResult().hasOneUse())
+      return failure();
+    // If multiple uses are allowed, check if all the xfer uses are extract ops.
+    if (allowMultipleUses &&
+        !llvm::all_of(xferOp->getUses(), [](OpOperand &use) {
+          return isa<vector::ExtractOp, vector::ExtractElementOp>(
+              use.getOwner());
+        }))
+      return failure();
+    // Mask not supported.
+    if (xferOp.getMask())
+      return failure();
+    // Map not supported.
+    if (!xferOp.getPermutationMap().isMinorIdentity())
+      return failure();
+    // Cannot rewrite if the indices may be out of bounds.
+    if (xferOp.hasOutOfBoundsDim())
+      return failure();
+    return success();
+  }
+
+private:
+  bool allowMultipleUses;
+};
+
 /// Rewrite extractelement(transfer_read) to memref.load.
 ///
 /// Rewrite only if the extractelement op is the single user of the transfer op.
@@ -569,31 +615,17 @@ class FlattenContiguousRowMajorTransferWritePattern
 /// %1 = vector.extractelement %0[%a : index] : vector<1024xf32>
 /// %2 = vector.extractelement %0[%b : index] : vector<1024xf32>
 /// Rewriting such IR (replacing one vector load with multiple scalar loads) may
-/// negatively affect performance.
+/// negatively affect performance so multiple scalar loads are only generated
+/// when `allowMultipleUses` is set to true.
 class RewriteScalarExtractElementOfTransferRead
-    : public OpRewritePattern<vector::ExtractElementOp> {
-  using OpRewritePattern::OpRewritePattern;
+    : public RewriteScalarExtractOfTransferReadBase<vector::ExtractElementOp> {
+  using RewriteScalarExtractOfTransferReadBase::
+      RewriteScalarExtractOfTransferReadBase;
 
-  LogicalResult matchAndRewrite(vector::ExtractElementOp extractOp,
-                                PatternRewriter &rewriter) const override {
-    auto xferOp = extractOp.getVector().getDefiningOp<vector::TransferReadOp>();
-    if (!xferOp)
-      return failure();
-    // xfer result must have a single use. Otherwise, it may be better to
-    // perform a vector load.
-    if (!extractOp.getVector().hasOneUse())
-      return failure();
-    // Mask not supported.
-    if (xferOp.getMask())
-      return failure();
-    // Map not supported.
-    if (!xferOp.getPermutationMap().isMinorIdentity())
-      return failure();
-    // Cannot rewrite if the indices may be out of bounds. The starting point is
-    // always inbounds, so we don't care in case of 0d transfers.
-    if (xferOp.hasOutOfBoundsDim() && xferOp.getType().getRank() > 0)
-      return failure();
+  void rewrite(vector::ExtractElementOp extractOp,
+               PatternRewriter &rewriter) const override {
     // Construct scalar load.
+    auto xferOp = extractOp.getVector().getDefiningOp<vector::TransferReadOp>();
     SmallVector<Value> newIndices(xferOp.getIndices().begin(),
                                   xferOp.getIndices().end());
     if (extractOp.getPosition()) {
@@ -617,7 +649,6 @@ class RewriteScalarExtractElementOfTransferRead
       rewriter.replaceOpWithNewOp<tensor::ExtractOp>(
           extractOp, xferOp.getSource(), newIndices);
     }
-    return success();
   }
 };
 
@@ -629,34 +660,17 @@ class RewriteScalarExtractElementOfTransferRead
 /// %1 = vector.extract %0[0] : vector<1024xf32>
 /// %2 = vector.extract %0[5] : vector<1024xf32>
 /// Rewriting such IR (replacing one vector load with multiple scalar loads) may
-/// negatively affect performance.
+/// negatively affect performance so multiple scalar loads are only generated
+/// when `allowMultipleUses` is set to true.
 class RewriteScalarExtractOfTransferRead
-    : public OpRewritePattern<vector::ExtractOp> {
-  using OpRewritePattern::OpRewritePattern;
+    : public RewriteScalarExtractOfTransferReadBase<vector::ExtractOp> {
+  using RewriteScalarExtractOfTransferReadBase::
+      RewriteScalarExtractOfTransferReadBase;
 
-  LogicalResult matchAndRewrite(vector::ExtractOp extractOp,
-                                PatternRewriter &rewriter) const override {
-    // Only match scalar extracts.
-    if (extractOp.getType().isa<VectorType>())
-      return failure();
-    auto xferOp = extractOp.getVector().getDefiningOp<vector::TransferReadOp>();
-    if (!xferOp)
-      return failure();
-    // xfer result must have a single use. Otherwise, it may be better to
-    // perform a vector load.
-    if (!extractOp.getVector().hasOneUse())
-      return failure();
-    // Mask not supported.
-    if (xferOp.getMask())
-      return failure();
-    // Map not supported.
-    if (!xferOp.getPermutationMap().isMinorIdentity())
-      return failure();
-    // Cannot rewrite if the indices may be out of bounds. The starting point is
-    // always inbounds, so we don't care in case of 0d transfers.
-    if (xferOp.hasOutOfBoundsDim() && xferOp.getType().getRank() > 0)
-      return failure();
+  void rewrite(vector::ExtractOp extractOp,
+               PatternRewriter &rewriter) const override {
     // Construct scalar load.
+    auto xferOp = extractOp.getVector().getDefiningOp<vector::TransferReadOp>();
     SmallVector<Value> newIndices(xferOp.getIndices().begin(),
                                   xferOp.getIndices().end());
     for (const auto &it : llvm::enumerate(extractOp.getPosition())) {
@@ -680,7 +694,6 @@ class RewriteScalarExtractOfTransferRead
       rewriter.replaceOpWithNewOp<tensor::ExtractOp>(
           extractOp, xferOp.getSource(), newIndices);
     }
-    return success();
   }
 };
 
@@ -744,10 +757,12 @@ void mlir::vector::transferOpflowOpt(RewriterBase &rewriter,
 }
 
 void mlir::vector::populateScalarVectorTransferLoweringPatterns(
-    RewritePatternSet &patterns, PatternBenefit benefit) {
+    RewritePatternSet &patterns, PatternBenefit benefit,
+    bool allowMultipleUses) {
   patterns.add<RewriteScalarExtractElementOfTransferRead,
-               RewriteScalarExtractOfTransferRead, RewriteScalarWrite>(
-      patterns.getContext(), benefit);
+               RewriteScalarExtractOfTransferRead>(patterns.getContext(),
+                                                   benefit, allowMultipleUses);
+  patterns.add<RewriteScalarWrite>(patterns.getContext(), benefit);
 }
 
 void mlir::vector::populateVectorTransferDropUnitDimsPatterns(
