@@ -112,9 +112,12 @@ void populateVectorMaskOpLoweringPatterns(RewritePatternSet &patterns,
                                           PatternBenefit benefit = 1);
 
 /// Collects patterns that lower scalar vector transfer ops to memref loads and
-/// stores when beneficial.
+/// stores when beneficial. If `allowMultipleUses` is false, the patterns are
+/// only applied to vector transfer reads with a single use. Otherwise, only
+/// vector transfer reads with a single use will be lowered.
 void populateScalarVectorTransferLoweringPatterns(RewritePatternSet &patterns,
-                                                  PatternBenefit benefit = 1);
+                                                  PatternBenefit benefit,
+                                                  bool allowMultipleUses);
 
 /// Populate the pattern set with the following patterns:
 ///
