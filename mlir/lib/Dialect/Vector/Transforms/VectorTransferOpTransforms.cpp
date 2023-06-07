@@ -617,6 +617,10 @@ public:
         extractOp.getVector().template getDefiningOp<vector::TransferReadOp>();
     if (!xferOp)
       return failure();
+    // TODO
+    auto vecType = xferOp.getVectorType();
+    if (vecType.getRank() == 1 && vecType.getShape()[0] == 1)
+      return failure();
     // Check that we are extracting a scalar and not a sub-vector.
     if (isa<VectorType>(extractOp.getResult().getType()))
       return failure();
@@ -631,7 +635,7 @@ public:
         }))
       return failure();
     // Mask not supported.
-    if (xferOp.getMask())
+    if (xferOp.getMask() && !isa<MemRefType>(xferOp.getSource().getType()))
       return failure();
     // Map not supported.
     if (!xferOp.getPermutationMap().isMinorIdentity())
@@ -680,8 +684,24 @@ class RewriteScalarExtractElementOfTransferRead
       }
     }
     if (isa<MemRefType>(xferOp.getSource().getType())) {
-      rewriter.replaceOpWithNewOp<memref::LoadOp>(extractOp, xferOp.getSource(),
-                                                  newIndices);
+      Value newMask;
+      if (xferOp.getMask()) {
+        newMask = rewriter.createOrFold<vector::ExtractOp>(
+            loc, xferOp.getMask(), extractOp.getPosition());
+        auto newMaskType = VectorType::get(
+            /*shape=*/{1}, xferOp.getMask().getType().getElementType());
+        newMask = rewriter.createOrFold<vector::BroadcastOp>(loc, newMaskType,
+                                                             newMask);
+      }
+
+      auto newXferType = VectorType::get(
+          /*shape=*/{1}, xferOp.getVectorType().getElementType());
+      auto newXferOp = rewriter.createOrFold<vector::TransferReadOp>(
+          loc, newXferType, xferOp.getSource(), newIndices,
+          rewriter.getDimIdentityMap(), xferOp.getPadding(), newMask,
+          xferOp.getInBoundsAttr());
+      rewriter.replaceOpWithNewOp<vector::ExtractOp>(extractOp, newXferOp,
+                                                     /*position=*/0);
     } else {
       rewriter.replaceOpWithNewOp<tensor::ExtractOp>(
           extractOp, xferOp.getSource(), newIndices);
@@ -705,6 +725,7 @@ class RewriteScalarExtractOfTransferRead
   void rewrite(vector::ExtractOp extractOp,
                PatternRewriter &rewriter) const override {
     // Construct scalar load.
+    auto loc = extractOp.getLoc();
     auto xferOp = extractOp.getVector().getDefiningOp<vector::TransferReadOp>();
     SmallVector<Value> newIndices(xferOp.getIndices().begin(),
                                   xferOp.getIndices().end());
@@ -713,18 +734,34 @@ class RewriteScalarExtractOfTransferRead
       int64_t idx =
           newIndices.size() - extractOp.getPosition().size() + it.index();
       OpFoldResult ofr = affine::makeComposedFoldedAffineApply(
-          rewriter, extractOp.getLoc(),
-          rewriter.getAffineSymbolExpr(0) + offset, {newIndices[idx]});
+          rewriter, loc, rewriter.getAffineSymbolExpr(0) + offset,
+          {newIndices[idx]});
       if (ofr.is<Value>()) {
         newIndices[idx] = ofr.get<Value>();
       } else {
         newIndices[idx] = rewriter.create<arith::ConstantIndexOp>(
-            extractOp.getLoc(), *getConstantIntValue(ofr));
+            loc, *getConstantIntValue(ofr));
       }
     }
     if (isa<MemRefType>(xferOp.getSource().getType())) {
-      rewriter.replaceOpWithNewOp<memref::LoadOp>(extractOp, xferOp.getSource(),
-                                                  newIndices);
+      Value newMask;
+      if (xferOp.getMask()) {
+        newMask = rewriter.createOrFold<vector::ExtractOp>(
+            loc, xferOp.getMask(), extractOp.getPosition());
+        auto newMaskType = VectorType::get(
+            /*shape=*/{1}, xferOp.getMask().getType().getElementType());
+        newMask = rewriter.createOrFold<vector::BroadcastOp>(loc, newMaskType,
+                                                             newMask);
+      }
+
+      auto newVecType = VectorType::get(/*shape=*/{1},
+                                     xferOp.getVectorType().getElementType());
+      auto newXferOp = rewriter.createOrFold<vector::TransferReadOp>(
+          loc, newVecType, xferOp.getSource(), newIndices,
+          rewriter.getDimIdentityMap(), xferOp.getPadding(), newMask,
+          xferOp.getInBoundsAttr());
+      rewriter.replaceOpWithNewOp<vector::ExtractOp>(extractOp, newXferOp,
+                                                     /*position=*/0);
     } else {
       rewriter.replaceOpWithNewOp<tensor::ExtractOp>(
           extractOp, xferOp.getSource(), newIndices);
