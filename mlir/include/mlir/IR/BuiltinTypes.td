@@ -1033,10 +1033,11 @@ def Builtin_Vector : Builtin_Type<"Vector", [ShapedTypeInterface], "Type"> {
     vectors (e.g. vector<16 x f32>) we also support multidimensional registers
     on targets that support them (like TPUs). The dimensions of a vector type
     can be fixed-length, scalable, or a combination of the two. The scalable
-    dimensions in a vector are indicated between square brackets ([ ]), and
-    all fixed-length dimensions, if present, must precede the set of scalable
-    dimensions. That is, a `vector<2x[4]xf32>` is valid, but `vector<[4]x2xf32>`
-    is not.
+    dimensions in a vector are represented by the base of the scalable vector
+    between square brackets ([ ]). Multiple scalable dimensions are allowed but
+    they may no be properly supported by all backends. For example,
+    `vector<2x[4]xf32>`, `vector<[4]x2xf32>` and `vector<[4]x[2]xf32>` are
+    valid scalable vector types.
 
     Vector shapes must be positive decimal integers. 0D vectors are allowed by
     omitting the dimension: `vector<f32>`.
@@ -1055,24 +1056,28 @@ def Builtin_Vector : Builtin_Type<"Vector", [ShapedTypeInterface], "Type"> {
     vector<[4]xf32>
 
     // A 2D scalable-length vector that contains a multiple of 2x8 f32 elements.
-    vector<[2x8]xf32>
+    vector<[2]x[8]xf32>
 
     // A 2D mixed fixed/scalable vector that contains 4 scalable vectors of 4 f32 elements.
     vector<4x[4]xf32>
+
+    // A 3D mixed fixed/scalable vector that contains scalable-length vector that contains a multiple of 2x8 f32 elements.
+    vector<[4]x2x[8]xf32>
+
     ```
   }];
   let parameters = (ins
     ArrayRefParameter<"int64_t">:$shape,
     "Type":$elementType,
-    "unsigned":$numScalableDims
+    ArrayRefParameter<"bool">:$scalableDims
   );
   let builders = [
     TypeBuilderWithInferredContext<(ins
       "ArrayRef<int64_t>":$shape, "Type":$elementType,
-      CArg<"unsigned", "0">:$numScalableDims
+      "ArrayRef<bool>":$scalableDims
     ), [{
       return $_get(elementType.getContext(), shape, elementType,
-                   numScalableDims);
+                   scalableDims);
     }]>
   ];
   let extraClassDeclaration = [{
@@ -1087,9 +1092,15 @@ def Builtin_Vector : Builtin_Type<"Vector", [ShapedTypeInterface], "Type"> {
       return ::llvm::isa<IntegerType, IndexType, FloatType>(t);
     }
 
+    /// Returns the number of scalable dimensions.
+    bool getNumScalableDims2() const {
+      return llvm::count_if(getScalableDims(),
+                            [](bool scalableDim) { return scalableDim; } );
+    }
+
     /// Returns true if the vector contains scalable dimensions.
     bool isScalable() const {
-      return getNumScalableDims() > 0;
+      return getNumScalableDims2() > 0;
     }
 
     /// Get or create a new VectorType with the same shape as `this` and an
