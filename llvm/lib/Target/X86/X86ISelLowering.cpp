@@ -14999,6 +14999,27 @@ static SDValue lowerShuffleOfExtractsAsVperm(const SDLoc &DL, SDValue N0,
                      DAG.getIntPtrConstant(0, DL));
 }
 
+static int getSingleNonZeroMaskIndex(SDValue Mask) {
+  SDNode *MaskNode = Mask.getNode();
+  if (MaskNode->getOpcode() != ISD::BUILD_VECTOR)
+    return -1;
+
+  int NonZeroIndex = -1;
+  for (int Index = 0, NumOperands = MaskNode->getNumOperands();
+       Index < NumOperands; ++Index) {
+    SDValue MaskOperand = MaskNode->getOperand(Index);
+    if (auto *ConstantVal = dyn_cast<ConstantSDNode>(MaskOperand)) {
+      if (ConstantVal->getAPIntValue() == 0)
+        continue;
+    }
+    if (NonZeroIndex != -1)
+      return -1;
+    NonZeroIndex = Index;
+  }
+
+  return NonZeroIndex;
+}
+
 /// Try to lower broadcast of a single element.
 ///
 /// For convenience, this code also bundles all of the subtarget feature set
@@ -15127,13 +15148,67 @@ static SDValue lowerShuffleAsBroadcast(const SDLoc &DL, MVT VT, SDValue V1,
           DAG.getMachineFunction().getMachineMemOperand(
               Ld->getMemOperand(), Offset, SVT.getStoreSize()));
       DAG.makeEquivalentMemoryOrdering(Ld, V);
+
       return DAG.getBitcast(VT, V);
     }
     assert(SVT == MVT::f64 && "Unexpected VT!");
     V = DAG.getLoad(SVT, DL, Ld->getChain(), NewAddr,
                     DAG.getMachineFunction().getMachineMemOperand(
                         Ld->getMemOperand(), Offset, SVT.getStoreSize()));
-    DAG.makeEquivalentMemoryOrdering(Ld, V);
+    DAG.makeEquivalentMemoryOrdering(SDValue(Ld, 1), V.getValue(1));
+  } else if (ISD::isNormalMaskedLoad(V.getNode()) &&
+             cast<MaskedLoadSDNode>(V)->isSimple() &&
+             Opcode == X86ISD::VBROADCAST) {
+    // TODO: Check single element load.
+    // TODO: Check for one use.
+
+    // Reduce the single-element vector masked load and shuffle to a broadcasted
+    // masked load. The mask of the broadcast is the broadcasted single bit of
+    // the masked load that can potentially be non-zero.
+    MaskedLoadSDNode *MaskedLd = cast<MaskedLoadSDNode>(V);
+    SDValue BaseAddr = MaskedLd->getOperand(1);
+    MVT SVT = VT.getScalarType();
+    unsigned Offset = BroadcastIdx * SVT.getStoreSize();
+    assert((int)(Offset * 8) == BitOffset && "Unexpected bit-offset");
+    SDValue NewAddr =
+        DAG.getMemBasePlusOffset(BaseAddr, TypeSize::Fixed(Offset), DL);
+
+    // TODO.
+
+    SDValue Mask = MaskedLd->getMask();
+    int NonZeroMaskIdx = getSingleNonZeroMaskIndex(Mask);
+    if (NonZeroMaskIdx == -1)
+      return SDValue();
+    SDValue NonZeroMaskValue = Mask->getOperand(NonZeroMaskIdx);
+    MVT BcastMaskType =
+        MVT::getVectorVT(Mask.getSimpleValueType().getVectorElementType(),
+                         VT.getVectorNumElements());
+    SmallVector<SDValue, 64> BcastMaskVals(VT.getVectorNumElements(),
+                                           NonZeroMaskValue);
+    SDValue BcastMask = DAG.getBuildVector(BcastMaskType, DL, BcastMaskVals);
+
+    SDValue PassThru = MaskedLd->getPassThru();
+    if (PassThru.getOpcode() != ISD::BUILD_VECTOR)
+      return SDValue();
+    SDValue PassThruElm = PassThru->getOperand(NonZeroMaskIdx);
+    SmallVector<SDValue, 64> BcastPassThruVals(VT.getVectorNumElements(),
+                                               PassThruElm);
+    SDValue BcastPassThru = DAG.getBuildVector(VT, DL, BcastPassThruVals);
+
+    // Directly form VBROADCAST_MASKEDLOAD for VBROADCAST opcode.
+    SDVTList Tys = DAG.getVTList(VT, MVT::Other);
+    SDValue Ops[] = {MaskedLd->getChain(), NewAddr, BcastMask, BcastPassThru};
+    llvm::outs() << "Masked!\n";
+
+    V = DAG.getMemIntrinsicNode(
+        X86ISD::VBROADCAST_MASKEDLOAD, DL, Tys, Ops, SVT,
+        DAG.getMachineFunction().getMachineMemOperand(
+            MaskedLd->getMemOperand(), Offset, SVT.getStoreSize()));
+    DAG.makeEquivalentMemoryOrdering(SDValue(MaskedLd, 1), V.getValue(1));
+
+    V.dump();
+    DAG.dump();
+    return DAG.getBitcast(VT, V);
   } else if (!BroadcastFromReg) {
     // We can't broadcast from a vector register.
     return SDValue();
@@ -35523,6 +35598,7 @@ const char *X86TargetLowering::getTargetNodeName(unsigned Opcode) const {
   NODE_NAME_CASE(UNPCKH)
   NODE_NAME_CASE(VBROADCAST)
   NODE_NAME_CASE(VBROADCAST_LOAD)
+  NODE_NAME_CASE(VBROADCAST_MASKEDLOAD)
   NODE_NAME_CASE(VBROADCASTM)
   NODE_NAME_CASE(SUBV_BROADCAST_LOAD)
   NODE_NAME_CASE(VPERMILPV)
