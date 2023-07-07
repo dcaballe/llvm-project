@@ -153,3 +153,21 @@ func.func @subvector_extract(%m: memref<?x?xf32>, %idx: index) -> vector<16xf32>
   return %1 : vector<16xf32>
 }
 
+// -----
+
+//       CHECK: #[[$map:.*]] = affine_map<()[s0, s1] -> (s0 + s1)>
+// CHECK-LABEL: func @transfer_read_1d(
+//  CHECK-SAME:     %[[m:.*]]: memref<?x?x?xf32>, %[[idx:.*]]: index, %[[idx2:.*]]: index
+//       CHECK:   %[[added:.*]] = affine.apply #[[$map]]()[%[[idx]], %[[idx2]]]
+//       CHECK:   %[[r:.*]] = memref.load %[[m]][%[[idx]], %[[idx]], %[[added]]]
+//       CHECK:   return %[[r]]
+func.func @masked_transfer_read_1d(%m: memref<?x?x?xf32>, %idx: index, %idx2: index, %mask: vector<5xi1> ) -> f32 {
+  %cst = arith.constant 0.0 : f32
+  %c0 = arith.constant 0 : index
+  %0 = vector.transfer_read %m[%idx, %idx, %idx], %cst, %mask {in_bounds = [true]} : memref<?x?x?xf32>, vector<5xf32>
+  %1 = vector.extractelement %0[%idx2 : index] : vector<5xf32>
+  return %1 : f32
+}
+
+
+
