@@ -450,7 +450,7 @@ Type Parser::parseTupleType() {
 /// vector-dim-list := (static-dim-list `x`)? (`[` static-dim-list `]` `x`)?
 /// static-dim-list ::= decimal-literal (`x` decimal-literal)*
 ///
-VectorType Parser::parseVectorType() {
+FixedVectorType Parser::parseVectorType() {
   consumeToken(Token::kw_vector);
 
   if (parseToken(Token::less, "expected '<' in vector type"))
@@ -460,9 +460,15 @@ VectorType Parser::parseVectorType() {
   SmallVector<bool, 4> scalableDims;
   if (parseVectorDimensionList(dimensions, scalableDims))
     return nullptr;
+  if (any_of(scalableDims,
+             [](bool isScalableDim) { return isScalableDim == true; }))
+    return emitError(getToken().getLoc(),
+                     "fixed vector types can't have scalable dimensions"),
+           nullptr;
+
   if (any_of(dimensions, [](int64_t i) { return i <= 0; }))
     return emitError(getToken().getLoc(),
-                     "vector types must have positive constant sizes"),
+                     "fixed vector types must have positive constant sizes"),
            nullptr;
 
   // Parse the element type.
@@ -471,11 +477,11 @@ VectorType Parser::parseVectorType() {
   if (!elementType || parseToken(Token::greater, "expected '>' in vector type"))
     return nullptr;
 
-  if (!VectorType::isValidElementType(elementType))
+  if (!VectorBaseType::isValidElementType(elementType))
     return emitError(typeLoc, "vector elements must be int/index/float type"),
            nullptr;
 
-  return VectorType::get(dimensions, elementType, scalableDims);
+  return FixedVectorType::get(dimensions, elementType);
 }
 
 /// Parse a dimension list in a vector type. This populates the dimension list.

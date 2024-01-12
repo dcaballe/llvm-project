@@ -85,7 +85,7 @@ struct IntOpWithFlagLowering : public ConvertOpToLLVMPattern<MathOp> {
       return success();
     }
 
-    auto vectorType = dyn_cast<VectorType>(resultType);
+    auto vectorType = dyn_cast<FixedVectorType>(resultType);
     if (!vectorType)
       return failure();
 
@@ -141,7 +141,7 @@ struct ExpM1OpLowering : public ConvertOpToLLVMPattern<math::ExpM1Op> {
       return success();
     }
 
-    auto vectorType = dyn_cast<VectorType>(resultType);
+    auto vectorType = dyn_cast<FixedVectorType>(resultType);
     if (!vectorType)
       return rewriter.notifyMatchFailure(op, "expected vector result type");
 
@@ -149,7 +149,7 @@ struct ExpM1OpLowering : public ConvertOpToLLVMPattern<math::ExpM1Op> {
         op.getOperation(), adaptor.getOperands(), *getTypeConverter(),
         [&](Type llvm1DVectorTy, ValueRange operands) {
           auto splatAttr = SplatElementsAttr::get(
-              mlir::VectorType::get(
+              mlir::FixedVectorType::get(
                   {LLVM::getVectorNumElements(llvm1DVectorTy).getFixedValue()},
                   floatType),
               floatOne);
@@ -200,7 +200,7 @@ struct Log1pOpLowering : public ConvertOpToLLVMPattern<math::Log1pOp> {
       return success();
     }
 
-    auto vectorType = dyn_cast<VectorType>(resultType);
+    auto vectorType = dyn_cast<FixedVectorType>(resultType);
     if (!vectorType)
       return rewriter.notifyMatchFailure(op, "expected vector result type");
 
@@ -208,7 +208,7 @@ struct Log1pOpLowering : public ConvertOpToLLVMPattern<math::Log1pOp> {
         op.getOperation(), adaptor.getOperands(), *getTypeConverter(),
         [&](Type llvm1DVectorTy, ValueRange operands) {
           auto splatAttr = SplatElementsAttr::get(
-              mlir::VectorType::get(
+              mlir::FixedVectorType::get(
                   {LLVM::getVectorNumElements(llvm1DVectorTy).getFixedValue()},
                   floatType),
               floatOne);
@@ -259,7 +259,7 @@ struct RsqrtOpLowering : public ConvertOpToLLVMPattern<math::RsqrtOp> {
       return success();
     }
 
-    auto vectorType = dyn_cast<VectorType>(resultType);
+    auto vectorType = dyn_cast<FixedVectorType>(resultType);
     if (!vectorType)
       return failure();
 
@@ -267,7 +267,7 @@ struct RsqrtOpLowering : public ConvertOpToLLVMPattern<math::RsqrtOp> {
         op.getOperation(), adaptor.getOperands(), *getTypeConverter(),
         [&](Type llvm1DVectorTy, ValueRange operands) {
           auto splatAttr = SplatElementsAttr::get(
-              mlir::VectorType::get(
+              mlir::FixedVectorType::get(
                   {LLVM::getVectorNumElements(llvm1DVectorTy).getFixedValue()},
                   floatType),
               floatOne);

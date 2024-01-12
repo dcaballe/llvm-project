@@ -244,5 +244,5 @@ def testDenseElementsAttr():
         # CHECK{LITERAL}: dense<[0, 1, 2, 3]> : tensor<4xi32>
         print(DenseElementsAttr.get(values, type=i32, shape=(2, 2)))
         # CHECK{LITERAL}: dense<[[0, 1], [2, 3]]> : tensor<2x2xi32>
-        print(DenseElementsAttr.get(values, type=VectorType.get((2, 2), i32)))
+        print(DenseElementsAttr.get(values, type=FixedVectorType.get((2, 2), i32)))
         # CHECK{LITERAL}: dense<[[0, 1], [2, 3]]> : vector<2x2xi32>

@@ -115,20 +115,20 @@ TEST(ShapedTypeTest, CloneVector) {
   Type vectorOriginalType = i32;
   llvm::SmallVector<int64_t> vectorOriginalShape({10, 20});
   ShapedType vectorType =
-      VectorType::get(vectorOriginalShape, vectorOriginalType);
+      FixedVectorType::get(vectorOriginalShape, vectorOriginalType);
   // Update shape.
   llvm::SmallVector<int64_t> vectorNewShape({30, 40});
   ASSERT_NE(vectorOriginalShape, vectorNewShape);
   ASSERT_EQ(vectorType.clone(vectorNewShape),
-            VectorType::get(vectorNewShape, vectorOriginalType));
+            FixedVectorType::get(vectorNewShape, vectorOriginalType));
   // Update type.
   Type vectorNewType = f32;
   ASSERT_NE(vectorOriginalType, vectorNewType);
   ASSERT_EQ(vectorType.clone(vectorNewType),
-            VectorType::get(vectorOriginalShape, vectorNewType));
+            FixedVectorType::get(vectorOriginalShape, vectorNewType));
   // Update both.
   ASSERT_EQ(vectorType.clone(vectorNewShape, vectorNewType),
-            VectorType::get(vectorNewShape, vectorNewType));
+            FixedVectorType::get(vectorNewShape, vectorNewType));
 }
 
 TEST(ShapedTypeTest, VectorTypeBuilder) {
@@ -137,25 +137,26 @@ TEST(ShapedTypeTest, VectorTypeBuilder) {
 
   SmallVector<int64_t> shape{2, 4, 8, 9, 1};
   SmallVector<bool> scalableDims{true, false, true, false, false};
-  VectorType vectorType = VectorType::get(shape, f32, scalableDims);
+  ScalableVectorType vectorType =
+      ScalableVectorType::get(shape, f32, scalableDims);
 
   {
     // Drop some dims.
-    VectorType dropFrontTwoDims =
-        VectorType::Builder(vectorType).dropDim(0).dropDim(0);
+    VectorBaseType dropFrontTwoDims =
+        VectorBaseType::Builder(vectorType).dropDim(0).dropDim(0);
     ASSERT_EQ(vectorType.getElementType(), dropFrontTwoDims.getElementType());
     ASSERT_EQ(vectorType.getShape().drop_front(2), dropFrontTwoDims.getShape());
-    ASSERT_EQ(vectorType.getScalableDims().drop_front(2),
-              dropFrontTwoDims.getScalableDims());
+    ASSERT_EQ(vectorType.getScalableBases().drop_front(2),
+              dropFrontTwoDims.getScalableBases());
   }
 
   {
     // Set some dims.
-    VectorType setTwoDims =
-        VectorType::Builder(vectorType).setDim(0, 10).setDim(3, 12);
+    VectorBaseType setTwoDims =
+        VectorBaseType::Builder(vectorType).setDim(0, 10).setDim(3, 12);
     ASSERT_EQ(setTwoDims.getShape(), ArrayRef<int64_t>({10, 4, 8, 12, 1}));
     ASSERT_EQ(vectorType.getElementType(), setTwoDims.getElementType());
-    ASSERT_EQ(vectorType.getScalableDims(), setTwoDims.getScalableDims());
+    ASSERT_EQ(vectorType.getScalableBases(), setTwoDims.getScalableBases());
   }
 
   {
@@ -164,8 +165,9 @@ TEST(ShapedTypeTest, VectorTypeBuilder) {
     // Constructs a temporary builder, modifies it, copies it to `builder`.
     // This used to lead to a use-after-free. Running under sanitizers will
     // catch any issues.
-    VectorType::Builder builder = VectorType::Builder(vectorType).setDim(0, 16);
-    VectorType newVectorType = VectorType(builder);
+    VectorBaseType::Builder builder =
+        VectorBaseType::Builder(vectorType).setDim(0, 16);
+    VectorBaseType newVectorType = VectorBaseType(builder);
     ASSERT_EQ(newVectorType.getDimSize(0), 16);
   }
 
@@ -174,18 +176,18 @@ TEST(ShapedTypeTest, VectorTypeBuilder) {
     // a use-after-free see: https://github.com/llvm/llvm-project/pull/68969.
     // Running under sanitizers will catch any issues.
     SmallVector<int64_t> shape{1, 2, 3, 4};
-    VectorType::Builder builder(shape, f32);
-    ASSERT_EQ(VectorType(builder).getShape(), ArrayRef(shape));
+    VectorBaseType::Builder builder(shape, f32);
+    ASSERT_EQ(VectorBaseType(builder).getShape(), ArrayRef(shape));
   }
 
   {
     // Set vector shape (without scalable dims) -- this use to lead to
     // a use-after-free see: https://github.com/llvm/llvm-project/pull/68969.
     // Running under sanitizers will catch any issues.
-    VectorType::Builder builder(vectorType);
+    VectorBaseType::Builder builder(vectorType);
     SmallVector<int64_t> newShape{2, 2};
     builder.setShape(newShape);
-    ASSERT_EQ(VectorType(builder).getShape(), ArrayRef(newShape));
+    ASSERT_EQ(VectorBaseType(builder).getShape(), ArrayRef(newShape));
   }
 }
 

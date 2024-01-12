@@ -199,7 +199,7 @@ def NVGPU_WarpgroupMatrixDescriptor : NVGPU_Type<"WarpgroupMatrixDescriptor", "w
 }
 
 def NVGPU_WarpgroupAccumulator : NVGPU_Type<"WarpgroupAccumulator", "warpgroup.accumulator", []> {
-  let parameters = (ins "VectorType":$fragmented);
+  let parameters = (ins "FixedVectorType":$fragmented);
   let assemblyFormat = "`<` struct(params) `>`";
   let description = [{
     This type represents the result matrix obtained from `nvgpu.warpgroup.mma`. 
@@ -317,7 +317,7 @@ def NVGPU_MmaSyncOp : NVGPU_MmaSyncOp<"mma.sync"> {
 }
 
 def NVGPU_MmaSparseSyncMetadataType : FixedVectorOfLengthAndType<[2], [I16]>,
-                        BuildableType<"::mlir::VectorType::get("
+                        BuildableType<"::mlir::FixedVectorType::get("
                           "{2},$_builder.getI16Type())">;
 
 def NVGPU_MmaSparseSyncOp : NVGPU_MmaSyncOp<"mma.sp.sync"> {

@@ -590,7 +590,7 @@ static void printAllReduceOperation(AsmPrinter &printer, Operation *op,
 
 LogicalResult gpu::SubgroupReduceOp::verify() {
   Type elemType = getType();
-  if (auto vecTy = dyn_cast<VectorType>(elemType)) {
+  if (auto vecTy = dyn_cast<FixedVectorType>(elemType)) {
     if (vecTy.isScalable())
       return emitOpError() << "is not compatible with scalable vector types";
 

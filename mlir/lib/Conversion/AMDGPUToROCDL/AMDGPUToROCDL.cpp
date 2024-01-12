@@ -98,17 +98,17 @@ struct RawBufferOpLowering : public ConvertOpToLLVMPattern<GpuOp> {
     Type llvmBufferValType = llvmWantedDataType;
     if (wantedDataType.isBF16())
       llvmBufferValType = rewriter.getI16Type();
-    if (auto wantedVecType = dyn_cast<VectorType>(wantedDataType))
+    if (auto wantedVecType = dyn_cast<FixedVectorType>(wantedDataType))
       if (wantedVecType.getElementType().isBF16())
         llvmBufferValType = wantedVecType.clone(rewriter.getI16Type());
     if (atomicCmpData) {
-      if (isa<VectorType>(wantedDataType))
+      if (isa<FixedVectorType>(wantedDataType))
         return gpuOp.emitOpError("vector compare-and-swap does not exist");
       if (auto floatType = dyn_cast<FloatType>(wantedDataType))
         llvmBufferValType = this->getTypeConverter()->convertType(
             rewriter.getIntegerType(floatType.getWidth()));
     }
-    if (auto dataVector = dyn_cast<VectorType>(wantedDataType)) {
+    if (auto dataVector = dyn_cast<FixedVectorType>(wantedDataType)) {
       uint32_t elemBits = dataVector.getElementTypeBitWidth();
       uint32_t totalBits = elemBits * dataVector.getNumElements();
       if (totalBits > maxVectorOpWidth)
@@ -123,7 +123,7 @@ struct RawBufferOpLowering : public ConvertOpToLLVMPattern<GpuOp> {
             return gpuOp.emitOpError("Load or store of more than 32-bits that "
                                      "doesn't fit into words. Can't happen\n");
           llvmBufferValType = this->typeConverter->convertType(
-              VectorType::get(totalBits / 32, i32));
+              FixedVectorType::get(totalBits / 32, i32));
         } else {
           llvmBufferValType = this->typeConverter->convertType(
               rewriter.getIntegerType(totalBits));
@@ -301,7 +301,7 @@ struct LDSBarrierOpLowering : public ConvertOpToLLVMPattern<LDSBarrierOp> {
 static Value mfmaConcatIfNeeded(ConversionPatternRewriter &rewriter,
                                 Location loc, Value input) {
   Type inputType = input.getType();
-  if (auto vectorType = dyn_cast<VectorType>(inputType)) {
+  if (auto vectorType = dyn_cast<FixedVectorType>(inputType)) {
     if (vectorType.getElementType().isBF16())
       return rewriter.create<LLVM::BitcastOp>(
           loc, vectorType.clone(rewriter.getI16Type()), input);
@@ -338,7 +338,7 @@ static void wmmaPushInputOperand(ConversionPatternRewriter &rewriter,
                                  bool isUnsigned, Value llvmInput,
                                  SmallVector<Value, 4> &operands) {
   Type inputType = llvmInput.getType();
-  auto vectorType = inputType.dyn_cast<VectorType>();
+  auto vectorType = inputType.dyn_cast<FixedVectorType>();
   Type elemType = vectorType.getElementType();
 
   if (elemType.isBF16())
@@ -351,7 +351,8 @@ static void wmmaPushInputOperand(ConversionPatternRewriter &rewriter,
 
   int64_t numBytes = vectorType.getNumElements();
   Type i32 = rewriter.getI32Type();
-  VectorType vectorType32bits = VectorType::get(numBytes * 8 / 32, i32);
+  FixedVectorType vectorType32bits =
+      FixedVectorType::get(numBytes * 8 / 32, i32);
   auto llvmVectorType32bits = typeConverter->convertType(vectorType32bits);
 
   Value result = rewriter.createOrFold<LLVM::BitcastOp>(
@@ -381,7 +382,7 @@ static void wmmaPushOutputOperand(ConversionPatternRewriter &rewriter,
                                   Value output, int32_t subwordOffset,
                                   bool clamp, SmallVector<Value, 4> &operands) {
   Type inputType = output.getType();
-  auto vectorType = inputType.dyn_cast<VectorType>();
+  auto vectorType = inputType.dyn_cast<FixedVectorType>();
   Type elemType = vectorType.getElementType();
   if (elemType.isBF16())
     output = rewriter.create<LLVM::BitcastOp>(
@@ -402,10 +403,10 @@ static std::optional<StringRef> mfmaOpToIntrinsic(MFMAOp mfma,
   uint32_t m = mfma.getM(), n = mfma.getN(), k = mfma.getK(),
            b = mfma.getBlocks();
   Type sourceElem = mfma.getSourceA().getType();
-  if (auto sourceType = dyn_cast<VectorType>(sourceElem))
+  if (auto sourceType = dyn_cast<FixedVectorType>(sourceElem))
     sourceElem = sourceType.getElementType();
   Type destElem = mfma.getDestC().getType();
-  if (auto destType = dyn_cast<VectorType>(destElem))
+  if (auto destType = dyn_cast<FixedVectorType>(destElem))
     destElem = destType.getElementType();
 
   if (sourceElem.isF32() && destElem.isF32()) {
@@ -495,7 +496,7 @@ static std::optional<StringRef> mfmaOpToIntrinsic(MFMAOp mfma,
     // Known to be correct because there are no scalar f8 instructions and
     // because a length mismatch will have been caught by the verifier.
     Type sourceBElem =
-        cast<VectorType>(mfma.getSourceB().getType()).getElementType();
+        cast<FixedVectorType>(mfma.getSourceB().getType()).getElementType();
     if (m == 16 && n == 16 && k == 32 && b == 1) {
       if (sourceBElem.isFloat8E5M2FNUZ())
         return ROCDL::mfma_f32_16x16x32_bf8_bf8::getOperationName();
@@ -513,7 +514,7 @@ static std::optional<StringRef> mfmaOpToIntrinsic(MFMAOp mfma,
   if (sourceElem.isFloat8E4M3FNUZ() && destElem.isF32() &&
       chipset.minorVersion >= 0x40) {
     Type sourceBElem =
-        cast<VectorType>(mfma.getSourceB().getType()).getElementType();
+        cast<FixedVectorType>(mfma.getSourceB().getType()).getElementType();
     if (m == 16 && n == 16 && k == 32 && b == 1) {
       if (sourceBElem.isFloat8E5M2FNUZ())
         return ROCDL::mfma_f32_16x16x32_fp8_bf8::getOperationName();
@@ -537,8 +538,9 @@ static std::optional<StringRef> mfmaOpToIntrinsic(MFMAOp mfma,
 static std::optional<StringRef> wmmaOpToIntrinsic(WMMAOp wmma,
                                                   Chipset chipset) {
 
-  auto sourceVectorType = wmma.getSourceA().getType().dyn_cast<VectorType>();
-  auto destVectorType = wmma.getDestC().getType().dyn_cast<VectorType>();
+  auto sourceVectorType =
+      wmma.getSourceA().getType().dyn_cast<FixedVectorType>();
+  auto destVectorType = wmma.getDestC().getType().dyn_cast<FixedVectorType>();
   auto elemSourceType = sourceVectorType.getElementType();
   auto elemDestType = destVectorType.getElementType();
 
@@ -570,7 +572,7 @@ struct MFMAOpLowering : public ConvertOpToLLVMPattern<MFMAOp> {
     Location loc = op.getLoc();
     Type outType = typeConverter->convertType(op.getDestD().getType());
     Type intrinsicOutType = outType;
-    if (auto outVecType = dyn_cast<VectorType>(outType))
+    if (auto outVecType = dyn_cast<FixedVectorType>(outType))
       if (outVecType.getElementType().isBF16())
         intrinsicOutType = outVecType.clone(rewriter.getI16Type());
 
@@ -688,13 +690,13 @@ LogicalResult ExtPackedFp8OpLowering::matchAndRewrite(
     return rewriter.notifyMatchFailure(
         loc, "Fp8 conversion instructions are not available on target "
              "architecture and their emulation is not implemented");
-  Type v4i8 =
-      getTypeConverter()->convertType(VectorType::get(4, rewriter.getI8Type()));
+  Type v4i8 = getTypeConverter()->convertType(
+      FixedVectorType::get(4, rewriter.getI8Type()));
   Type i32 = getTypeConverter()->convertType(rewriter.getI32Type());
   Type f32 = getTypeConverter()->convertType(op.getResult().getType());
 
   Value source = adaptor.getSource();
-  auto sourceVecType = op.getSource().getType().dyn_cast<VectorType>();
+  auto sourceVecType = op.getSource().getType().dyn_cast<FixedVectorType>();
   Type sourceElemType = getElementTypeOrSelf(op.getSource());
   // Extend to a v4i8
   if (!sourceVecType || sourceVecType.getNumElements() < 4) {
@@ -828,7 +830,8 @@ void mlir::populateAMDGPUToROCDLConversionPatterns(LLVMTypeConverter &converter,
   converter.addConversion([](BFloat16Type t) -> Type {
     return IntegerType::get(t.getContext(), 16);
   });
-  converter.addConversion([&converter](VectorType t) -> std::optional<Type> {
+  converter.addConversion([&converter](
+                              FixedVectorType t) -> std::optional<Type> {
     if (!t.getElementType().isBF16())
       return std::nullopt;
     return converter.convertType(t.clone(IntegerType::get(t.getContext(), 16)));

@@ -18,7 +18,7 @@
 
 namespace mlir {
 class Type;
-class VectorType;
+class FixedVectorType;
 
 namespace spirv {
 class ArrayType;
@@ -64,7 +64,8 @@ private:
   /// to the `size`. Assigns the type alignment in bytes to the `alignment`.
   static Type decorateType(Type type, Size &size, Size &alignment);
 
-  static Type decorateType(VectorType vectorType, Size &size, Size &alignment);
+  static Type decorateType(FixedVectorType vectorType, Size &size,
+                           Size &alignment);
   static Type decorateType(spirv::ArrayType arrayType, Size &size,
                            Size &alignment);
   static Type decorateType(spirv::RuntimeArrayType arrayType, Size &alignment);

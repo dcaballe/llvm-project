@@ -732,8 +732,8 @@ static int printBuiltinTypes(MlirContext ctx) {
   // tested on an instance of vector type.
   int64_t shape[] = {2, 3};
   MlirType vector =
-      mlirVectorTypeGet(sizeof(shape) / sizeof(int64_t), shape, f32);
-  if (!mlirTypeIsAVector(vector) || !mlirTypeIsAShaped(vector))
+      mlirFixedVectorTypeGet(sizeof(shape) / sizeof(int64_t), shape, f32);
+  if (!mlirTypeIsFixedVector(vector) || !mlirTypeIsAShaped(vector))
     return 14;
   if (!mlirTypeEqual(mlirShapedTypeGetElementType(vector), f32) ||
       !mlirShapedTypeHasRank(vector) || mlirShapedTypeGetRank(vector) != 2 ||
@@ -748,11 +748,11 @@ static int printBuiltinTypes(MlirContext ctx) {
 
   // Scalable vector type.
   bool scalable[] = {false, true};
-  MlirType scalableVector = mlirVectorTypeGetScalable(
+  MlirType scalableVector = mlirScalableVectorTypeGet(
       sizeof(shape) / sizeof(int64_t), shape, scalable, f32);
-  if (!mlirTypeIsAVector(scalableVector))
+  if (!mlirTypeIsScalableVector(scalableVector))
     return 16;
-  if (!mlirVectorTypeIsScalable(scalableVector) ||
+  if (!mlirTypeIsScalableVector(scalableVector) ||
       mlirVectorTypeIsDimScalable(scalableVector, 0) ||
       !mlirVectorTypeIsDimScalable(scalableVector, 1))
     return 17;

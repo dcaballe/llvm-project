@@ -68,8 +68,9 @@ enum class BroadcastableToResult {
   DimensionMismatch = 2,
   SourceTypeNotAVector = 3
 };
+
 BroadcastableToResult
-isBroadcastableTo(Type srcType, VectorType dstVectorType,
+isBroadcastableTo(Type srcType, VectorBaseType dstVectorType,
                   std::pair<int, int> *mismatchingDims = nullptr);
 
 /// Collect a set of vector-to-vector canonicalization patterns.
@@ -96,7 +97,7 @@ Value getVectorReductionOp(arith::AtomicRMWKind op, OpBuilder &builder,
 /// also handles the case memref<... x vector<...>> -> vector<...> in which the
 /// rank of the identity map must take the vector element type into account.
 AffineMap getTransferMinorIdentityMap(ShapedType shapedType,
-                                      VectorType vectorType);
+                                      VectorBaseType vectorType);
 
 /// Return true if the transfer_write fully writes the data accessed by the
 /// transfer_read.
@@ -173,7 +174,8 @@ getAsConstantIndexOps(ArrayRef<Value> values);
 /// Has inferred mask type:
 ///
 /// maskType = vector<2x1xi1>
-VectorType inferTransferOpMaskType(VectorType vecType, AffineMap permMap);
+VectorBaseType inferTransferOpMaskType(VectorBaseType vecType,
+                                       AffineMap permMap);
 
 /// Create the vector.yield-ended region of a vector.mask op with `maskableOp`
 /// as masked operation.

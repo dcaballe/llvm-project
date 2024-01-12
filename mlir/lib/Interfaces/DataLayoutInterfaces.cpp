@@ -75,7 +75,7 @@ mlir::detail::getDefaultTypeSizeInBits(Type type, const DataLayout &dataLayout,
   // there is no bit-packing at the moment element sizes are taken in bytes and
   // multiplied with 8 bits.
   // TODO: make this extensible.
-  if (auto vecType = dyn_cast<VectorType>(type))
+  if (auto vecType = dyn_cast<FixedVectorType>(type))
     return vecType.getNumElements() / vecType.getShape().back() *
            llvm::PowerOf2Ceil(vecType.getShape().back()) *
            dataLayout.getTypeSize(vecType.getElementType()) * 8;
@@ -139,7 +139,7 @@ uint64_t mlir::detail::getDefaultABIAlignment(
     Type type, const DataLayout &dataLayout,
     ArrayRef<DataLayoutEntryInterface> params) {
   // Natural alignment is the closest power-of-two number above.
-  if (isa<VectorType>(type))
+  if (isa<FixedVectorType>(type))
     return llvm::PowerOf2Ceil(dataLayout.getTypeSize(type));
 
   if (auto fltType = dyn_cast<FloatType>(type))
@@ -192,7 +192,7 @@ uint64_t mlir::detail::getDefaultPreferredAlignment(
     Type type, const DataLayout &dataLayout,
     ArrayRef<DataLayoutEntryInterface> params) {
   // Preferred alignment is same as natural for floats and vectors.
-  if (isa<VectorType>(type))
+  if (isa<FixedVectorType>(type))
     return dataLayout.getTypeABIAlignment(type);
 
   if (auto fltType = dyn_cast<FloatType>(type))

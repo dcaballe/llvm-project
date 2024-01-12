@@ -52,7 +52,7 @@ struct VectorMaskedLoadOpConverter final
 
   LogicalResult matchAndRewrite(vector::MaskedLoadOp maskedLoadOp,
                                 PatternRewriter &rewriter) const override {
-    VectorType maskVType = maskedLoadOp.getMaskVectorType();
+    VectorBaseType maskVType = maskedLoadOp.getMaskVectorType();
     if (maskVType.getShape().size() != 1)
       return rewriter.notifyMatchFailure(
           maskedLoadOp, "expected vector.maskedstore with 1-D mask");
@@ -119,7 +119,7 @@ struct VectorMaskedStoreOpConverter final
 
   LogicalResult matchAndRewrite(vector::MaskedStoreOp maskedStoreOp,
                                 PatternRewriter &rewriter) const override {
-    VectorType maskVType = maskedStoreOp.getMaskVectorType();
+    VectorBaseType maskVType = maskedStoreOp.getMaskVectorType();
     if (maskVType.getShape().size() != 1)
       return rewriter.notifyMatchFailure(
           maskedStoreOp, "expected vector.maskedstore with 1-D mask");

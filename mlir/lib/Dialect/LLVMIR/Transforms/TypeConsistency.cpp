@@ -473,9 +473,9 @@ getWrittenToFields(const DataLayout &dataLayout,
 /// becoming type-consistent through subsequent pattern applications.
 static void splitVectorStore(const DataLayout &dataLayout, Location loc,
                              RewriterBase &rewriter, Value address,
-                             TypedValue<VectorType> value,
+                             TypedValue<FixedVectorType> value,
                              unsigned storeOffset) {
-  VectorType vectorType = value.getType();
+  FixedVectorType vectorType = value.getType();
   unsigned elementSize = dataLayout.getTypeSize(vectorType.getElementType());
 
   // Extract every element in the vector and store it in the given address.
@@ -539,7 +539,7 @@ static void splitIntegerStore(const DataLayout &dataLayout, Location loc,
 LogicalResult SplitStores::matchAndRewrite(StoreOp store,
                                            PatternRewriter &rewriter) const {
   Type sourceType = store.getValue().getType();
-  if (!isa<IntegerType, VectorType>(sourceType)) {
+  if (!isa<IntegerType, FixedVectorType>(sourceType)) {
     // We currently only support integer and vector sources.
     return failure();
   }
@@ -610,7 +610,7 @@ LogicalResult SplitStores::matchAndRewrite(StoreOp store,
   // with those. Subsequent pattern applications will split these stores further
   // if required.
   splitVectorStore(dataLayout, store.getLoc(), rewriter, address,
-                   cast<TypedValue<VectorType>>(store.getValue()), offset);
+                   cast<TypedValue<FixedVectorType>>(store.getValue()), offset);
   rewriter.eraseOp(store);
   return success();
 }

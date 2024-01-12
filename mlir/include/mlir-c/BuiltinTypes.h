@@ -252,31 +252,31 @@ MLIR_CAPI_EXPORTED int64_t mlirShapedTypeGetDynamicStrideOrOffset(void);
 //===----------------------------------------------------------------------===//
 
 /// Returns the typeID of an Vector type.
-MLIR_CAPI_EXPORTED MlirTypeID mlirVectorTypeGetTypeID(void);
+MLIR_CAPI_EXPORTED MlirTypeID mlirFixedVectorTypeGetTypeID(void);
 
 /// Checks whether the given type is a Vector type.
-MLIR_CAPI_EXPORTED bool mlirTypeIsAVector(MlirType type);
+MLIR_CAPI_EXPORTED bool mlirTypeIsFixedVector(MlirType type);
 
 /// Creates a vector type of the shape identified by its rank and dimensions,
 /// with the given element type in the same context as the element type. The
 /// type is owned by the context.
-MLIR_CAPI_EXPORTED MlirType mlirVectorTypeGet(intptr_t rank,
-                                              const int64_t *shape,
-                                              MlirType elementType);
+MLIR_CAPI_EXPORTED MlirType mlirFixedVectorTypeGet(intptr_t rank,
+                                                   const int64_t *shape,
+                                                   MlirType elementType);
 
 /// Same as "mlirVectorTypeGet" but returns a nullptr wrapping MlirType on
 /// illegal arguments, emitting appropriate diagnostics.
-MLIR_CAPI_EXPORTED MlirType mlirVectorTypeGetChecked(MlirLocation loc,
-                                                     intptr_t rank,
-                                                     const int64_t *shape,
-                                                     MlirType elementType);
+MLIR_CAPI_EXPORTED MlirType mlirFixedVectorTypeGetChecked(MlirLocation loc,
+                                                          intptr_t rank,
+                                                          const int64_t *shape,
+                                                          MlirType elementType);
 
 /// Creates a scalable vector type with the shape identified by its rank and
 /// dimensions. A subset of dimensions may be marked as scalable via the
 /// corresponding flag list, which is expected to have as many entries as the
 /// rank of the vector. The vector is created in the same context as the element
 /// type.
-MLIR_CAPI_EXPORTED MlirType mlirVectorTypeGetScalable(intptr_t rank,
+MLIR_CAPI_EXPORTED MlirType mlirScalableVectorTypeGet(intptr_t rank,
                                                       const int64_t *shape,
                                                       const bool *scalable,
                                                       MlirType elementType);
@@ -284,14 +284,14 @@ MLIR_CAPI_EXPORTED MlirType mlirVectorTypeGetScalable(intptr_t rank,
 /// Same as "mlirVectorTypeGetScalable" but returns a nullptr wrapping MlirType
 /// on illegal arguments, emitting appropriate diagnostics.
 MLIR_CAPI_EXPORTED
-MlirType mlirVectorTypeGetScalableChecked(MlirLocation loc, intptr_t rank,
+MlirType mlirScalableVectorTypeGetChecked(MlirLocation loc, intptr_t rank,
                                           const int64_t *shape,
                                           const bool *scalable,
                                           MlirType elementType);
 
 /// Checks whether the given vector type is scalable, i.e., has at least one
 /// scalable dimension.
-MLIR_CAPI_EXPORTED bool mlirVectorTypeIsScalable(MlirType type);
+MLIR_CAPI_EXPORTED bool mlirTypeIsScalableVector(MlirType type);
 
 /// Checks whether the "dim"-th dimension of the given vector is scalable.
 MLIR_CAPI_EXPORTED bool mlirVectorTypeIsDimScalable(MlirType type,

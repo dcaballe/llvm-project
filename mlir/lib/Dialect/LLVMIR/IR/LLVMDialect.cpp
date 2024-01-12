@@ -402,7 +402,7 @@ void SwitchOp::build(OpBuilder &builder, OperationState &result, Value value,
                      ArrayRef<int32_t> branchWeights) {
   DenseIntElementsAttr caseValuesAttr;
   if (!caseValues.empty()) {
-    ShapedType caseValueType = VectorType::get(
+    ShapedType caseValueType = FixedVectorType::get(
         static_cast<int64_t>(caseValues.size()), value.getType());
     caseValuesAttr = DenseIntElementsAttr::get(caseValueType, caseValues);
   }
@@ -418,7 +418,7 @@ void SwitchOp::build(OpBuilder &builder, OperationState &result, Value value,
                      ArrayRef<int32_t> branchWeights) {
   DenseIntElementsAttr caseValuesAttr;
   if (!caseValues.empty()) {
-    ShapedType caseValueType = VectorType::get(
+    ShapedType caseValueType = FixedVectorType::get(
         static_cast<int64_t>(caseValues.size()), value.getType());
     caseValuesAttr = DenseIntElementsAttr::get(caseValueType, caseValues);
   }
@@ -466,7 +466,7 @@ static ParseResult parseSwitchOpCases(
     return failure();
 
   ShapedType caseValueType =
-      VectorType::get(static_cast<int64_t>(values.size()), flagType);
+      FixedVectorType::get(static_cast<int64_t>(values.size()), flagType);
   caseValues = DenseIntElementsAttr::get(caseValueType, values);
   return parser.parseRSquare();
 }
@@ -536,7 +536,7 @@ GEPIndicesAdaptor<ValueRange> GEPOp::getIndices() {
 
 /// Returns the elemental type of any LLVM-compatible vector type or self.
 static Type extractVectorElementType(Type type) {
-  if (auto vectorType = llvm::dyn_cast<VectorType>(type))
+  if (auto vectorType = llvm::dyn_cast<FixedVectorType>(type))
     return vectorType.getElementType();
   if (auto scalableVectorType = llvm::dyn_cast<LLVMScalableVectorType>(type))
     return scalableVectorType.getElementType();
@@ -580,7 +580,7 @@ static void destructureIndices(Type currType, ArrayRef<GEPArg> indices,
 
     currType =
         TypeSwitch<Type, Type>(currType)
-            .Case<VectorType, LLVMScalableVectorType, LLVMFixedVectorType,
+            .Case<FixedVectorType, LLVMScalableVectorType, LLVMFixedVectorType,
                   LLVMArrayType>([](auto containerType) {
               return containerType.getElementType();
             })
@@ -691,7 +691,7 @@ verifyStructIndices(Type baseGEPType, unsigned indexPos,
         return verifyStructIndices(elementTypes[gepIndex], indexPos + 1,
                                    indices, emitOpError);
       })
-      .Case<VectorType, LLVMScalableVectorType, LLVMFixedVectorType,
+      .Case<FixedVectorType, LLVMScalableVectorType, LLVMFixedVectorType,
             LLVMArrayType>([&](auto containerType) -> LogicalResult {
         return verifyStructIndices(containerType.getElementType(), indexPos + 1,
                                    indices, emitOpError);
@@ -2572,7 +2572,8 @@ LogicalResult LLVM::ConstantOp::verify() {
     }
   }
   if (auto splatAttr = dyn_cast<SplatElementsAttr>(getValue())) {
-    if (!getType().isa<VectorType>() && !getType().isa<LLVM::LLVMArrayType>() &&
+    if (!getType().isa<FixedVectorType>() &&
+        !getType().isa<LLVM::LLVMArrayType>() &&
         !getType().isa<LLVM::LLVMFixedVectorType>() &&
         !getType().isa<LLVM::LLVMScalableVectorType>())
       return emitOpError() << "expected vector or array type";
@@ -2790,8 +2791,8 @@ LogicalResult LLVM::BitcastOp::verify() {
     return success();
 
   auto isVector = [](Type type) {
-    return llvm::isa<VectorType, LLVMScalableVectorType, LLVMFixedVectorType>(
-        type);
+    return llvm::isa<FixedVectorType, LLVMScalableVectorType,
+                     LLVMFixedVectorType>(type);
   };
 
   // Due to bitcast requiring both operands to be of the same size, it is not

@@ -156,7 +156,7 @@ static Value createUnpackHiPs(ImplicitLocOpBuilder &b, Value v1, Value v2,
 /// dst[511:384] := SELECT4(v2[511:0], mask[7:6])
 static Value create4x128BitSuffle(ImplicitLocOpBuilder &b, Value v1, Value v2,
                                   uint8_t mask) {
-  assert(cast<VectorType>(v1.getType()).getShape()[0] == 16 &&
+  assert(cast<FixedVectorType>(v1.getType()).getShape()[0] == 16 &&
          "expected a vector with length=16");
   SmallVector<int64_t> shuffleMask;
   auto appendToMask = [&](int64_t base, uint8_t control) {
@@ -290,8 +290,8 @@ static Value transposeToShuffle16x16(OpBuilder &builder, Value source, int m,
   vs[0xe] = create4x128BitSuffle(b, t6, te, 0xdd);
   vs[0xf] = create4x128BitSuffle(b, t7, tf, 0xdd);
 
-  auto reshInputType = VectorType::get(
-      {m, n}, cast<VectorType>(source.getType()).getElementType());
+  auto reshInputType = FixedVectorType::get(
+      {m, n}, cast<FixedVectorType>(source.getType()).getElementType());
   Value res =
       b.create<arith::ConstantOp>(reshInputType, b.getZeroAttr(reshInputType));
   for (int64_t i = 0; i < m; ++i)
@@ -323,8 +323,8 @@ public:
     auto loc = op.getLoc();
 
     Value input = op.getVector();
-    VectorType inputType = op.getSourceVectorType();
-    VectorType resType = op.getResultVectorType();
+    FixedVectorType inputType = cast<FixedVectorType>(op.getSourceVectorType());
+    FixedVectorType resType = cast<FixedVectorType>(op.getResultVectorType());
 
     // Set up convenience transposition table.
     ArrayRef<int64_t> transp = op.getPermutation();
@@ -344,9 +344,9 @@ public:
     // be fixed. Non-unit can be scalable.
     if (resType.getRank() == 2 &&
         ((resType.getShape().front() == 1 &&
-          !resType.getScalableDims().front()) ||
+          !resType.getScalableBases().front()) ||
          (resType.getShape().back() == 1 &&
-          !resType.getScalableDims().back())) &&
+          !resType.getScalableBases().back())) &&
         transp == ArrayRef<int64_t>({1, 0})) {
       rewriter.replaceOpWithNewOp<vector::ShapeCastOp>(op, resType, input);
       return success();
@@ -359,8 +359,8 @@ public:
     if (vectorTransformOptions.vectorTransposeLowering ==
             vector::VectorTransposeLowering::Flat &&
         resType.getRank() == 2 && transp[0] == 1 && transp[1] == 0) {
-      Type flattenedType =
-          VectorType::get(resType.getNumElements(), resType.getElementType());
+      Type flattenedType = FixedVectorType::get(resType.getNumElements(),
+                                                resType.getElementType());
       auto matrix =
           rewriter.create<vector::ShapeCastOp>(loc, flattenedType, input);
       auto rows = rewriter.getI32IntegerAttr(resType.getShape()[0]);
@@ -439,15 +439,16 @@ public:
       return rewriter.notifyMatchFailure(
           op, "expected transposition on a 2D slice");
 
-    VectorType srcType = op.getSourceVectorType();
+    FixedVectorType srcType = cast<FixedVectorType>(op.getSourceVectorType());
     int64_t m = srcType.getDimSize(std::get<0>(srcGtOneDims.value()));
     int64_t n = srcType.getDimSize(std::get<1>(srcGtOneDims.value()));
 
     // Reshape the n-D input vector with only two dimensions greater than one
     // to a 2-D vector.
     Location loc = op.getLoc();
-    auto flattenedType = VectorType::get({n * m}, srcType.getElementType());
-    auto reshInputType = VectorType::get({m, n}, srcType.getElementType());
+    auto flattenedType =
+        FixedVectorType::get({n * m}, srcType.getElementType());
+    auto reshInputType = FixedVectorType::get({m, n}, srcType.getElementType());
     auto reshInput = rewriter.create<vector::ShapeCastOp>(loc, flattenedType,
                                                           op.getVector());
 

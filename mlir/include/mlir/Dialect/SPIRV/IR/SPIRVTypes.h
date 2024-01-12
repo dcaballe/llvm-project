@@ -97,7 +97,8 @@ public:
   std::optional<int64_t> getSizeInBytes();
 };
 
-// SPIR-V composite type: VectorType, SPIR-V ArrayType, or SPIR-V StructType.
+// SPIR-V composite type: FixedVectorType, SPIR-V ArrayType, or SPIR-V
+// StructType.
 class CompositeType : public SPIRVType {
 public:
   using SPIRVType::SPIRVType;
@@ -105,7 +106,7 @@ public:
   static bool classof(Type type);
 
   /// Returns true if the given vector type is valid for the SPIR-V dialect.
-  static bool isValid(VectorType);
+  static bool isValid(FixedVectorType);
 
   /// Return the number of elements of the type. This should only be called if
   /// hasCompileTimeKnownNumElements is true.

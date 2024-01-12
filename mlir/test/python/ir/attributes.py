@@ -681,7 +681,7 @@ def testConcreteTypesRoundTrip():
         print("attr:", raw)
         type_attr = TypeAttr(raw)
 
-        # CHECK: VectorType(vector<4xf32>)
+        # CHECK: FixedVectorType(vector<4xf32>)
         print(repr(type_attr.value))
         # CHECK: F32Type(f32)
         print(repr(type_attr.value.element_type))

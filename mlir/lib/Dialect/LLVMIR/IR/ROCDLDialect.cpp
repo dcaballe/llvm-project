@@ -100,7 +100,7 @@ ParseResult RawBufferLoadOp::parse(OpAsmParser &parser,
 
   auto bldr = parser.getBuilder();
   auto int32Ty = bldr.getI32Type();
-  auto i32x4Ty = VectorType::get({4}, int32Ty);
+  auto i32x4Ty = FixedVectorType::get({4}, int32Ty);
   return parser.resolveOperands(ops, {i32x4Ty, int32Ty, int32Ty, int32Ty},
                                 parser.getNameLoc(), result.operands);
 }
@@ -121,7 +121,7 @@ ParseResult RawBufferStoreOp::parse(OpAsmParser &parser,
 
   auto bldr = parser.getBuilder();
   auto int32Ty = bldr.getI32Type();
-  auto i32x4Ty = VectorType::get({4}, int32Ty);
+  auto i32x4Ty = FixedVectorType::get({4}, int32Ty);
 
   if (parser.resolveOperands(ops, {type, i32x4Ty, int32Ty, int32Ty, int32Ty},
                              parser.getNameLoc(), result.operands))
@@ -145,7 +145,7 @@ ParseResult RawBufferAtomicFAddOp::parse(OpAsmParser &parser,
 
   auto bldr = parser.getBuilder();
   auto int32Ty = bldr.getI32Type();
-  auto i32x4Ty = VectorType::get({4}, int32Ty);
+  auto i32x4Ty = FixedVectorType::get({4}, int32Ty);
 
   if (parser.resolveOperands(ops, {type, i32x4Ty, int32Ty, int32Ty, int32Ty},
                              parser.getNameLoc(), result.operands))
@@ -169,7 +169,7 @@ ParseResult RawBufferAtomicFMaxOp::parse(OpAsmParser &parser,
 
   auto bldr = parser.getBuilder();
   auto int32Ty = bldr.getI32Type();
-  auto i32x4Ty = VectorType::get({4}, int32Ty);
+  auto i32x4Ty = FixedVectorType::get({4}, int32Ty);
 
   if (parser.resolveOperands(ops, {type, i32x4Ty, int32Ty, int32Ty, int32Ty},
                              parser.getNameLoc(), result.operands))
@@ -193,7 +193,7 @@ ParseResult RawBufferAtomicSMaxOp::parse(OpAsmParser &parser,
 
   auto bldr = parser.getBuilder();
   auto int32Ty = bldr.getI32Type();
-  auto i32x4Ty = VectorType::get({4}, int32Ty);
+  auto i32x4Ty = FixedVectorType::get({4}, int32Ty);
 
   if (parser.resolveOperands(ops, {type, i32x4Ty, int32Ty, int32Ty, int32Ty},
                              parser.getNameLoc(), result.operands))
@@ -217,7 +217,7 @@ ParseResult RawBufferAtomicUMinOp::parse(OpAsmParser &parser,
 
   auto bldr = parser.getBuilder();
   auto int32Ty = bldr.getI32Type();
-  auto i32x4Ty = VectorType::get({4}, int32Ty);
+  auto i32x4Ty = FixedVectorType::get({4}, int32Ty);
 
   if (parser.resolveOperands(ops, {type, i32x4Ty, int32Ty, int32Ty, int32Ty},
                              parser.getNameLoc(), result.operands))

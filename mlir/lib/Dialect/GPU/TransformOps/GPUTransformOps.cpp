@@ -191,12 +191,12 @@ getSubgroupMmaNativeVectorSize(Operation *op, int64_t m, int64_t n, int64_t k) {
   if (auto readOp = dyn_cast<vector::TransferReadOp>(op)) {
     // Transfer read ops may need different shapes based on how they are being
     // used. For simplicity just match the shape used by the extract strided op.
-    VectorType sliceType;
+    FixedVectorType sliceType;
     for (Operation *users : op->getUsers()) {
       auto extract = dyn_cast<vector::ExtractStridedSliceOp>(users);
       if (!extract)
         return std::nullopt;
-      auto vecType = extract.getResult().getType().cast<VectorType>();
+      auto vecType = extract.getResult().getType().cast<FixedVectorType>();
       if (sliceType && sliceType != vecType)
         return std::nullopt;
       sliceType = vecType;
@@ -204,7 +204,7 @@ getSubgroupMmaNativeVectorSize(Operation *op, int64_t m, int64_t n, int64_t k) {
     return llvm::to_vector(sliceType.getShape());
   }
   if ((OpTrait::hasElementwiseMappableTraits(op) && op->getNumResults() == 1)) {
-    if (auto vecType = op->getResultTypes()[0].dyn_cast<VectorType>()) {
+    if (auto vecType = op->getResultTypes()[0].dyn_cast<FixedVectorType>()) {
       // TODO: The condition for unrolling elementwise should be restricted
       // only to operations that need unrolling (connected to the contract).
       if (vecType.getRank() < 2)
@@ -214,12 +214,12 @@ getSubgroupMmaNativeVectorSize(Operation *op, int64_t m, int64_t n, int64_t k) {
       // required for cases where the accumulator type differs from the input
       // types, in which case we will see an `arith.ext_` between the contract
       // and transfer_read which needs to be unrolled.
-      VectorType sliceType;
+      FixedVectorType sliceType;
       for (Operation *users : op->getUsers()) {
         auto extract = dyn_cast<vector::ExtractStridedSliceOp>(users);
         if (!extract)
           return std::nullopt;
-        auto vecType = extract.getResult().getType().cast<VectorType>();
+        auto vecType = extract.getResult().getType().cast<FixedVectorType>();
         if (sliceType && sliceType != vecType)
           return std::nullopt;
         sliceType = vecType;

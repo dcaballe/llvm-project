@@ -30,9 +30,9 @@ enum class MatMulOperandRole : int32_t { A = 0, B, C };
 FailureOr<vector::ContractionOp> getUserContract(Operation *op);
 
 /// Collects information about a warp-level matrix operand represented by a
-/// VectorType.
+/// FixedVectorType.
 struct WarpMatrixInfo {
-  VectorType vectorType;
+  VectorBaseType vectorType;
   MatMulOperandRole operandRole;
 };
 
@@ -75,7 +75,7 @@ getLaneIdAndValueIdToOperandCoord(OpBuilder &builder, Location loc,
 /// Encapsulates the parameters needed to lower a `nvgpu.ldmatrix` operation to
 /// `nvvm.ldmatrix`.
 struct LdMatrixParams {
-  VectorType fragmentType;
+  VectorBaseType fragmentType;
   bool isAccum;
   int64_t numTiles;
   vector::IteratorType contiguousDimType;

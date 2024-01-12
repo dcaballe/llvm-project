@@ -274,8 +274,8 @@ def UnrankedTensorType : DialectType<(type
   Type:$elementType
 )>;
 
-let cType = "VectorType" in {
-def VectorType : DialectType<(type
+let cType = "FixedVectorType" in {
+def FixedVectorType : DialectType<(type
   Array<SignedVarIntList>:$shape,
   Type:$elementType
 )> {
@@ -283,13 +283,13 @@ def VectorType : DialectType<(type
 }
 
 def VectorTypeWithScalableDims : DialectType<(type
-  Array<BoolList>:$scalableDims,
+  Array<SignedVarIntList>:$scalableBases,
   Array<SignedVarIntList>:$shape,
   Type:$elementType
 )> {
   let printerPredicate = "$_val.isScalable()";
   // Note: order of serialization does not match order of builder.
-  let cBuilder = "get<$_resultType>(context, shape, elementType, scalableDims)";
+  let cBuilder = "get<$_resultType>(context, shape, elementType, scalableBases)";
 }
 }
 
@@ -346,7 +346,7 @@ def BuiltinDialectTypes : DialectTypes<"Builtin"> {
     UnrankedMemRefType,
     UnrankedMemRefTypeWithMemSpace,
     UnrankedTensorType,
-    VectorType,
+    FixedVectorType,
     VectorTypeWithScalableDims
   ];
 }

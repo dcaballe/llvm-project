@@ -49,13 +49,13 @@ static std::pair<APInt, APInt> getHalves(const APInt &value,
 /// e.g.:
 ///   - vector<3x2xi16> --> vector<3x1xi16>
 ///   - vector<2xi16>   --> i16
-static Type reduceInnermostDim(VectorType type) {
+static Type reduceInnermostDim(FixedVectorType type) {
   if (type.getShape().size() == 1)
     return type.getElementType();
 
   auto newShape = to_vector(type.getShape());
   newShape.back() = 1;
-  return VectorType::get(newShape, type.getElementType());
+  return FixedVectorType::get(newShape, type.getElementType());
 }
 
 /// Returns a constant of integer of vector type filled with (repeated) `value`.
@@ -66,7 +66,7 @@ static Value createScalarOrSplatConstant(ConversionPatternRewriter &rewriter,
   if (dyn_cast<IntegerType>(type)) {
     attr = rewriter.getIntegerAttr(type, value);
   } else {
-    auto vecTy = cast<VectorType>(type);
+    auto vecTy = cast<FixedVectorType>(type);
     attr = SplatElementsAttr::get(vecTy, value);
   }
 
@@ -81,7 +81,7 @@ static Value createScalarOrSplatConstant(ConversionPatternRewriter &rewriter,
   if (auto intTy = dyn_cast<IntegerType>(type))
     elementBitWidth = intTy.getWidth();
   else
-    elementBitWidth = cast<VectorType>(type).getElementTypeBitWidth();
+    elementBitWidth = cast<FixedVectorType>(type).getElementTypeBitWidth();
 
   return createScalarOrSplatConstant(rewriter, loc, type,
                                      APInt(elementBitWidth, value));
@@ -95,7 +95,7 @@ static Value createScalarOrSplatConstant(ConversionPatternRewriter &rewriter,
 static Value extractLastDimSlice(ConversionPatternRewriter &rewriter,
                                  Location loc, Value input,
                                  int64_t lastOffset) {
-  ArrayRef<int64_t> shape = cast<VectorType>(input.getType()).getShape();
+  ArrayRef<int64_t> shape = cast<FixedVectorType>(input.getType()).getShape();
   assert(lastOffset < shape.back() && "Offset out of bounds");
 
   // Scalarize the result in case of 1D vectors.
@@ -125,7 +125,7 @@ extractLastDimHalves(ConversionPatternRewriter &rewriter, Location loc,
 // `input` is a scalar, this is a noop.
 static Value dropTrailingX1Dim(ConversionPatternRewriter &rewriter,
                                Location loc, Value input) {
-  auto vecTy = dyn_cast<VectorType>(input.getType());
+  auto vecTy = dyn_cast<FixedVectorType>(input.getType());
   if (!vecTy)
     return input;
 
@@ -134,7 +134,8 @@ static Value dropTrailingX1Dim(ConversionPatternRewriter &rewriter,
   assert(shape.size() >= 2 && "Expected vector with at list two dims");
   assert(shape.back() == 1 && "Expected the last vector dim to be x1");
 
-  auto newVecTy = VectorType::get(shape.drop_back(), vecTy.getElementType());
+  auto newVecTy =
+      FixedVectorType::get(shape.drop_back(), vecTy.getElementType());
   return rewriter.create<vector::ShapeCastOp>(loc, newVecTy, input);
 }
 
@@ -142,14 +143,14 @@ static Value dropTrailingX1Dim(ConversionPatternRewriter &rewriter,
 /// `input` is a scalar, this is a noop.
 static Value appendX1Dim(ConversionPatternRewriter &rewriter, Location loc,
                          Value input) {
-  auto vecTy = dyn_cast<VectorType>(input.getType());
+  auto vecTy = dyn_cast<FixedVectorType>(input.getType());
   if (!vecTy)
     return input;
 
   // Add a trailing x1 dim.
   auto newShape = llvm::to_vector(vecTy.getShape());
   newShape.push_back(1);
-  auto newTy = VectorType::get(newShape, vecTy.getElementType());
+  auto newTy = FixedVectorType::get(newShape, vecTy.getElementType());
   return rewriter.create<vector::ShapeCastOp>(loc, newTy, input);
 }
 
@@ -159,7 +160,7 @@ static Value appendX1Dim(ConversionPatternRewriter &rewriter, Location loc,
 static Value insertLastDimSlice(ConversionPatternRewriter &rewriter,
                                 Location loc, Value source, Value dest,
                                 int64_t lastOffset) {
-  ArrayRef<int64_t> shape = cast<VectorType>(dest.getType()).getShape();
+  ArrayRef<int64_t> shape = cast<FixedVectorType>(dest.getType()).getShape();
   assert(lastOffset < shape.back() && "Offset out of bounds");
 
   // Handle scalar source.
@@ -180,7 +181,7 @@ static Value insertLastDimSlice(ConversionPatternRewriter &rewriter,
 /// when `resultComponents` are `vector<...x1xT>`s, the result type is
 /// `vector<...xNxT>`, where `N` is the number of `resultComponents`.
 static Value constructResultVector(ConversionPatternRewriter &rewriter,
-                                   Location loc, VectorType resultType,
+                                   Location loc, FixedVectorType resultType,
                                    ValueRange resultComponents) {
   llvm::ArrayRef<int64_t> resultShape = resultType.getShape();
   (void)resultShape;
@@ -207,7 +208,7 @@ struct ConvertConstant final : OpConversionPattern<arith::ConstantOp> {
   matchAndRewrite(arith::ConstantOp op, OpAdaptor,
                   ConversionPatternRewriter &rewriter) const override {
     Type oldType = op.getType();
-    auto newType = getTypeConverter()->convertType<VectorType>(oldType);
+    auto newType = getTypeConverter()->convertType<FixedVectorType>(oldType);
     if (!newType)
       return rewriter.notifyMatchFailure(
           op, llvm::formatv("unsupported type: {0}", op.getType()));
@@ -269,7 +270,7 @@ struct ConvertAddI final : OpConversionPattern<arith::AddIOp> {
   matchAndRewrite(arith::AddIOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     Location loc = op->getLoc();
-    auto newTy = getTypeConverter()->convertType<VectorType>(op.getType());
+    auto newTy = getTypeConverter()->convertType<FixedVectorType>(op.getType());
     if (!newTy)
       return rewriter.notifyMatchFailure(
           loc, llvm::formatv("unsupported type: {0}", op.getType()));
@@ -310,8 +311,9 @@ struct ConvertBitwiseBinary final : OpConversionPattern<BinaryOp> {
   matchAndRewrite(BinaryOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     Location loc = op->getLoc();
-    auto newTy = this->getTypeConverter()->template convertType<VectorType>(
-        op.getType());
+    auto newTy =
+        this->getTypeConverter()->template convertType<FixedVectorType>(
+            op.getType());
     if (!newTy)
       return rewriter.notifyMatchFailure(
           loc, llvm::formatv("unsupported type: {0}", op.getType()));
@@ -360,7 +362,7 @@ struct ConvertCmpI final : OpConversionPattern<arith::CmpIOp> {
                   ConversionPatternRewriter &rewriter) const override {
     Location loc = op->getLoc();
     auto inputTy =
-        getTypeConverter()->convertType<VectorType>(op.getLhs().getType());
+        getTypeConverter()->convertType<FixedVectorType>(op.getLhs().getType());
     if (!inputTy)
       return rewriter.notifyMatchFailure(
           loc, llvm::formatv("unsupported type: {0}", op.getType()));
@@ -415,7 +417,7 @@ struct ConvertMulI final : OpConversionPattern<arith::MulIOp> {
   matchAndRewrite(arith::MulIOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     Location loc = op->getLoc();
-    auto newTy = getTypeConverter()->convertType<VectorType>(op.getType());
+    auto newTy = getTypeConverter()->convertType<FixedVectorType>(op.getType());
     if (!newTy)
       return rewriter.notifyMatchFailure(
           loc, llvm::formatv("unsupported type: {0}", op.getType()));
@@ -456,7 +458,7 @@ struct ConvertExtSI final : OpConversionPattern<arith::ExtSIOp> {
   matchAndRewrite(arith::ExtSIOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     Location loc = op->getLoc();
-    auto newTy = getTypeConverter()->convertType<VectorType>(op.getType());
+    auto newTy = getTypeConverter()->convertType<FixedVectorType>(op.getType());
     if (!newTy)
       return rewriter.notifyMatchFailure(
           loc, llvm::formatv("unsupported type: {0}", op.getType()));
@@ -494,7 +496,7 @@ struct ConvertExtUI final : OpConversionPattern<arith::ExtUIOp> {
   matchAndRewrite(arith::ExtUIOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     Location loc = op->getLoc();
-    auto newTy = getTypeConverter()->convertType<VectorType>(op.getType());
+    auto newTy = getTypeConverter()->convertType<FixedVectorType>(op.getType());
     if (!newTy)
       return rewriter.notifyMatchFailure(
           loc, llvm::formatv("unsupported type: {0}", op.getType()));
@@ -527,7 +529,7 @@ struct ConvertMaxMin final : OpConversionPattern<SourceOp> {
     Location loc = op->getLoc();
 
     Type oldTy = op.getType();
-    auto newTy = dyn_cast_or_null<VectorType>(
+    auto newTy = dyn_cast_or_null<FixedVectorType>(
         this->getTypeConverter()->convertType(oldTy));
     if (!newTy)
       return rewriter.notifyMatchFailure(
@@ -551,7 +553,7 @@ static bool isIndexOrIndexVector(Type type) {
   if (isa<IndexType>(type))
     return true;
 
-  if (auto vectorTy = dyn_cast<VectorType>(type))
+  if (auto vectorTy = dyn_cast<FixedVectorType>(type))
     if (isa<IndexType>(vectorTy.getElementType()))
       return true;
 
@@ -572,7 +574,7 @@ struct ConvertIndexCastIntToIndex final : OpConversionPattern<CastOp> {
     Location loc = op.getLoc();
     Type inType = op.getIn().getType();
     auto newInTy =
-        this->getTypeConverter()->template convertType<VectorType>(inType);
+        this->getTypeConverter()->template convertType<FixedVectorType>(inType);
     if (!newInTy)
       return rewriter.notifyMatchFailure(
           loc, llvm::formatv("unsupported type: {0}", inType));
@@ -601,7 +603,8 @@ struct ConvertIndexCastIndexToInt final : OpConversionPattern<CastOp> {
         this->template getTypeConverter<arith::WideIntEmulationConverter>();
 
     Type resultType = op.getType();
-    auto newTy = typeConverter->template convertType<VectorType>(resultType);
+    auto newTy =
+        typeConverter->template convertType<FixedVectorType>(resultType);
     if (!newTy)
       return rewriter.notifyMatchFailure(
           loc, llvm::formatv("unsupported type: {0}", resultType));
@@ -609,8 +612,8 @@ struct ConvertIndexCastIndexToInt final : OpConversionPattern<CastOp> {
     // Emit an index cast over the matching narrow type.
     Type narrowTy =
         rewriter.getIntegerType(typeConverter->getMaxTargetIntBitWidth());
-    if (auto vecTy = dyn_cast<VectorType>(resultType))
-      narrowTy = VectorType::get(vecTy.getShape(), narrowTy);
+    if (auto vecTy = dyn_cast<FixedVectorType>(resultType))
+      narrowTy = FixedVectorType::get(vecTy.getShape(), narrowTy);
 
     // Sign or zero-extend the result. Let the matching conversion pattern
     // legalize the extension op.
@@ -632,7 +635,7 @@ struct ConvertSelect final : OpConversionPattern<arith::SelectOp> {
   matchAndRewrite(arith::SelectOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     Location loc = op->getLoc();
-    auto newTy = getTypeConverter()->convertType<VectorType>(op.getType());
+    auto newTy = getTypeConverter()->convertType<FixedVectorType>(op.getType());
     if (!newTy)
       return rewriter.notifyMatchFailure(
           loc, llvm::formatv("unsupported type: {0}", op.getType()));
@@ -667,7 +670,7 @@ struct ConvertShLI final : OpConversionPattern<arith::ShLIOp> {
     Location loc = op->getLoc();
 
     Type oldTy = op.getType();
-    auto newTy = getTypeConverter()->convertType<VectorType>(oldTy);
+    auto newTy = getTypeConverter()->convertType<FixedVectorType>(oldTy);
     if (!newTy)
       return rewriter.notifyMatchFailure(
           loc, llvm::formatv("unsupported type: {0}", op.getType()));
@@ -756,7 +759,7 @@ struct ConvertShRUI final : OpConversionPattern<arith::ShRUIOp> {
     Location loc = op->getLoc();
 
     Type oldTy = op.getType();
-    auto newTy = getTypeConverter()->convertType<VectorType>(oldTy);
+    auto newTy = getTypeConverter()->convertType<FixedVectorType>(oldTy);
     if (!newTy)
       return rewriter.notifyMatchFailure(
           loc, llvm::formatv("unsupported type: {0}", op.getType()));
@@ -845,7 +848,7 @@ struct ConvertShRSI final : OpConversionPattern<arith::ShRSIOp> {
     Location loc = op->getLoc();
 
     Type oldTy = op.getType();
-    auto newTy = getTypeConverter()->convertType<VectorType>(oldTy);
+    auto newTy = getTypeConverter()->convertType<FixedVectorType>(oldTy);
     if (!newTy)
       return rewriter.notifyMatchFailure(
           loc, llvm::formatv("unsupported type: {0}", op.getType()));
@@ -909,7 +912,7 @@ struct ConvertSIToFP final : OpConversionPattern<arith::SIToFPOp> {
 
     Value in = op.getIn();
     Type oldTy = in.getType();
-    auto newTy = getTypeConverter()->convertType<VectorType>(oldTy);
+    auto newTy = getTypeConverter()->convertType<FixedVectorType>(oldTy);
     if (!newTy)
       return rewriter.notifyMatchFailure(
           loc, llvm::formatv("unsupported type: {0}", oldTy));
@@ -953,7 +956,7 @@ struct ConvertUIToFP final : OpConversionPattern<arith::UIToFPOp> {
     Location loc = op.getLoc();
 
     Type oldTy = op.getIn().getType();
-    auto newTy = getTypeConverter()->convertType<VectorType>(oldTy);
+    auto newTy = getTypeConverter()->convertType<FixedVectorType>(oldTy);
     if (!newTy)
       return rewriter.notifyMatchFailure(
           loc, llvm::formatv("unsupported type: {0}", oldTy));
@@ -990,7 +993,7 @@ struct ConvertUIToFP final : OpConversionPattern<arith::UIToFPOp> {
     int64_t pow2Int = int64_t(1) << newBitWidth;
     TypedAttr pow2Attr =
         rewriter.getFloatAttr(resultElemTy, static_cast<double>(pow2Int));
-    if (auto vecTy = dyn_cast<VectorType>(resultTy))
+    if (auto vecTy = dyn_cast<FixedVectorType>(resultTy))
       pow2Attr = SplatElementsAttr::get(vecTy, pow2Attr);
 
     Value pow2Val = rewriter.create<arith::ConstantOp>(loc, resultTy, pow2Attr);
@@ -1108,13 +1111,14 @@ arith::WideIntEmulationConverter::WideIntEmulationConverter(
 
     // i2N --> vector<2xiN>
     if (width == 2 * maxIntWidth)
-      return VectorType::get(2, IntegerType::get(ty.getContext(), maxIntWidth));
+      return FixedVectorType::get(
+          2, IntegerType::get(ty.getContext(), maxIntWidth));
 
     return std::nullopt;
   });
 
   // Vector case.
-  addConversion([this](VectorType ty) -> std::optional<Type> {
+  addConversion([this](FixedVectorType ty) -> std::optional<Type> {
     auto intTy = dyn_cast<IntegerType>(ty.getElementType());
     if (!intTy)
       return ty;
@@ -1127,8 +1131,8 @@ arith::WideIntEmulationConverter::WideIntEmulationConverter(
     if (width == 2 * maxIntWidth) {
       auto newShape = to_vector(ty.getShape());
       newShape.push_back(2);
-      return VectorType::get(newShape,
-                             IntegerType::get(ty.getContext(), maxIntWidth));
+      return FixedVectorType::get(
+          newShape, IntegerType::get(ty.getContext(), maxIntWidth));
     }
 
     return std::nullopt;

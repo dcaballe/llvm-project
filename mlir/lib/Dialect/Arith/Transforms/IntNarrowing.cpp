@@ -495,8 +495,8 @@ struct ExtensionOverBroadcast final : NarrowingPattern<vector::BroadcastOp> {
     if (failed(ext))
       return failure();
 
-    VectorType origTy = op.getResultVectorType();
-    VectorType newTy =
+    VectorBaseType origTy = op.getResultVectorType();
+    ShapedType newTy =
         origTy.cloneWith(origTy.getShape(), ext->getInElementType());
     Value newBroadcast =
         rewriter.create<vector::BroadcastOp>(op.getLoc(), newTy, ext->getIn());
@@ -551,8 +551,8 @@ struct ExtensionOverExtractStridedSlice final
     if (failed(ext))
       return failure();
 
-    VectorType origTy = op.getType();
-    VectorType extractTy =
+    FixedVectorType origTy = op.getType();
+    FixedVectorType extractTy =
         origTy.cloneWith(origTy.getShape(), ext->getInElementType());
     Value newExtract = rewriter.create<vector::ExtractStridedSliceOp>(
         op.getLoc(), extractTy, ext->getIn(), op.getOffsets(), op.getSizes(),
@@ -688,8 +688,8 @@ struct ExtensionOverShapeCast final : NarrowingPattern<vector::ShapeCastOp> {
     if (failed(ext))
       return failure();
 
-    VectorType origTy = op.getResultVectorType();
-    VectorType newTy =
+    FixedVectorType origTy = op.getResultVectorType();
+    FixedVectorType newTy =
         origTy.cloneWith(origTy.getShape(), ext->getInElementType());
     Value newCast =
         rewriter.create<vector::ShapeCastOp>(op.getLoc(), newTy, ext->getIn());
@@ -708,8 +708,8 @@ struct ExtensionOverTranspose final : NarrowingPattern<vector::TransposeOp> {
     if (failed(ext))
       return failure();
 
-    VectorType origTy = op.getResultVectorType();
-    VectorType newTy =
+    VectorBaseType origTy = op.getResultVectorType();
+    ShapedType newTy =
         origTy.cloneWith(origTy.getShape(), ext->getInElementType());
     Value newTranspose = rewriter.create<vector::TransposeOp>(
         op.getLoc(), newTy, ext->getIn(), op.getPermutation());
@@ -729,8 +729,8 @@ struct ExtensionOverFlatTranspose final
     if (failed(ext))
       return failure();
 
-    VectorType origTy = op.getType();
-    VectorType newTy =
+    FixedVectorType origTy = op.getType();
+    FixedVectorType newTy =
         origTy.cloneWith(origTy.getShape(), ext->getInElementType());
     Value newTranspose = rewriter.create<vector::FlatTransposeOp>(
         op.getLoc(), newTy, ext->getIn(), op.getRowsAttr(),

@@ -248,7 +248,7 @@ def UmmlaOp : ArmSVE_Op<"ummla",
 class SvboolTypeConstraint<string lhsArg, string rhsArg> : TypesMatchWith<
       "expected corresponding svbool type widened to [16]xi1",
       lhsArg, rhsArg,
-      "VectorType(VectorType::Builder(::llvm::cast<VectorType>($_self)).setDim(::llvm::cast<VectorType>($_self).getRank() - 1, 16))">;
+      "VectorBaseType(VectorBaseType::Builder(::llvm::cast<VectorBaseType>($_self)).setDim(::llvm::cast<VectorBaseType>($_self).getRank() - 1, 16))">;
 
 def ConvertFromSvboolOp : ArmSVE_Op<"convert_from_svbool",
                             [Pure, SvboolTypeConstraint<"result", "source">]>

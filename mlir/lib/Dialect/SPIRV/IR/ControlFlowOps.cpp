@@ -417,8 +417,10 @@ LogicalResult ReturnValueOp::verify() {
 //===----------------------------------------------------------------------===//
 
 LogicalResult SelectOp::verify() {
-  if (auto conditionTy = llvm::dyn_cast<VectorType>(getCondition().getType())) {
-    auto resultVectorTy = llvm::dyn_cast<VectorType>(getResult().getType());
+  if (auto conditionTy =
+          llvm::dyn_cast<FixedVectorType>(getCondition().getType())) {
+    auto resultVectorTy =
+        llvm::dyn_cast<FixedVectorType>(getResult().getType());
     if (!resultVectorTy) {
       return emitOpError("result expected to be of vector type when "
                          "condition is of vector type");

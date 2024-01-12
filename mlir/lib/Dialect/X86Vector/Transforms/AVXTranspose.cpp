@@ -115,7 +115,7 @@ Value mlir::x86vector::avx2::intrin::mm256BlendPs(ImplicitLocOpBuilder &b,
 void mlir::x86vector::avx2::transpose4x8xf32(ImplicitLocOpBuilder &ib,
                                              MutableArrayRef<Value> vs) {
 #ifndef NDEBUG
-  auto vt = VectorType::get({8}, Float32Type::get(ib.getContext()));
+  auto vt = FixedVectorType::get({8}, Float32Type::get(ib.getContext()));
   assert(vs.size() == 4 && "expects 4 vectors");
   assert(llvm::all_of(ValueRange{vs}.getTypes(),
                       [&](Type t) { return t == vt; }) &&
@@ -139,7 +139,7 @@ void mlir::x86vector::avx2::transpose4x8xf32(ImplicitLocOpBuilder &ib,
 /// AVX2 8x8xf32-specific transpose lowering using a "C intrinsics" model.
 void mlir::x86vector::avx2::transpose8x8xf32(ImplicitLocOpBuilder &ib,
                                              MutableArrayRef<Value> vs) {
-  auto vt = VectorType::get({8}, Float32Type::get(ib.getContext()));
+  auto vt = FixedVectorType::get({8}, Float32Type::get(ib.getContext()));
   (void)vt;
   assert(vs.size() == 8 && "expects 8 vectors");
   assert(llvm::all_of(ValueRange{vs}.getTypes(),
@@ -220,7 +220,7 @@ public:
 
     // Check if the source vector type is supported. AVX2 patterns can only be
     // applied to f32 vector types with two dimensions greater than one.
-    VectorType srcType = op.getSourceVectorType();
+    FixedVectorType srcType = cast<FixedVectorType>(op.getSourceVectorType());
     if (!srcType.getElementType().isF32())
       return rewriter.notifyMatchFailure(op, "Unsupported vector element type");
 
@@ -240,9 +240,10 @@ public:
 
       // Reshape the n-D input vector with only two dimensions greater than one
       // to a 2-D vector.
-      auto flattenedType =
-          VectorType::get({n * m}, op.getSourceVectorType().getElementType());
-      auto reshInputType = VectorType::get({m, n}, srcType.getElementType());
+      auto flattenedType = FixedVectorType::get(
+          {n * m}, op.getSourceVectorType().getElementType());
+      auto reshInputType =
+          FixedVectorType::get({m, n}, srcType.getElementType());
       auto reshInput =
           ib.create<vector::ShapeCastOp>(flattenedType, op.getVector());
       reshInput = ib.create<vector::ShapeCastOp>(reshInputType, reshInput);

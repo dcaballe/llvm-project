@@ -41,16 +41,19 @@ constexpr StringLiteral kSVELegalizerTag("__arm_sve_legalize_vector_storage__");
 namespace {
 
 /// Checks if a vector type is a SVE mask [2].
-bool isSVEMaskType(VectorType type) {
+bool isSVEMaskType(ScalableVectorType type) {
   return type.getRank() > 0 && type.getElementType().isInteger(1) &&
-         type.getScalableDims().back() && type.getShape().back() < 16 &&
+         type.getScalableBases().back() && type.getShape().back() < 16 &&
          llvm::isPowerOf2_32(type.getShape().back()) &&
-         !llvm::is_contained(type.getScalableDims().drop_back(), true);
+         !llvm::is_contained(type.getScalableBases().drop_back(), true);
 }
 
-VectorType widenScalableMaskTypeToSvbool(VectorType type) {
+ScalableVectorType widenScalableMaskTypeToSvbool(ScalableVectorType type) {
   assert(isSVEMaskType(type));
-  return VectorType::Builder(type).setDim(type.getRank() - 1, 16);
+  SmallVector<int64_t> newShape = llvm::to_vector(type.getShape());
+  newShape.back() = 16;
+  return ScalableVectorType::get(newShape, type.getElementType(),
+                                 type.getScalableBases());
 }
 
 /// A helper for cloning an op and replacing it will a new version, updated by a
@@ -100,7 +103,7 @@ struct RelaxScalableVectorAllocaAlignment
   LogicalResult matchAndRewrite(memref::AllocaOp allocaOp,
                                 PatternRewriter &rewriter) const override {
     auto memrefElementType = allocaOp.getType().getElementType();
-    auto vectorType = llvm::dyn_cast<VectorType>(memrefElementType);
+    auto vectorType = llvm::dyn_cast<ScalableVectorType>(memrefElementType);
     if (!vectorType || !vectorType.isScalable() || allocaOp.getAlignment())
       return failure();
 
@@ -133,8 +136,8 @@ struct LegalizeSVEMaskAllocation : public OpRewritePattern<AllocLikeOp> {
 
   LogicalResult matchAndRewrite(AllocLikeOp allocLikeOp,
                                 PatternRewriter &rewriter) const override {
-    auto vectorType =
-        llvm::dyn_cast<VectorType>(allocLikeOp.getType().getElementType());
+    auto vectorType = llvm::dyn_cast<ScalableVectorType>(
+        allocLikeOp.getType().getElementType());
 
     if (!vectorType || !isSVEMaskType(vectorType))
       return failure();
@@ -182,7 +185,8 @@ struct LegalizeSVEMaskTypeCastConversion
   LogicalResult matchAndRewrite(vector::TypeCastOp typeCastOp,
                                 PatternRewriter &rewriter) const override {
     auto resultType = typeCastOp.getResultMemRefType();
-    auto vectorType = llvm::dyn_cast<VectorType>(resultType.getElementType());
+    auto vectorType =
+        llvm::dyn_cast<ScalableVectorType>(resultType.getElementType());
 
     if (!vectorType || !isSVEMaskType(vectorType))
       return failure();
@@ -227,7 +231,8 @@ struct LegalizeSVEMaskStoreConversion
     auto loc = storeOp.getLoc();
 
     Value valueToStore = storeOp.getValueToStore();
-    auto vectorType = llvm::dyn_cast<VectorType>(valueToStore.getType());
+    auto vectorType =
+        llvm::dyn_cast<ScalableVectorType>(valueToStore.getType());
 
     if (!vectorType || !isSVEMaskType(vectorType))
       return failure();
@@ -237,7 +242,7 @@ struct LegalizeSVEMaskStoreConversion
       return failure();
 
     auto legalMaskType = widenScalableMaskTypeToSvbool(
-        llvm::cast<VectorType>(valueToStore.getType()));
+        llvm::cast<ScalableVectorType>(valueToStore.getType()));
     auto convertToSvbool = rewriter.create<arm_sve::ConvertToSvboolOp>(
         loc, legalMaskType, valueToStore);
     // Replace this store with a conversion to a storable svbool mask [1],
@@ -274,7 +279,7 @@ struct LegalizeSVEMaskLoadConversion : public OpRewritePattern<memref::LoadOp> {
     auto loc = loadOp.getLoc();
 
     Value loadedMask = loadOp.getResult();
-    auto vectorType = llvm::dyn_cast<VectorType>(loadedMask.getType());
+    auto vectorType = llvm::dyn_cast<ScalableVectorType>(loadedMask.getType());
 
     if (!vectorType || !isSVEMaskType(vectorType))
       return failure();

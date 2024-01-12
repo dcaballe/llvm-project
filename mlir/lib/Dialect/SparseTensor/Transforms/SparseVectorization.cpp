@@ -55,19 +55,19 @@ static bool isInvariantArg(BlockArgument arg, Block *block) {
 }
 
 /// Constructs vector type for element type.
-static VectorType vectorType(VL vl, Type etp) {
-  return VectorType::get(vl.vectorLength, etp, vl.enableVLAVectorization);
+static FixedVectorType vectorType(VL vl, Type etp) {
+  return FixedVectorType::get(vl.vectorLength, etp, vl.enableVLAVectorization);
 }
 
 /// Constructs vector type from a memref value.
-static VectorType vectorType(VL vl, Value mem) {
+static FixedVectorType vectorType(VL vl, Value mem) {
   return vectorType(vl, getMemRefType(mem).getElementType());
 }
 
 /// Constructs vector iteration mask.
 static Value genVectorMask(PatternRewriter &rewriter, Location loc, VL vl,
                            Value iv, Value lo, Value hi, Value step) {
-  VectorType mtp = vectorType(vl, rewriter.getI1Type());
+  FixedVectorType mtp = vectorType(vl, rewriter.getI1Type());
   // Special case if the vector length evenly divides the trip count (for
   // example, "for i = 0, 128, 16"). A constant all-true mask is generated
   // so that all subsequent masked memory operations are immediately folded
@@ -99,7 +99,7 @@ static Value genVectorMask(PatternRewriter &rewriter, Location loc, VL vl,
 /// optimizations to hoist the invariant broadcast out of the vector loop.
 static Value genVectorInvariantValue(PatternRewriter &rewriter, VL vl,
                                      Value val) {
-  VectorType vtp = vectorType(vl, val.getType());
+  FixedVectorType vtp = vectorType(vl, val.getType());
   return rewriter.create<vector::BroadcastOp>(val.getLoc(), vtp, val);
 }
 
@@ -109,9 +109,9 @@ static Value genVectorInvariantValue(PatternRewriter &rewriter, VL vl,
 /// the last index, i.e. back().
 static Value genVectorLoad(PatternRewriter &rewriter, Location loc, VL vl,
                            Value mem, ArrayRef<Value> idxs, Value vmask) {
-  VectorType vtp = vectorType(vl, mem);
+  FixedVectorType vtp = vectorType(vl, mem);
   Value pass = constantZero(rewriter, loc, vtp);
-  if (llvm::isa<VectorType>(idxs.back().getType())) {
+  if (llvm::isa<FixedVectorType>(idxs.back().getType())) {
     SmallVector<Value> scalarArgs(idxs.begin(), idxs.end());
     Value indexVec = idxs.back();
     scalarArgs.back() = constantIndex(rewriter, loc, 0);
@@ -128,7 +128,7 @@ static Value genVectorLoad(PatternRewriter &rewriter, Location loc, VL vl,
 /// the last index, i.e. back().
 static void genVectorStore(PatternRewriter &rewriter, Location loc, Value mem,
                            ArrayRef<Value> idxs, Value vmask, Value rhs) {
-  if (llvm::isa<VectorType>(idxs.back().getType())) {
+  if (llvm::isa<FixedVectorType>(idxs.back().getType())) {
     SmallVector<Value> scalarArgs(idxs.begin(), idxs.end());
     Value indexVec = idxs.back();
     scalarArgs.back() = constantIndex(rewriter, loc, 0);
@@ -189,7 +189,7 @@ static bool isVectorizableReduction(Value red, Value iter,
 /// Value 'r' denotes the initial value of the reduction outside the loop.
 static Value genVectorReducInit(PatternRewriter &rewriter, Location loc,
                                 Value red, Value iter, Value r,
-                                VectorType vtp) {
+                                FixedVectorType vtp) {
   vector::CombiningKind kind;
   if (!isVectorizableReduction(red, iter, kind))
     llvm_unreachable("unknown reduction");
@@ -297,7 +297,8 @@ static bool vectorizeSubscripts(PatternRewriter &rewriter, scf::ForOp forOp,
         Location loc = forOp.getLoc();
         Value vload =
             genVectorLoad(rewriter, loc, vl, load.getMemRef(), idxs2, vmask);
-        Type etp = llvm::cast<VectorType>(vload.getType()).getElementType();
+        Type etp =
+            llvm::cast<FixedVectorType>(vload.getType()).getElementType();
         if (!llvm::isa<IndexType>(etp)) {
           if (etp.getIntOrFloatBitWidth() < 32)
             vload = rewriter.create<arith::ExtUIOp>(
@@ -342,7 +343,7 @@ static bool vectorizeSubscripts(PatternRewriter &rewriter, scf::ForOp forOp,
 #define TYPEDUNAOP(xxx)                                                        \
   if (auto x = dyn_cast<xxx>(def)) {                                           \
     if (codegen) {                                                             \
-      VectorType vtp = vectorType(vl, x.getType());                            \
+      FixedVectorType vtp = vectorType(vl, x.getType());                       \
       vexp = rewriter.create<xxx>(loc, vtp, vx);                               \
     }                                                                          \
     return true;                                                               \
@@ -365,7 +366,7 @@ static bool vectorizeExpr(PatternRewriter &rewriter, scf::ForOp forOp, VL vl,
                           Value exp, bool codegen, Value vmask, Value &vexp) {
   Location loc = forOp.getLoc();
   // Reject unsupported types.
-  if (!VectorType::isValidElementType(exp.getType()))
+  if (!VectorBaseType::isValidElementType(exp.getType()))
     return false;
   // A block argument is invariant/reduction/index.
   if (auto arg = llvm::dyn_cast<BlockArgument>(exp)) {
@@ -373,7 +374,7 @@ static bool vectorizeExpr(PatternRewriter &rewriter, scf::ForOp forOp, VL vl,
       // We encountered a single, innermost index inside the computation,
       // such as a[i] = i, which must convert to [i, i+1, ...].
       if (codegen) {
-        VectorType vtp = vectorType(vl, arg.getType());
+        FixedVectorType vtp = vectorType(vl, arg.getType());
         Value veci = rewriter.create<vector::BroadcastOp>(loc, vtp, arg);
         Value incr;
         if (vl.enableVLAVectorization) {
@@ -535,7 +536,7 @@ static bool vectorizeStmt(PatternRewriter &rewriter, scf::ForOp forOp, VL vl,
     }
     if (!yield.getResults().empty()) {
       Value init = forOp.getInitArgs()[0];
-      VectorType vtp = vectorType(vl, init.getType());
+      FixedVectorType vtp = vectorType(vl, init.getType());
       Value vinit = genVectorReducInit(rewriter, loc, yield->getOperand(0),
                                        forOp.getRegionIterArg(0), init, vtp);
       forOpNew = rewriter.create<scf::ForOp>(

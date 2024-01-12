@@ -21,7 +21,7 @@ inline unsigned getBitWidth(Type type) {
   if (type.isIntOrFloat())
     return type.getIntOrFloatBitWidth();
 
-  if (auto vectorType = dyn_cast<VectorType>(type)) {
+  if (auto vectorType = dyn_cast<FixedVectorType>(type)) {
     assert(vectorType.getElementType().isIntOrFloat());
     return vectorType.getNumElements() *
            vectorType.getElementType().getIntOrFloatBitWidth();

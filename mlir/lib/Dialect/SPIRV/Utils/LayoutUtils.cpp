@@ -89,7 +89,7 @@ Type VulkanLayoutUtils::decorateType(Type type, VulkanLayoutUtils::Size &size,
     return decorateType(structType, size, alignment);
   if (auto arrayType = dyn_cast<spirv::ArrayType>(type))
     return decorateType(arrayType, size, alignment);
-  if (auto vectorType = dyn_cast<VectorType>(type))
+  if (auto vectorType = dyn_cast<FixedVectorType>(type))
     return decorateType(vectorType, size, alignment);
   if (auto arrayType = dyn_cast<spirv::RuntimeArrayType>(type)) {
     size = std::numeric_limits<Size>().max();
@@ -102,7 +102,7 @@ Type VulkanLayoutUtils::decorateType(Type type, VulkanLayoutUtils::Size &size,
   llvm_unreachable("unhandled SPIR-V type");
 }
 
-Type VulkanLayoutUtils::decorateType(VectorType vectorType,
+Type VulkanLayoutUtils::decorateType(FixedVectorType vectorType,
                                      VulkanLayoutUtils::Size &size,
                                      VulkanLayoutUtils::Size &alignment) {
   const auto numElements = vectorType.getNumElements();
@@ -118,7 +118,7 @@ Type VulkanLayoutUtils::decorateType(VectorType vectorType,
   // times its scalar alignment."
   size = elementSize * numElements;
   alignment = numElements == 2 ? elementAlignment * 2 : elementAlignment * 4;
-  return VectorType::get(numElements, memberType);
+  return FixedVectorType::get(numElements, memberType);
 }
 
 Type VulkanLayoutUtils::decorateType(spirv::ArrayType arrayType,

@@ -257,12 +257,13 @@ struct ConvertArmSMESpillsAndFillsToLLVM : public ConvertToLLVMPattern {
     auto zeroTileId = rewriter.getI32IntegerAttr(0);
     rewriter.updateRootInPlace(tileOp, [&] { tileOp.setTileId(zeroTileId); });
 
-    VectorType tileVectorType = tileOp.getTileType();
-    auto sliceType = VectorType::Builder(tileVectorType).dropDim(0);
+    ScalableVectorType tileVectorType = tileOp.getTileType();
+    VectorBaseType sliceType =
+        VectorBaseType::Builder(tileVectorType).dropDim(0);
     auto swapInMemoryTileWithSMETileZero = [&] {
       emitFullTileSwap(rewriter, loc, tileAlloca,
-                       *arm_sme::getSMETileType(tileVectorType), sliceType,
-                       zeroTileId);
+                       *arm_sme::getSMETileType(tileVectorType),
+                       cast<ScalableVectorType>(sliceType), zeroTileId);
     };
 
     // Step 3. Emit tile swaps before and after the op.
@@ -298,8 +299,9 @@ struct ConvertArmSMESpillsAndFillsToLLVM : public ConvertToLLVMPattern {
   /// Emits an in-place swap of a slice of a tile in ZA and a slice of a
   /// tile-sized memref (`tileAlloca`).
   void emitSliceSwap(RewriterBase &rewriter, Location loc, Value tileAlloca,
-                     arm_sme::ArmSMETileType tileType, VectorType sliceType,
-                     IntegerAttr tileId, Value sliceIndex) const {
+                     arm_sme::ArmSMETileType tileType,
+                     ScalableVectorType sliceType, IntegerAttr tileId,
+                     Value sliceIndex) const {
     // Cast the slice index to an i32.
     auto sliceIndexI32 = rewriter.create<arith::IndexCastOp>(
         loc, rewriter.getI32Type(), sliceIndex);
@@ -328,7 +330,8 @@ struct ConvertArmSMESpillsAndFillsToLLVM : public ConvertToLLVMPattern {
   /// Emits a full in-place swap of the contents of a tile in ZA and a
   /// tile-sized memref (`tileAlloca`).
   void emitFullTileSwap(RewriterBase &rewriter, Location loc, Value tileAlloca,
-                        arm_sme::ArmSMETileType tileType, VectorType sliceType,
+                        arm_sme::ArmSMETileType tileType,
+                        ScalableVectorType sliceType,
                         IntegerAttr tileId) const {
     RewriterBase::InsertionGuard guard(rewriter);
     // Create an scf.for over all tile slices.
@@ -605,8 +608,9 @@ struct MoveVectorToTileSliceConversion
     auto one = rewriter.create<arith::ConstantOp>(
         loc, rewriter.getI1Type(),
         rewriter.getIntegerAttr(rewriter.getI1Type(), 1));
-    auto predTy = VectorType::get(tileType.getShape()[0], rewriter.getI1Type(),
-                                  /*scalableDims=*/{true});
+    auto predTy =
+        FixedVectorType::get(tileType.getShape()[0], rewriter.getI1Type(),
+                             /*scalableDims=*/{true});
     auto allActiveMask = rewriter.create<vector::SplatOp>(loc, predTy, one);
 
     // Create 'arm_sme.intr.write.(horiz|vert)' to write vector to tile slice.
@@ -706,7 +710,7 @@ struct OuterProductOpConversion
     if (!tileId)
       return failure();
 
-    auto isSupportedType = [](VectorType vectorType) {
+    auto isSupportedType = [](ScalableVectorType vectorType) {
       // TODO: the FP outer product instruction variants are predicated on
       // different features [1]:
       //
@@ -720,7 +724,7 @@ struct OuterProductOpConversion
       // It should be possible to control lowering based on target features.
       // [1]
       // https://developer.arm.com/downloads/-/exploration-tools/feature-names-for-a-profile
-      if ((vectorType.getRank() != 2) || !vectorType.allDimsScalable())
+      if ((vectorType.getRank() != 2) || vectorType.getNumScalableDims() != 2)
         return false;
 
       auto elementType = vectorType.getElementType();
@@ -867,7 +871,7 @@ void mlir::configureArmSMEToLLVMConversionLegality(ConversionTarget &target) {
 
 void mlir::populateArmSMEToLLVMConversionPatterns(LLVMTypeConverter &converter,
                                                   RewritePatternSet &patterns) {
-  converter.addConversion([&](VectorType type) -> std::optional<Type> {
+  converter.addConversion([&](FixedVectorType type) -> std::optional<Type> {
     // There's no LLVM type for SME tiles, but after lowering to intrinsics all
     // SME vector types should be eliminated.
     if (arm_sme::isValidSMETileVectorType(type))

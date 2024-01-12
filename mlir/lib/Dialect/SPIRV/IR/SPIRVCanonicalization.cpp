@@ -712,7 +712,7 @@ spirv::LogicalEqualOp::fold(spirv::LogicalEqualOp::FoldAdaptor adaptor) {
     auto trueAttr = BoolAttr::get(getContext(), true);
     if (isa<IntegerType>(getType()))
       return trueAttr;
-    if (auto vecTy = dyn_cast<VectorType>(getType()))
+    if (auto vecTy = dyn_cast<FixedVectorType>(getType()))
       return SplatElementsAttr::get(vecTy, trueAttr);
   }
 
@@ -739,7 +739,7 @@ OpFoldResult spirv::LogicalNotEqualOp::fold(FoldAdaptor adaptor) {
     auto falseAttr = BoolAttr::get(getContext(), false);
     if (isa<IntegerType>(getType()))
       return falseAttr;
-    if (auto vecTy = dyn_cast<VectorType>(getType()))
+    if (auto vecTy = dyn_cast<FixedVectorType>(getType()))
       return SplatElementsAttr::get(vecTy, falseAttr);
   }
 
@@ -807,7 +807,7 @@ OpFoldResult spirv::IEqualOp::fold(spirv::IEqualOp::FoldAdaptor adaptor) {
     auto trueAttr = BoolAttr::get(getContext(), true);
     if (isa<IntegerType>(getType()))
       return trueAttr;
-    if (auto vecTy = dyn_cast<VectorType>(getType()))
+    if (auto vecTy = dyn_cast<FixedVectorType>(getType()))
       return SplatElementsAttr::get(vecTy, trueAttr);
   }
 
@@ -827,7 +827,7 @@ OpFoldResult spirv::INotEqualOp::fold(spirv::INotEqualOp::FoldAdaptor adaptor) {
     auto falseAttr = BoolAttr::get(getContext(), false);
     if (isa<IntegerType>(getType()))
       return falseAttr;
-    if (auto vecTy = dyn_cast<VectorType>(getType()))
+    if (auto vecTy = dyn_cast<FixedVectorType>(getType()))
       return SplatElementsAttr::get(vecTy, falseAttr);
   }
 

@@ -71,7 +71,7 @@ builtin_attr_type_mnemonics = {
     "mlir::UnrankedMemRef": '"memref<...>"',
     "mlir::UnrankedTensorType": '"tensor<...>"',
     "mlir::RankedTensorType": '"tensor<...>"',
-    "mlir::VectorType": '"vector<...>"',
+    "mlir::FixedVectorType": '"vector<...>"',
 }
 
 

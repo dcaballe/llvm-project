@@ -26,7 +26,7 @@ verifyCoopMatrixAccess(Operation *op, Type pointer, Type coopMatrix,
                        spirv::MemoryAccessAttr memoryOperand) {
   auto pointerType = cast<PointerType>(pointer);
   Type pointeeType = pointerType.getPointeeType();
-  if (!isa<ScalarType, VectorType>(pointeeType)) {
+  if (!isa<ScalarType, FixedVectorType>(pointeeType)) {
     return op->emitOpError(
                "Pointer must point to a scalar or vector type but provided ")
            << pointeeType;

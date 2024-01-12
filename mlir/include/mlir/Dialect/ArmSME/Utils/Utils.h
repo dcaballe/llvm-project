@@ -33,11 +33,11 @@ bool isValidSMETileElementType(Type type);
 
 /// Returns true if `vType` is a valid vector type for an SME tile or false
 /// otherwise.
-bool isValidSMETileVectorType(VectorType vType);
+bool isValidSMETileVectorType(VectorBaseType vType);
 
 /// Returns the type of SME tile this vector type corresponds to, or none if the
 /// vector type does not fit within an SME tile.
-std::optional<ArmSMETileType> getSMETileType(VectorType);
+std::optional<ArmSMETileType> getSMETileType(ScalableVectorType);
 
 /// Verifies the tile ID (if set) on this tile operation is valid.
 LogicalResult verifyOperationHasValidTileId(Operation *);

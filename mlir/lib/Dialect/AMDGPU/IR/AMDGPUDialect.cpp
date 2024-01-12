@@ -227,8 +227,8 @@ LogicalResult WMMAOp::verify() {
   Type sourceAType = getSourceA().getType();
   Type destType = getDestC().getType();
 
-  VectorType sourceVectorAType = sourceAType.dyn_cast<VectorType>();
-  VectorType destVectorType = destType.dyn_cast<VectorType>();
+  FixedVectorType sourceVectorAType = sourceAType.dyn_cast<FixedVectorType>();
+  FixedVectorType destVectorType = destType.dyn_cast<FixedVectorType>();
 
   Type sourceAElemType = sourceVectorAType.getElementType();
   Type destElemType = destVectorType.getElementType();
@@ -260,11 +260,11 @@ LogicalResult MFMAOp::verify() {
 
   Type sourceElem = sourceType, destElem = destType;
   uint32_t sourceLen = 1, destLen = 1;
-  if (auto sourceVector = llvm::dyn_cast<VectorType>(sourceType)) {
+  if (auto sourceVector = llvm::dyn_cast<FixedVectorType>(sourceType)) {
     sourceLen = sourceVector.getNumElements();
     sourceElem = sourceVector.getElementType();
   }
-  if (auto destVector = llvm::dyn_cast<VectorType>(destType)) {
+  if (auto destVector = llvm::dyn_cast<FixedVectorType>(destType)) {
     destLen = destVector.getNumElements();
     destElem = destVector.getElementType();
   }
@@ -273,7 +273,7 @@ LogicalResult MFMAOp::verify() {
   if (sourceElem.isFloat8E5M2FNUZ() || sourceElem.isFloat8E4M3FNUZ()) {
     int64_t sourceBLen = 1;
     Type sourceBElem = sourceBType;
-    if (auto sourceBVector = llvm::dyn_cast<VectorType>(sourceBType)) {
+    if (auto sourceBVector = llvm::dyn_cast<FixedVectorType>(sourceBType)) {
       sourceBLen = sourceBVector.getNumElements();
       sourceBElem = sourceBVector.getElementType();
     }

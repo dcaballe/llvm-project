@@ -172,7 +172,7 @@ for name in [
     "Float80Type",
     "Float128Type",
     "NoneType",
-    "VectorType",
+    "FixedVectorType",
     "RankedTensorType",
     "UnrankedTensorType",
     "MemRefType",

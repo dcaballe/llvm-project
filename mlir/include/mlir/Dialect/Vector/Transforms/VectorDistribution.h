@@ -20,9 +20,9 @@ struct WarpExecuteOnLane0LoweringOptions {
   /// WarpExecuteOnLane0Op.
   /// The function needs to return an allocation that the lowering can use as
   /// temporary memory. The allocation needs to match the shape of the type (the
-  /// type may be VectorType or a scalar) and be availble for the current warp.
-  /// If there are several warps running in parallel the allocation needs to be
-  /// split so that each warp has its own allocation.
+  /// type may be FixedVectorType or a scalar) and be availble for the current
+  /// warp. If there are several warps running in parallel the allocation needs
+  /// to be split so that each warp has its own allocation.
   using WarpAllocationFn =
       std::function<Value(Location, OpBuilder &, WarpExecuteOnLane0Op, Type)>;
   WarpAllocationFn warpAllocationFn = nullptr;

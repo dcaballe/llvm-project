@@ -9,8 +9,7 @@
 #ifndef MLIR_IR_BUILTINTYPEINTERFACES_H
 #define MLIR_IR_BUILTINTYPEINTERFACES_H
 
-#include "mlir/IR/Types.h"
-
 #include "mlir/IR/BuiltinTypeInterfaces.h.inc"
+#include "mlir/IR/Types.h"
 
 #endif // MLIR_IR_BUILTINTYPEINTERFACES_H

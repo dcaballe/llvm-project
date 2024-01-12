@@ -173,7 +173,7 @@ __all__ = [
     "UnrankedMemRefType",
     "UnrankedTensorType",
     "Value",
-    "VectorType",
+    "FixedVectorType",
     "_GlobalDebug",
     "_OperationBase",
 ]
@@ -2639,7 +2639,7 @@ class UnrankedTensorType(ShapedType):
     @property
     def typeid(self) -> TypeID: ...
 
-class VectorType(ShapedType):
+class FixedVectorType(ShapedType):
     static_typeid: ClassVar[TypeID]  # value = <mlir._mlir_libs._TypeID object>
     @staticmethod
     def get(
@@ -2649,7 +2649,7 @@ class VectorType(ShapedType):
         scalable: Optional[List] = None,
         scalable_dims: Optional[List[int]] = None,
         loc: Optional[Location] = None,
-    ) -> VectorType:
+    ) -> FixedVectorType:
         """
         Create a vector type
         """

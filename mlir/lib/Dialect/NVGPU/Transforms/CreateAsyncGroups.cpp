@@ -125,7 +125,7 @@ static Value buildNumReadElements(OpBuilder &b, Location loc,
 
 /// Return "true" if the conversion to async copy is supported by "async copy".
 static bool resultsInSupportedAsyncCopy(MemRefType memrefType,
-                                        VectorType vecType) {
+                                        FixedVectorType vecType) {
   assert(vecType.getRank() == 1 && "expected 1-D vector");
   constexpr int64_t kSupportedCpAsyncAlignmentsInBytes[3] = {4, 8, 16};
 
@@ -160,7 +160,7 @@ void nvgpu::createAsyncGroups(RewriterBase &rewriter, Operation *op,
     if (!isContiguousStore(writeOp))
       return;
     Value vectorVal = nvgpu::getValueStored(writeOp);
-    if (cast<VectorType>(vectorVal.getType()).getRank() != 1)
+    if (cast<FixedVectorType>(vectorVal.getType()).getRank() != 1)
       return;
     Value storeBase = nvgpu::getMemrefOperand(writeOp);
     if (!nvgpu::NVGPUDialect::hasSharedMemoryAddressSpace(
@@ -190,7 +190,7 @@ void nvgpu::createAsyncGroups(RewriterBase &rewriter, Operation *op,
 
     // Check whether both accesses are supported before we emit: this is
     // necessary to ensure the correctness of DeviceAsyncCopyOp.
-    VectorType vecType = cast<VectorType>(vectorVal.getType());
+    FixedVectorType vecType = cast<FixedVectorType>(vectorVal.getType());
 
     if (!resultsInSupportedAsyncCopy(cast<MemRefType>(loadBase.getType()),
                                      vecType) ||
@@ -241,7 +241,7 @@ void nvgpu::createAsyncGroups(RewriterBase &rewriter, Operation *op,
     for (Operation *writeOp : group) {
       rewriter.setInsertionPoint(writeOp);
       Value vectorVal = nvgpu::getValueStored(writeOp);
-      auto vectorType = cast<VectorType>(vectorVal.getType());
+      auto vectorType = cast<FixedVectorType>(vectorVal.getType());
       int64_t numElements = vectorType.getNumElements();
       Operation *readOp = vectorVal.getDefiningOp();
       Value storeBase = nvgpu::getMemrefOperand(writeOp);

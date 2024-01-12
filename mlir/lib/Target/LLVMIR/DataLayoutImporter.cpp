@@ -92,7 +92,7 @@ DataLayoutImporter::tryToParseAlignment(StringRef token) const {
   uint64_t minimal = (*alignment)[0];
   uint64_t preferred = alignment->size() == 1 ? minimal : (*alignment)[1];
   return DenseIntElementsAttr::get(
-      VectorType::get({2}, IntegerType::get(context, 64)),
+      FixedVectorType::get({2}, IntegerType::get(context, 64)),
       {minimal, preferred});
 }
 
@@ -115,7 +115,7 @@ DataLayoutImporter::tryToParsePointerAlignment(StringRef token) const {
   uint64_t preferred = alignment->size() < 3 ? minimal : (*alignment)[2];
   uint64_t idx = alignment->size() < 4 ? size : (*alignment)[3];
   return DenseIntElementsAttr::get<uint64_t>(
-      VectorType::get({4}, IntegerType::get(context, 64)),
+      FixedVectorType::get({4}, IntegerType::get(context, 64)),
       {size, minimal, preferred, idx});
 }
 

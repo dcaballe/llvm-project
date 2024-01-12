@@ -63,7 +63,7 @@ FailureOr<WarpMatrixInfo> nvgpu::getWarpMatrixInfo(Operation *op) {
     info.vectorType = writeOp.getVectorType();
   } else if (isa<vector::TransferReadOp, vector::ContractionOp,
                  vector::ExtractStridedSliceOp, arith::ConstantOp>(op)) {
-    info.vectorType = cast<VectorType>(op->getResult(0).getType());
+    info.vectorType = cast<FixedVectorType>(op->getResult(0).getType());
   } else {
     return op->emitError()
            << "unhandled operation type in nvgpu.mma.sync conversion path";
@@ -276,7 +276,7 @@ nvgpu::getLaneIdToLdMatrixMatrixCoord(OpBuilder &builder, Location loc,
 bool nvgpu::canLowerToWarpMatrixOperation(vector::TransferReadOp op) {
   if (op.getMask() || op.hasOutOfBoundsDim())
     return false;
-  VectorType type = op.getType();
+  FixedVectorType type = op.getType();
   // The result type should be 2D. Note that it is possible to expand support so
   // that we are robust to extra unit dimensions that failed to fold, but that
   // would significantly increase downstream code complexity in the conversion
@@ -303,7 +303,7 @@ bool nvgpu::canLowerToWarpMatrixOperation(vector::TransferReadOp op) {
 bool nvgpu::canLowerToWarpMatrixOperation(vector::TransferWriteOp op) {
   if (op.getMask() || op.hasOutOfBoundsDim() || op.getTransferRank() == 0)
     return false;
-  VectorType type = op.getVectorType();
+  FixedVectorType type = cast<FixedVectorType>(op.getVectorType());
   if (!type.hasStaticShape() || type.getRank() != 2)
     return false;
   // TODO: Currently we rely on lowering to a `vector.store` operation. We could

@@ -32,7 +32,7 @@ TEST_F(ArmSMETest, TestTileTypeConversion) {
                                          patterns);
 
   Type i32 = IntegerType::get(&context, 32);
-  auto smeTileType = VectorType::get({4, 4}, i32, {true, true});
+  auto smeTileType = FixedVectorType::get({4, 4}, i32, {true, true});
 
   // An unmodified LLVMTypeConverer should fail to convert an ArmSME tile type.
   {

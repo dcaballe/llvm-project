@@ -278,7 +278,7 @@ struct WmmaConstantOpToNVVMLowering
     LLVM::LLVMStructType type = convertMMAToLLVMType(
         cast<gpu::MMAMatrixType>(subgroupMmaConstantOp.getType()));
     // If the element type is a vector create a vector from the operand.
-    if (auto vecType = dyn_cast<VectorType>(type.getBody()[0])) {
+    if (auto vecType = dyn_cast<FixedVectorType>(type.getBody()[0])) {
       Value vecCst = rewriter.create<LLVM::UndefOp>(loc, vecType);
       for (int64_t vecEl = 0; vecEl < vecType.getNumElements(); vecEl++) {
         Value idx = rewriter.create<LLVM::ConstantOp>(
@@ -302,8 +302,8 @@ static Value createMinMaxF(OpBuilder &builder, Location loc, Value lhs,
                            Value rhs, bool isMin) {
   auto floatType = cast<FloatType>(getElementTypeOrSelf(lhs.getType()));
   Type i1Type = builder.getI1Type();
-  if (auto vecType = dyn_cast<VectorType>(lhs.getType()))
-    i1Type = VectorType::get(vecType.getShape(), i1Type);
+  if (auto vecType = dyn_cast<FixedVectorType>(lhs.getType()))
+    i1Type = FixedVectorType::get(vecType.getShape(), i1Type);
   Value cmp = builder.create<LLVM::FCmpOp>(
       loc, i1Type, isMin ? LLVM::FCmpPredicate::olt : LLVM::FCmpPredicate::ogt,
       lhs, rhs);

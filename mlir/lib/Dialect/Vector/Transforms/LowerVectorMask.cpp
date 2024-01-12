@@ -52,13 +52,13 @@ public:
 
   LogicalResult matchAndRewrite(vector::CreateMaskOp op,
                                 PatternRewriter &rewriter) const override {
-    auto dstType = cast<VectorType>(op.getResult().getType());
+    auto dstType = cast<FixedVectorType>(op.getResult().getType());
     int64_t rank = dstType.getRank();
     if (rank <= 1)
       return rewriter.notifyMatchFailure(
           op, "0-D and 1-D vectors are handled separately");
 
-    if (dstType.getScalableDims().front())
+    if (dstType.getScalableBases().front())
       return rewriter.notifyMatchFailure(
           op, "Cannot unroll leading scalable dim in dstType");
 
@@ -66,7 +66,7 @@ public:
     int64_t dim = dstType.getDimSize(0);
     Value idx = op.getOperand(0);
 
-    VectorType lowType = VectorType::Builder(dstType).dropDim(0);
+    VectorBaseType lowType = VectorBaseType::Builder(dstType).dropDim(0);
     Value trueVal = rewriter.create<vector::CreateMaskOp>(
         loc, lowType, op.getOperands().drop_front());
     Value falseVal = rewriter.create<arith::ConstantOp>(
@@ -114,8 +114,8 @@ public:
       bool value = cast<IntegerAttr>(dimSizes[0]).getInt() == 1;
       rewriter.replaceOpWithNewOp<arith::ConstantOp>(
           op, dstType,
-          DenseIntElementsAttr::get(VectorType::get({}, rewriter.getI1Type()),
-                                    value));
+          DenseIntElementsAttr::get(
+              FixedVectorType::get({}, rewriter.getI1Type()), value));
       return success();
     }
 
@@ -141,11 +141,11 @@ public:
       return success();
     }
 
-    if (dstType.getScalableDims().front())
+    if (dstType.getScalableBases().front())
       return rewriter.notifyMatchFailure(
           op, "Cannot unroll leading scalable dim in dstType");
 
-    VectorType lowType = VectorType::Builder(dstType).dropDim(0);
+    VectorBaseType lowType = VectorBaseType::Builder(dstType).dropDim(0);
     Value trueVal = rewriter.create<vector::ConstantMaskOp>(
         loc, lowType, rewriter.getArrayAttr(dimSizes.getValue().drop_front()));
     Value result = rewriter.create<arith::ConstantOp>(

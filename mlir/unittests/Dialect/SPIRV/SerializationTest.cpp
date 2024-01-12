@@ -85,7 +85,7 @@ protected:
       return builder.create<spirv::ConstantOp>(
           loc, type, builder.getIntegerAttr(type, val));
     }
-    if (auto vectorType = dyn_cast<VectorType>(type)) {
+    if (auto vectorType = dyn_cast<FixedVectorType>(type)) {
       Type elemType = vectorType.getElementType();
       if (auto intType = dyn_cast<IntegerType>(elemType)) {
         return builder.create<spirv::ConstantOp>(

@@ -64,7 +64,7 @@ static Value castF32To(Type elementType, Value f32, Location loc,
 
 LogicalResult ExtfOnFloat8RewritePattern::match(arith::ExtFOp op) const {
   Type inType = op.getIn().getType();
-  if (auto inVecType = inType.dyn_cast<VectorType>()) {
+  if (auto inVecType = inType.dyn_cast<FixedVectorType>()) {
     if (inVecType.isScalable())
       return failure();
     if (inVecType.getShape().size() > 1)
@@ -80,13 +80,13 @@ void ExtfOnFloat8RewritePattern::rewrite(arith::ExtFOp op,
   Location loc = op.getLoc();
   Value in = op.getIn();
   Type outElemType = getElementTypeOrSelf(op.getOut().getType());
-  if (!in.getType().isa<VectorType>()) {
+  if (!in.getType().isa<FixedVectorType>()) {
     Value asFloat = rewriter.create<amdgpu::ExtPackedFp8Op>(
         loc, rewriter.getF32Type(), in, 0);
     Value result = castF32To(outElemType, asFloat, loc, rewriter);
     return rewriter.replaceOp(op, result);
   }
-  VectorType inType = in.getType().cast<VectorType>();
+  FixedVectorType inType = in.getType().cast<FixedVectorType>();
   int64_t numElements = inType.getNumElements();
   Value zero = rewriter.createOrFold<arith::ConstantOp>(
       loc, outElemType, rewriter.getFloatAttr(outElemType, 0.0));
@@ -129,7 +129,7 @@ static Value castToF32(Value value, Location loc, PatternRewriter &rewriter) {
 
 LogicalResult TruncfToFloat8RewritePattern::match(arith::TruncFOp op) const {
   Type outType = op.getOut().getType();
-  if (auto outVecType = outType.dyn_cast<VectorType>()) {
+  if (auto outVecType = outType.dyn_cast<FixedVectorType>()) {
     if (outVecType.isScalable())
       return failure();
     if (outVecType.getShape().size() > 1)
@@ -145,8 +145,8 @@ void TruncfToFloat8RewritePattern::rewrite(arith::TruncFOp op,
   Location loc = op.getLoc();
   Value in = op.getIn();
   Type outElemType = getElementTypeOrSelf(op.getOut().getType());
-  VectorType truncResType = VectorType::get(4, outElemType);
-  if (!in.getType().isa<VectorType>()) {
+  FixedVectorType truncResType = FixedVectorType::get(4, outElemType);
+  if (!in.getType().isa<FixedVectorType>()) {
     Value asFloat = castToF32(in, loc, rewriter);
     Value asF8s = rewriter.create<amdgpu::PackedTrunc2xFp8Op>(
         loc, truncResType, asFloat, /*sourceB=*/nullptr, 0,
@@ -155,7 +155,7 @@ void TruncfToFloat8RewritePattern::rewrite(arith::TruncFOp op,
         loc, asF8s, rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0));
     return rewriter.replaceOp(op, result);
   }
-  VectorType outType = op.getOut().getType().cast<VectorType>();
+  FixedVectorType outType = op.getOut().getType().cast<FixedVectorType>();
   int64_t numElements = outType.getNumElements();
   Value zero = rewriter.createOrFold<arith::ConstantOp>(
       loc, outElemType, rewriter.getFloatAttr(outElemType, 0.0));

@@ -99,8 +99,8 @@ struct SvboolConversionOpLowering : public ConvertOpToLLVMPattern<Op> {
     auto loc = convertOp.getLoc();
 
     auto source = convertOp.getSource();
-    VectorType sourceType = source.getType();
-    VectorType resultType = convertOp.getResult().getType();
+    FixedVectorType sourceType = source.getType();
+    FixedVectorType resultType = convertOp.getResult().getType();
 
     Value result = rewriter.create<arith::ConstantOp>(
         loc, resultType, rewriter.getZeroAttr(resultType));
@@ -117,8 +117,9 @@ struct SvboolConversionOpLowering : public ConvertOpToLLVMPattern<Op> {
       auto extractOrInsertPosition = ArrayRef(index).drop_back();
       auto sourceVector = rewriter.create<vector::ExtractOp>(
           loc, source, extractOrInsertPosition);
-      VectorType convertedType =
-          VectorType::Builder(llvm::cast<VectorType>(sourceVector.getType()))
+      VectorBaseType convertedType =
+          VectorBaseType::Builder(
+              llvm::cast<VectorBaseType>(sourceVector.getType()))
               .setDim(0, resultType.getShape().back());
       auto convertedVector =
           rewriter.create<IntrOp>(loc, TypeRange{convertedType}, sourceVector);

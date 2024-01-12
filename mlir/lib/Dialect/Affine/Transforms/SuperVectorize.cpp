@@ -838,7 +838,7 @@ void VectorizationState::registerValueVectorReplacementImpl(Value replaced,
                                                             Value replacement) {
   assert(!valueVectorReplacement.contains(replaced) &&
          "Vector replacement already registered");
-  assert(isa<VectorType>(replacement.getType()) &&
+  assert(isa<FixedVectorType>(replacement.getType()) &&
          "Expected vector type in vector replacement");
   valueVectorReplacement.map(replaced, replacement);
 }
@@ -883,7 +883,7 @@ void VectorizationState::registerValueScalarReplacementImpl(Value replaced,
                                                             Value replacement) {
   assert(!valueScalarReplacement.contains(replaced) &&
          "Scalar value replacement already registered");
-  assert(!isa<VectorType>(replacement.getType()) &&
+  assert(!isa<FixedVectorType>(replacement.getType()) &&
          "Expected scalar type in scalar replacement");
   valueScalarReplacement.map(replaced, replacement);
 }
@@ -943,10 +943,10 @@ isVectorizableLoopPtrFactory(const DenseSet<Operation *> &parallelLoops,
 
 /// Returns the vector type resulting from applying the provided vectorization
 /// strategy on the scalar type.
-static VectorType getVectorType(Type scalarTy,
-                                const VectorizationStrategy *strategy) {
-  assert(!isa<VectorType>(scalarTy) && "Expected scalar type");
-  return VectorType::get(strategy->vectorSizes, scalarTy);
+static FixedVectorType getVectorType(Type scalarTy,
+                                     const VectorizationStrategy *strategy) {
+  assert(!isa<FixedVectorType>(scalarTy) && "Expected scalar type");
+  return FixedVectorType::get(strategy->vectorSizes, scalarTy);
 }
 
 /// Tries to transform a scalar constant into a vector constant. Returns the
@@ -955,7 +955,7 @@ static VectorType getVectorType(Type scalarTy,
 static arith::ConstantOp vectorizeConstant(arith::ConstantOp constOp,
                                            VectorizationState &state) {
   Type scalarTy = constOp.getType();
-  if (!VectorType::isValidElementType(scalarTy))
+  if (!VectorBaseType::isValidElementType(scalarTy))
     return nullptr;
 
   auto vecTy = getVectorType(scalarTy, state.strategy);
@@ -985,7 +985,7 @@ static arith::ConstantOp createInitialVector(arith::AtomicRMWKind reductionKind,
                                              Value oldOperand,
                                              VectorizationState &state) {
   Type scalarTy = oldOperand.getType();
-  if (!VectorType::isValidElementType(scalarTy))
+  if (!VectorBaseType::isValidElementType(scalarTy))
     return nullptr;
 
   Attribute valueAttr = getIdentityValueAttr(
@@ -1060,8 +1060,8 @@ static Value createMask(AffineForOp vecForOp, VectorizationState &state) {
   if (ub.use_empty())
     ub.getDefiningOp()->erase();
   // Finally we create the mask.
-  Type maskTy = VectorType::get(state.strategy->vectorSizes,
-                                state.builder.getIntegerType(1));
+  Type maskTy = FixedVectorType::get(state.strategy->vectorSizes,
+                                     state.builder.getIntegerType(1));
   Value mask =
       state.builder.create<vector::CreateMaskOp>(loc, maskTy, itersLeft);
 
@@ -1136,7 +1136,7 @@ static Value vectorizeOperand(Value operand, VectorizationState &state) {
   // An vector operand that is not in the replacement map should never reach
   // this point. Reaching this point could mean that the code was already
   // vectorized and we shouldn't try to vectorize already vectorized code.
-  assert(!isa<VectorType>(operand.getType()) &&
+  assert(!isa<FixedVectorType>(operand.getType()) &&
          "Vector op not found in replacement map");
 
   // Vectorize constant.
@@ -1174,7 +1174,8 @@ static Operation *vectorizeAffineLoad(AffineLoadOp loadOp,
                                       VectorizationState &state) {
   MemRefType memRefType = loadOp.getMemRefType();
   Type elementType = memRefType.getElementType();
-  auto vectorType = VectorType::get(state.strategy->vectorSizes, elementType);
+  auto vectorType =
+      FixedVectorType::get(state.strategy->vectorSizes, elementType);
 
   // Replace map operands with operands from the vector loop nest.
   SmallVector<Value, 8> mapOperands;
@@ -1258,7 +1259,7 @@ static Operation *vectorizeAffineStore(AffineStoreOp storeOp,
 static bool isNeutralElementConst(arith::AtomicRMWKind reductionKind,
                                   Value value, VectorizationState &state) {
   Type scalarTy = value.getType();
-  if (!VectorType::isValidElementType(scalarTy))
+  if (!VectorBaseType::isValidElementType(scalarTy))
     return false;
   Attribute valueAttr = getIdentityValueAttr(reductionKind, scalarTy,
                                              state.builder, value.getLoc());
@@ -1399,7 +1400,7 @@ static Operation *widenOp(Operation *op, VectorizationState &state) {
   SmallVector<Type, 8> vectorTypes;
   for (Value result : op->getResults())
     vectorTypes.push_back(
-        VectorType::get(state.strategy->vectorSizes, result.getType()));
+        FixedVectorType::get(state.strategy->vectorSizes, result.getType()));
 
   SmallVector<Value, 8> vectorOperands;
   for (Value operand : op->getOperands()) {

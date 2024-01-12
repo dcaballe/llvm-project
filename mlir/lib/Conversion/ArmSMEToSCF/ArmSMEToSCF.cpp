@@ -111,8 +111,8 @@ struct TileLoadOpConversion : public OpRewritePattern<arm_sme::TileLoadOp> {
     rewriter.setInsertionPointToStart(forOp.getBody());
 
     // Create an 'all true' predicate for the tile slice.
-    auto predicateType =
-        VectorType::get(tileType.getDimSize(1), rewriter.getI1Type(), true);
+    auto predicateType = FixedVectorType::get(tileType.getDimSize(1),
+                                              rewriter.getI1Type(), true);
     auto allTruePredicate = rewriter.create<arith::ConstantOp>(
         loc, DenseElementsAttr::get(predicateType, true));
 
@@ -201,8 +201,8 @@ struct TileLoadOpWithMaskAndPadZeroConversion
     auto numRows = createMaskOp.getOperands()[0];
     auto numCols = createMaskOp.getOperands()[1];
 
-    auto predicateType =
-        VectorType::get(tileType.getDimSize(1), rewriter.getI1Type(), true);
+    auto predicateType = FixedVectorType::get(tileType.getDimSize(1),
+                                              rewriter.getI1Type(), true);
     auto numColsOp =
         rewriter.create<vector::CreateMaskOp>(loc, predicateType, numCols);
 
@@ -340,8 +340,8 @@ struct TileLoadOpWithMaskAndPadNonZeroConversion
     auto mask = rewriter.create<arith::AndIOp>(loc, rowIsActiveI32, numColsI32);
     auto maskIndex =
         rewriter.create<arith::IndexCastOp>(loc, rewriter.getIndexType(), mask);
-    auto predicateType =
-        VectorType::get(tileType.getDimSize(1), rewriter.getI1Type(), true);
+    auto predicateType = FixedVectorType::get(tileType.getDimSize(1),
+                                              rewriter.getI1Type(), true);
     auto maskOp1D = rewriter.create<vector::CreateMaskOp>(
         loc, predicateType, maskIndex.getResult());
 
@@ -351,7 +351,7 @@ struct TileLoadOpWithMaskAndPadNonZeroConversion
                      numTileSlices, memrefIndices, loc, rewriter);
 
     // Splat pad into 1-D vector matching type of tile slice.
-    VectorType tileSliceType = VectorType::Builder(tileType).dropDim(0);
+    VectorBaseType tileSliceType = VectorBaseType::Builder(tileType).dropDim(0);
     auto pad1DOp = rewriter.create<vector::SplatOp>(loc, tileSliceType, padOp);
 
     auto loadSlice = rewriter.create<vector::MaskedLoadOp>(
@@ -405,8 +405,8 @@ struct TileStoreOpConversion : public OpRewritePattern<arm_sme::TileStoreOp> {
     auto tileType = tileStoreOp.getVectorType();
     auto tileElementType = tileType.getElementType();
 
-    auto predicateType =
-        VectorType::get(tileType.getDimSize(1), rewriter.getI1Type(), true);
+    auto predicateType = FixedVectorType::get(tileType.getDimSize(1),
+                                              rewriter.getI1Type(), true);
 
     Value maskCols;
     Value upperBound;

@@ -26,8 +26,11 @@ bool isValidSMETileElementType(Type type) {
          type.isBF16() || type.isF32() || type.isF64() || type.isF128();
 }
 
-bool isValidSMETileVectorType(VectorType vType) {
-  if ((vType.getRank() != 2) || !vType.allDimsScalable())
+bool isValidSMETileVectorType(VectorBaseType vType) {
+  if (!isa<ScalableVectorType>(vType))
+    return false;
+
+  if ((vType.getRank() != 2) || (vType.getNumScalableDims() != 2))
     return false;
 
   auto elemType = vType.getElementType();
@@ -41,7 +44,7 @@ bool isValidSMETileVectorType(VectorType vType) {
   return true;
 }
 
-std::optional<ArmSMETileType> getSMETileType(VectorType type) {
+std::optional<ArmSMETileType> getSMETileType(ScalableVectorType type) {
   if (!isValidSMETileVectorType(type))
     return {};
   switch (type.getElementTypeBitWidth()) {

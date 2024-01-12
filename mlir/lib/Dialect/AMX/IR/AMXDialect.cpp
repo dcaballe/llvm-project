@@ -28,7 +28,7 @@ void amx::AMXDialect::initialize() {
 }
 
 /// Verify that AMX supports the implied tile shape.
-static LogicalResult verifyTileSize(Operation *op, VectorType tp) {
+static LogicalResult verifyTileSize(Operation *op, FixedVectorType tp) {
   const unsigned kMaxRows = 16;
   const unsigned kBitsPerRow = 64 * 8;
   unsigned col = tp.getDimSize(1) * tp.getElementType().getIntOrFloatBitWidth();
@@ -40,8 +40,8 @@ static LogicalResult verifyTileSize(Operation *op, VectorType tp) {
 }
 
 /// Verify that AMX supports the multiplication.
-static LogicalResult verifyMultShape(Operation *op, VectorType atp,
-                                     VectorType btp, VectorType ctp,
+static LogicalResult verifyMultShape(Operation *op, FixedVectorType atp,
+                                     FixedVectorType btp, FixedVectorType ctp,
                                      unsigned scale) {
   unsigned am = atp.getDimSize(0), ak = atp.getDimSize(1) >> scale;
   unsigned bk = btp.getDimSize(0), bn = btp.getDimSize(1) >> scale;
@@ -71,9 +71,9 @@ LogicalResult amx::TileStoreOp::verify() {
 }
 
 LogicalResult amx::TileMulFOp::verify() {
-  VectorType aType = getLhsVectorType();
-  VectorType bType = getRhsVectorType();
-  VectorType cType = getVectorType();
+  FixedVectorType aType = getLhsVectorType();
+  FixedVectorType bType = getRhsVectorType();
+  FixedVectorType cType = getVectorType();
   if (failed(verifyTileSize(*this, aType)) ||
       failed(verifyTileSize(*this, bType)) ||
       failed(verifyTileSize(*this, cType)) ||
@@ -88,9 +88,9 @@ LogicalResult amx::TileMulFOp::verify() {
 }
 
 LogicalResult amx::TileMulIOp::verify() {
-  VectorType aType = getLhsVectorType();
-  VectorType bType = getRhsVectorType();
-  VectorType cType = getVectorType();
+  FixedVectorType aType = getLhsVectorType();
+  FixedVectorType bType = getRhsVectorType();
+  FixedVectorType cType = getVectorType();
   if (failed(verifyTileSize(*this, aType)) ||
       failed(verifyTileSize(*this, bType)) ||
       failed(verifyTileSize(*this, cType)) ||

@@ -158,7 +158,7 @@ struct UnrollTransferReadPattern
     Value result = rewriter.create<arith::ConstantOp>(
         loc, sourceVectorType, rewriter.getZeroAttr(sourceVectorType));
     auto targetType =
-        VectorType::get(*targetShape, sourceVectorType.getElementType());
+        FixedVectorType::get(*targetShape, sourceVectorType.getElementType());
     SmallVector<Value> originalIndices(readOp.getIndices().begin(),
                                        readOp.getIndices().end());
     SmallVector<int64_t> loopOrder =
@@ -265,7 +265,7 @@ struct UnrollContractionPattern
     auto targetShape = getTargetShape(options, contractOp);
     if (!targetShape)
       return failure();
-    auto dstVecType = cast<VectorType>(contractOp.getResultType());
+    auto dstVecType = cast<FixedVectorType>(contractOp.getResultType());
     SmallVector<int64_t> originalSize = *contractOp.getShapeForUnroll();
 
     Location loc = contractOp.getLoc();
@@ -319,7 +319,8 @@ struct UnrollContractionPattern
 
       SmallVector<int64_t> dstShape =
           applyPermutationMap(dstAffineMap, ArrayRef<int64_t>(*targetShape));
-      auto targetType = VectorType::get(dstShape, dstVecType.getElementType());
+      auto targetType =
+          FixedVectorType::get(dstShape, dstVecType.getElementType());
       Operation *newOp = cloneOpWithOperandsAndTypes(
           rewriter, loc, contractOp, slicesOperands, targetType);
 
@@ -394,7 +395,7 @@ struct UnrollMultiReductionPattern
         acc = rewriter.create<vector::ExtractStridedSliceOp>(
             loc, reductionOp.getAcc(), destOffset, dstShape, accStrides);
       operands.push_back(acc);
-      auto targetType = VectorType::get(
+      auto targetType = FixedVectorType::get(
           dstShape, reductionOp.getSourceVectorType().getElementType());
       Operation *newOp = cloneOpWithOperandsAndTypes(rewriter, loc, reductionOp,
                                                      operands, targetType);
@@ -432,7 +433,7 @@ struct UnrollElementwisePattern : public RewritePattern {
     auto targetShape = getTargetShape(options, op);
     if (!targetShape)
       return failure();
-    auto dstVecType = cast<VectorType>(op->getResult(0).getType());
+    auto dstVecType = cast<FixedVectorType>(op->getResult(0).getType());
     SmallVector<int64_t> originalSize =
         *cast<VectorUnrollOpInterface>(op).getShapeForUnroll();
     Location loc = op->getLoc();
@@ -440,15 +441,15 @@ struct UnrollElementwisePattern : public RewritePattern {
     Value result = rewriter.create<arith::ConstantOp>(
         loc, dstVecType, rewriter.getZeroAttr(dstVecType));
     SmallVector<int64_t> strides(targetShape->size(), 1);
-    VectorType newVecType =
-        VectorType::get(*targetShape, dstVecType.getElementType());
+    FixedVectorType newVecType =
+        FixedVectorType::get(*targetShape, dstVecType.getElementType());
 
     // Create the unrolled computation.
     for (SmallVector<int64_t> offsets :
          StaticTileOffsetRange(originalSize, *targetShape)) {
       SmallVector<Value> extractOperands;
       for (OpOperand &operand : op->getOpOperands()) {
-        auto vecType = dyn_cast<VectorType>(operand.get().getType());
+        auto vecType = dyn_cast<FixedVectorType>(operand.get().getType());
         if (!vecType) {
           extractOperands.push_back(operand.get());
           continue;
@@ -574,7 +575,7 @@ struct UnrollGatherPattern : public OpRewritePattern<vector::GatherOp> {
 
   LogicalResult matchAndRewrite(vector::GatherOp gatherOp,
                                 PatternRewriter &rewriter) const override {
-    VectorType sourceVectorType = gatherOp.getVectorType();
+    VectorBaseType sourceVectorType = gatherOp.getVectorType();
     if (sourceVectorType.getRank() == 0)
       return failure();
     auto targetShape = getTargetShape(options, gatherOp);
@@ -588,7 +589,7 @@ struct UnrollGatherPattern : public OpRewritePattern<vector::GatherOp> {
     Value result = rewriter.create<arith::ConstantOp>(
         loc, sourceVectorType, rewriter.getZeroAttr(sourceVectorType));
     auto targetType =
-        VectorType::get(*targetShape, sourceVectorType.getElementType());
+        FixedVectorType::get(*targetShape, sourceVectorType.getElementType());
 
     SmallVector<int64_t> loopOrder =
         getUnrollOrder(originalSize.size(), gatherOp, options);

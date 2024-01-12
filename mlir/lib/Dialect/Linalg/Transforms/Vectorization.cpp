@@ -188,22 +188,22 @@ struct VectorizationState {
   /// vector shape and the corresponding fixed/scalable dimensions bit. If
   /// `dimPermutation` is provided, the canonical vector dimensions are permuted
   /// accordingly.
-  VectorType getCanonicalVecType(
+  VectorBaseType getCanonicalVecType(
       Type elementType,
       std::optional<AffineMap> dimPermutation = std::nullopt) const {
     SmallVector<int64_t> vectorShape;
-    SmallVector<bool> scalableDims;
+    SmallVector<int64_t> scalableBases;
     if (dimPermutation.has_value()) {
       vectorShape =
           applyPermutationMap<int64_t>(*dimPermutation, canonicalVecShape);
-      scalableDims =
-          applyPermutationMap<bool>(*dimPermutation, scalableVecDims);
+      scalableBases =
+          applyPermutationMap<int64_t>(*dimPermutation, scalableVecBases);
     } else {
       vectorShape.append(canonicalVecShape.begin(), canonicalVecShape.end());
-      scalableDims.append(scalableVecDims.begin(), scalableVecDims.end());
+      scalableBases.append(scalableVecBases.begin(), scalableVecBases.end());
     }
 
-    return VectorType::get(vectorShape, elementType, scalableDims);
+    return VectorBaseType::get(vectorShape, elementType, scalableBases);
   }
 
   /// Masks an operation with the canonical vector mask if the operation needs
@@ -249,7 +249,7 @@ private:
 
   /// Holds the vector dimensions that are scalable in the canonical vector
   /// shape.
-  SmallVector<bool> scalableVecDims;
+  SmallVector<int64_t> scalableVecBases;
 
   /// Holds the active masks for permutations of the canonical vector iteration
   /// space.
@@ -306,21 +306,21 @@ VectorizationState::initState(RewriterBase &rewriter, LinalgOp linalgOp,
     // path should be taken to vectorize code with dynamic shapes and when using
     // vector sizes greater than the iteration space sizes.
     canonicalVecShape.append(inputVectorSizes.begin(), inputVectorSizes.end());
-    scalableVecDims.append(inputScalableVecDims.begin(),
-                           inputScalableVecDims.end());
+    scalableVecBases.append(inputScalableVecDims.begin(),
+                            inputScalableVecDims.end());
   } else {
     // Compute the canonical vector shape from the operation shape. If there are
     // dynamic shapes, the operation won't be vectorized. We assume all the
     // vector dimensions are fixed.
     canonicalVecShape = linalgOp.getStaticLoopRanges();
-    scalableVecDims.append(linalgOp.getNumLoops(), false);
+    scalableVecBases.append(linalgOp.getNumLoops(), 0);
   }
 
   LDBG("Canonical vector shape: ");
   LLVM_DEBUG(llvm::interleaveComma(canonicalVecShape, llvm::dbgs()));
   LLVM_DEBUG(llvm::dbgs() << "\n");
-  LDBG("Scalable vector dims: ");
-  LLVM_DEBUG(llvm::interleaveComma(scalableVecDims, llvm::dbgs()));
+  LDBG("Scalable vector bases: ");
+  LLVM_DEBUG(llvm::interleaveComma(scalableVecBases, llvm::dbgs()));
   LLVM_DEBUG(llvm::dbgs() << "\n");
 
   if (ShapedType::isDynamicShape(canonicalVecShape))
@@ -541,7 +541,7 @@ static Operation *matchLinalgReduction(OpOperand *outputOperand) {
 /// Broadcast `value` to a vector of `shape` if possible. Return value
 /// otherwise.
 static Value broadcastIfNeeded(OpBuilder &b, Value value, Type dstType) {
-  auto dstVecType = dyn_cast<VectorType>(dstType);
+  auto dstVecType = dyn_cast<FixedVectorType>(dstType);
   // If no shape to broadcast to, just return `value`.
   if (dstVecType.getRank() == 0)
     return value;
@@ -607,7 +607,7 @@ static Value buildVectorWrite(RewriterBase &rewriter, Value value,
         loc, value, outputOperand->get(), indices, writeMap);
   } else {
     // 0-d case is still special: do not invert the reindexing writeMap.
-    if (!isa<VectorType>(value.getType()))
+    if (!isa<VectorBaseType>(value.getType()))
       value = rewriter.create<vector::BroadcastOp>(loc, vectorType, value);
     assert(value.getType() == vectorType && "Incorrect type");
     write = rewriter.create<vector::TransferWriteOp>(
@@ -728,12 +728,13 @@ tensorExtractVectorizationPrecondition(Operation *op, bool vectorizeNDExtract) {
   // Check the index type, but only for non 0-d tensors (for which we do need
   // access indices).
   if (not extractOp.getIndices().empty()) {
-    if (!VectorType::isValidElementType(extractOp.getIndices()[0].getType()))
+    if (!VectorBaseType::isValidElementType(
+            extractOp.getIndices()[0].getType()))
       return failure();
   }
 
   if (llvm::any_of(extractOp->getResultTypes(), [](Type type) {
-        return !VectorType::isValidElementType(type);
+        return !VectorBaseType::isValidElementType(type);
       })) {
     return failure();
   }
@@ -1065,7 +1066,7 @@ vectorizeTensorExtract(RewriterBase &rewriter, VectorizationState &state,
     }
 
     auto indexAs1dVector = rewriter.create<vector::ShapeCastOp>(
-        loc, VectorType::get({resTrailingDim}, rewriter.getIndexType()),
+        loc, FixedVectorType::get({resTrailingDim}, rewriter.getIndexType()),
         bvm.lookup(extractOp.getIndices()[i]));
     transferReadIdxs.push_back(
         rewriter.create<vector::ExtractElementOp>(loc, indexAs1dVector, zero));
@@ -1125,8 +1126,8 @@ static Operation *reduceIfNeeded(OpBuilder &b, LinalgOp linalgOp, Operation *op,
                                  const IRMapping &bvm) {
   Value reduceVec = bvm.lookup(reduceValue);
   Value outputVec = bvm.lookup(initialValue);
-  auto reduceType = dyn_cast<VectorType>(reduceVec.getType());
-  auto outputType = dyn_cast<VectorType>(outputVec.getType());
+  auto reduceType = dyn_cast<VectorBaseType>(reduceVec.getType());
+  auto outputType = dyn_cast<VectorBaseType>(outputVec.getType());
   // Reduce only if needed as the value may already have been reduce for
   // contraction vectorization.
   if (!reduceType ||
@@ -1206,12 +1207,12 @@ vectorizeOneOp(RewriterBase &rewriter, VectorizationState &state,
 
   // 5. Generic vectorization path for ElementwiseMappable ops.
   //   a. Get the first max ranked shape.
-  VectorType firstMaxRankedType;
+  VectorBaseType firstMaxRankedType;
   for (Value operand : op->getOperands()) {
     auto vecOperand = bvm.lookup(operand);
     assert(vecOperand && "Vector operand couldn't be found");
 
-    auto vecType = dyn_cast<VectorType>(vecOperand.getType());
+    auto vecType = dyn_cast<VectorBaseType>(vecOperand.getType());
     if (vecType && (!firstMaxRankedType ||
                     firstMaxRankedType.getRank() < vecType.getRank()))
       firstMaxRankedType = vecType;
@@ -1223,9 +1224,10 @@ vectorizeOneOp(RewriterBase &rewriter, VectorizationState &state,
     assert(vecOperand && "Vector operand couldn't be found");
 
     if (firstMaxRankedType) {
-      auto vecType = VectorType::get(firstMaxRankedType.getShape(),
-                                     getElementTypeOrSelf(vecOperand.getType()),
-                                     firstMaxRankedType.getScalableDims());
+      auto vecType =
+          VectorBaseType::get(firstMaxRankedType.getShape(),
+                              getElementTypeOrSelf(vecOperand.getType()),
+                              firstMaxRankedType.getScalableBases());
       vecOperands.push_back(broadcastIfNeeded(rewriter, vecOperand, vecType));
     } else {
       vecOperands.push_back(vecOperand);
@@ -1236,8 +1238,8 @@ vectorizeOneOp(RewriterBase &rewriter, VectorizationState &state,
   for (Type resultType : op->getResultTypes()) {
     resultTypes.push_back(
         firstMaxRankedType
-            ? VectorType::get(firstMaxRankedType.getShape(), resultType,
-                              firstMaxRankedType.getScalableDims())
+            ? VectorBaseType::get(firstMaxRankedType.getShape(), resultType,
+                                  firstMaxRankedType.getScalableBases())
             : resultType);
   }
   //   d. Build and return the new op.
@@ -1311,7 +1313,7 @@ vectorizeAsLinalgGeneric(RewriterBase &rewriter, VectorizationState &state,
     AffineMap maskingMap = indexingMap.dropResults(zeroPos);
 
     AffineMap readMap;
-    VectorType readType;
+    VectorBaseType readType;
     Type elemType = getElementTypeOrSelf(opOperand->get());
     if (linalgOp.isDpsInput(opOperand)) {
       // 3.a.i. For input reads we use the canonical vector shape.
@@ -1403,8 +1405,8 @@ vectorizeAsTensorPadOp(RewriterBase &rewriter, tensor::PadOp padOp,
   auto padValue = padOp.getConstantPaddingValue();
   Location loc = padOp.getLoc();
   int64_t rank = inputVectorSizes.size();
-  auto maskType = VectorType::get(inputVectorSizes, rewriter.getI1Type());
-  auto vectorType = VectorType::get(inputVectorSizes, padValue.getType());
+  auto maskType = FixedVectorType::get(inputVectorSizes, rewriter.getI1Type());
+  auto vectorType = FixedVectorType::get(inputVectorSizes, padValue.getType());
 
   // transfer_write_in_bounds(transfer_read_masked(pad_source, pad_value))
   OpBuilder::InsertionGuard g(rewriter);
@@ -1542,7 +1544,8 @@ vectorizeLinalgOpPrecondition(LinalgOp linalgOp,
   // Register CustomVectorizationPrecondition for extractOp.
   customPreconditions.push_back(tensorExtractVectorizationPrecondition);
 
-  // All types in the body should be a supported element type for VectorType.
+  // All types in the body should be a supported element type for
+  // VectorBaseType.
   for (Operation &innerOp : linalgOp->getRegion(0).front()) {
     // Check if any custom hook can vectorize the inner op.
     if (llvm::any_of(
@@ -1554,12 +1557,12 @@ vectorizeLinalgOpPrecondition(LinalgOp linalgOp,
       continue;
     }
     if (llvm::any_of(innerOp.getOperandTypes(), [](Type type) {
-          return !VectorType::isValidElementType(type);
+          return !VectorBaseType::isValidElementType(type);
         })) {
       return failure();
     }
     if (llvm::any_of(innerOp.getResultTypes(), [](Type type) {
-          return !VectorType::isValidElementType(type);
+          return !VectorBaseType::isValidElementType(type);
         })) {
       return failure();
     }
@@ -1757,12 +1760,12 @@ LogicalResult mlir::linalg::vectorizeCopy(RewriterBase &rewriter,
 
   auto srcElementType = getElementTypeOrSelf(srcType);
   auto dstElementType = getElementTypeOrSelf(dstType);
-  if (!VectorType::isValidElementType(srcElementType) ||
-      !VectorType::isValidElementType(dstElementType))
+  if (!VectorBaseType::isValidElementType(srcElementType) ||
+      !VectorBaseType::isValidElementType(dstElementType))
     return failure();
 
-  auto readType = VectorType::get(srcType.getShape(), srcElementType);
-  auto writeType = VectorType::get(dstType.getShape(), dstElementType);
+  auto readType = FixedVectorType::get(srcType.getShape(), srcElementType);
+  auto writeType = FixedVectorType::get(dstType.getShape(), dstElementType);
 
   Location loc = copyOp->getLoc();
   Value zero = rewriter.create<arith::ConstantIndexOp>(loc, 0);
@@ -1771,7 +1774,7 @@ LogicalResult mlir::linalg::vectorizeCopy(RewriterBase &rewriter,
   Value readValue = rewriter.create<vector::TransferReadOp>(
       loc, readType, copyOp.getSource(), indices,
       rewriter.getMultiDimIdentityMap(srcType.getRank()));
-  if (cast<VectorType>(readValue.getType()).getRank() == 0) {
+  if (cast<FixedVectorType>(readValue.getType()).getRank() == 0) {
     readValue = rewriter.create<vector::ExtractElementOp>(loc, readValue);
     readValue = rewriter.create<vector::BroadcastOp>(loc, writeType, readValue);
   }
@@ -1823,7 +1826,7 @@ struct GenericPadOpVectorizationPattern : public GeneralizePadOpPattern {
                                         tensor::PadOp padOp, Value dest) {
     auto sourceType = padOp.getSourceType();
     auto resultType = padOp.getResultType();
-    if (!VectorType::isValidElementType(sourceType.getElementType()))
+    if (!VectorBaseType::isValidElementType(sourceType.getElementType()))
       return failure();
 
     // Copy cannot be vectorized if pad value is non-constant and source shape
@@ -1867,7 +1870,7 @@ struct GenericPadOpVectorizationPattern : public GeneralizePadOpPattern {
         return failure();
       }
     }
-    auto vecType = VectorType::get(vecShape, sourceType.getElementType());
+    auto vecType = FixedVectorType::get(vecShape, sourceType.getElementType());
 
     // Generate TransferReadOp.
     SmallVector<Value> readIndices(
@@ -2174,8 +2177,8 @@ struct PadOpVectorizationWithInsertSlicePattern
     if (insertOp.getDest() == padOp.getResult())
       return failure();
 
-    auto vecType = VectorType::get(padOp.getType().getShape(),
-                                   padOp.getType().getElementType());
+    auto vecType = FixedVectorType::get(padOp.getType().getShape(),
+                                        padOp.getType().getElementType());
     unsigned vecRank = vecType.getRank();
     unsigned tensorRank = insertOp.getType().getRank();
 
@@ -2644,9 +2647,9 @@ struct Conv1DGenerator
     Type lhsEltType = lhsShapedType.getElementType();
     Type rhsEltType = rhsShapedType.getElementType();
     Type resEltType = resShapedType.getElementType();
-    auto lhsType = VectorType::get(lhsShape, lhsEltType);
-    auto rhsType = VectorType::get(rhsShape, rhsEltType);
-    auto resType = VectorType::get(resShape, resEltType);
+    auto lhsType = FixedVectorType::get(lhsShape, lhsEltType);
+    auto rhsType = FixedVectorType::get(rhsShape, rhsEltType);
+    auto resType = FixedVectorType::get(resShape, resEltType);
     // Zero padding with the corresponding dimensions for lhs, rhs and res.
     SmallVector<Value> lhsPadding(lhsShape.size(), zero);
     SmallVector<Value> rhsPadding(rhsShape.size(), zero);
@@ -2851,15 +2854,16 @@ struct Conv1DGenerator
     Type lhsEltType = lhsShapedType.getElementType();
     Type rhsEltType = rhsShapedType.getElementType();
     Type resEltType = resShapedType.getElementType();
-    VectorType lhsType = VectorType::get(
+    FixedVectorType lhsType = FixedVectorType::get(
         {nSize,
          // iw = ow * sw + kw *  dw - 1
          //   (i.e. 16 convolved with 3 (@stride 1 dilation 1) -> 14)
          ((wSize - 1) * strideW + 1) + ((kwSize - 1) * dilationW + 1) - 1,
          cSize},
         lhsEltType);
-    VectorType rhsType = VectorType::get({kwSize, cSize}, rhsEltType);
-    VectorType resType = VectorType::get({nSize, wSize, cSize}, resEltType);
+    FixedVectorType rhsType = FixedVectorType::get({kwSize, cSize}, rhsEltType);
+    FixedVectorType resType =
+        FixedVectorType::get({nSize, wSize, cSize}, resEltType);
 
     // Read lhs slice of size {n, w * strideW + kw * dilationW, c} @ [0, 0,
     // 0].
@@ -2909,8 +2913,8 @@ struct Conv1DGenerator
 
     auto inOutFlattenSliceSizes =
         SmallVector<int64_t>{nSize, wSizeStep * cSize};
-    auto lhsCastType = VectorType::get(inOutFlattenSliceSizes, lhsEltType);
-    auto resCastType = VectorType::get(inOutFlattenSliceSizes, resEltType);
+    auto lhsCastType = FixedVectorType::get(inOutFlattenSliceSizes, lhsEltType);
+    auto resCastType = FixedVectorType::get(inOutFlattenSliceSizes, resEltType);
     // Compute contraction: O{n, w, c} += I{n, sw * w + dw * kw, c} * F{c}
     for (int64_t kw = 0; kw < kwSize; ++kw) {
       for (int64_t w = 0; w < wSize; w += wSizeStep) {
@@ -2929,7 +2933,8 @@ struct Conv1DGenerator
         if (flatten) {
           // Un-flatten the output vector (restore the channel dimension)
           resVals[w] = rewriter.create<vector::ShapeCastOp>(
-              loc, VectorType::get(inOutSliceSizes, resEltType), resVals[w]);
+              loc, FixedVectorType::get(inOutSliceSizes, resEltType),
+              resVals[w]);
         }
       }
     }
@@ -2981,8 +2986,8 @@ struct Conv1DGenerator
       //  * shape_cast(broadcast(filter))
       //  * broadcast(shuffle(filter))
       // Opt for the option without shape_cast to simplify the codegen.
-      auto rhsSize = rhs.getType().cast<VectorType>().getShape()[0];
-      auto resSize = res.getType().cast<VectorType>().getShape()[1];
+      auto rhsSize = rhs.getType().cast<VectorBaseType>().getShape()[0];
+      auto resSize = res.getType().cast<VectorBaseType>().getShape()[1];
 
       SmallVector<int64_t, 16> indicies;
       for (int i = 0; i < resSize / rhsSize; ++i) {

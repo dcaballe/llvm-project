@@ -21,7 +21,7 @@ using namespace mlir::vector;
 // Helper that picks the proper sequence for inserting.
 static Value insertOne(PatternRewriter &rewriter, Location loc, Value from,
                        Value into, int64_t offset) {
-  auto vectorType = cast<VectorType>(into.getType());
+  auto vectorType = cast<FixedVectorType>(into.getType());
   if (vectorType.getRank() > 1)
     return rewriter.create<InsertOp>(loc, from, into, offset);
   return rewriter.create<vector::InsertElementOp>(
@@ -32,7 +32,7 @@ static Value insertOne(PatternRewriter &rewriter, Location loc, Value from,
 // Helper that picks the proper sequence for extracting.
 static Value extractOne(PatternRewriter &rewriter, Location loc, Value vector,
                         int64_t offset) {
-  auto vectorType = cast<VectorType>(vector.getType());
+  auto vectorType = cast<FixedVectorType>(vector.getType());
   if (vectorType.getRank() > 1)
     return rewriter.create<ExtractOp>(loc, vector, offset);
   return rewriter.create<vector::ExtractElementOp>(
@@ -174,7 +174,7 @@ public:
          off += stride, ++idx) {
       // 1. extract the proper subvector (or element) from source
       Value extractedSource = extractOne(rewriter, loc, op.getSource(), idx);
-      if (isa<VectorType>(extractedSource.getType())) {
+      if (isa<FixedVectorType>(extractedSource.getType())) {
         // 2. If we have a vector, extract the proper subvector from destination
         // Otherwise we are at the element level and no need to recurse.
         Value extractedDest = extractOne(rewriter, loc, op.getDest(), off);

@@ -34,7 +34,7 @@ using namespace mlir;
 /// given type is not a 32-bit scalar/vector type.
 static Value getScalarOrVectorI32Constant(Type type, int value,
                                           OpBuilder &builder, Location loc) {
-  if (auto vectorType = dyn_cast<VectorType>(type)) {
+  if (auto vectorType = dyn_cast<FixedVectorType>(type)) {
     if (!vectorType.getElementType().isInteger(32))
       return nullptr;
     SmallVector<int> values(vectorType.getNumElements(), value);
@@ -55,7 +55,7 @@ static bool isSupportedSourceType(Type originalType) {
   if (originalType.isIntOrIndexOrFloat())
     return true;
 
-  if (auto vecTy = dyn_cast<VectorType>(originalType)) {
+  if (auto vecTy = dyn_cast<FixedVectorType>(originalType)) {
     if (!vecTy.getElementType().isIntOrIndexOrFloat())
       return false;
     if (vecTy.isScalable())
@@ -135,7 +135,8 @@ struct CopySignPattern final : public OpConversionPattern<math::CopySignOp> {
     FloatType floatType;
     if (auto scalarType = dyn_cast<FloatType>(copySignOp.getType())) {
       floatType = scalarType;
-    } else if (auto vectorType = dyn_cast<VectorType>(copySignOp.getType())) {
+    } else if (auto vectorType =
+                   dyn_cast<FixedVectorType>(copySignOp.getType())) {
       floatType = cast<FloatType>(vectorType.getElementType());
     } else {
       return failure();
@@ -151,10 +152,10 @@ struct CopySignPattern final : public OpConversionPattern<math::CopySignOp> {
     Value valueMask = rewriter.create<spirv::ConstantOp>(
         loc, intType, rewriter.getIntegerAttr(intType, intValue - 1u));
 
-    if (auto vectorType = dyn_cast<VectorType>(type)) {
+    if (auto vectorType = dyn_cast<FixedVectorType>(type)) {
       assert(vectorType.getRank() == 1);
       int count = vectorType.getNumElements();
-      intType = VectorType::get(count, intType);
+      intType = FixedVectorType::get(count, intType);
 
       SmallVector<Value> signSplat(count, signMask);
       signMask =
@@ -205,7 +206,7 @@ struct CountLeadingZerosPattern final
     unsigned bitwidth = 0;
     if (isa<IntegerType>(type))
       bitwidth = type.getIntOrFloatBitWidth();
-    if (auto vectorType = dyn_cast<VectorType>(type))
+    if (auto vectorType = dyn_cast<FixedVectorType>(type))
       bitwidth = vectorType.getElementTypeBitWidth();
     if (bitwidth != 32)
       return failure();
@@ -309,7 +310,7 @@ struct PowFOpPattern final : public OpConversionPattern<math::PowFOp> {
     FloatType scalarFloatType;
     if (auto scalarType = dyn_cast<FloatType>(powfOp.getType())) {
       scalarFloatType = scalarType;
-    } else if (auto vectorType = dyn_cast<VectorType>(powfOp.getType())) {
+    } else if (auto vectorType = dyn_cast<FixedVectorType>(powfOp.getType())) {
       scalarFloatType = cast<FloatType>(vectorType.getElementType());
     } else {
       return failure();
@@ -318,9 +319,10 @@ struct PowFOpPattern final : public OpConversionPattern<math::PowFOp> {
     // Get int type of the same shape as the float type.
     Type scalarIntType = rewriter.getIntegerType(32);
     Type intType = scalarIntType;
-    if (auto vectorType = dyn_cast<VectorType>(adaptor.getRhs().getType())) {
+    if (auto vectorType =
+            dyn_cast<FixedVectorType>(adaptor.getRhs().getType())) {
       auto shape = vectorType.getShape();
-      intType = VectorType::get(shape, scalarIntType);
+      intType = FixedVectorType::get(shape, scalarIntType);
     }
 
     // Per GL Pow extended instruction spec:
@@ -374,7 +376,7 @@ struct RoundOpPattern final : public OpConversionPattern<math::RoundOp> {
     auto zero = spirv::ConstantOp::getZero(ty, loc, rewriter);
     auto one = spirv::ConstantOp::getOne(ty, loc, rewriter);
     Value half;
-    if (VectorType vty = dyn_cast<VectorType>(ty)) {
+    if (FixedVectorType vty = dyn_cast<FixedVectorType>(ty)) {
       half = rewriter.create<spirv::ConstantOp>(
           loc, vty,
           DenseElementsAttr::get(vty,

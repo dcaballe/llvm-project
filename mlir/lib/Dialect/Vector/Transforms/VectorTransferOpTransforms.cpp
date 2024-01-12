@@ -315,16 +315,17 @@ static int getReducedRank(ArrayRef<int64_t> shape) {
 
 /// Trims non-scalable one dimensions from `oldType` and returns the result
 /// type.
-static VectorType trimNonScalableUnitDims(VectorType oldType) {
+static VectorBaseType trimNonScalableUnitDims(VectorBaseType oldType) {
   SmallVector<int64_t> newShape;
-  SmallVector<bool> newScalableDims;
+  SmallVector<int64_t> newScalableBases;
   for (auto [dimIdx, dimSize] : llvm::enumerate(oldType.getShape())) {
-    if (dimSize == 1 && !oldType.getScalableDims()[dimIdx])
+    if (dimSize == 1 && !oldType.getScalableBases()[dimIdx])
       continue;
     newShape.push_back(dimSize);
-    newScalableDims.push_back(oldType.getScalableDims()[dimIdx]);
+    newScalableBases.push_back(oldType.getScalableBases()[dimIdx]);
   }
-  return VectorType::get(newShape, oldType.getElementType(), newScalableDims);
+  return VectorBaseType::get(newShape, oldType.getElementType(),
+                             newScalableBases);
 }
 
 // Rewrites vector.create_mask 'op' to drop non-scalable one dimensions.
@@ -332,13 +333,13 @@ static FailureOr<Value>
 createMaskDropNonScalableUnitDims(PatternRewriter &rewriter, Location loc,
                                   vector::CreateMaskOp op) {
   auto type = op.getType();
-  VectorType reducedType = trimNonScalableUnitDims(type);
+  VectorBaseType reducedType = trimNonScalableUnitDims(type);
   if (reducedType.getRank() == type.getRank())
     return failure();
 
   SmallVector<Value> reducedOperands;
   for (auto [dim, dimIsScalable, operand] : llvm::zip_equal(
-           type.getShape(), type.getScalableDims(), op.getOperands())) {
+           type.getShape(), type.getScalableBases(), op.getOperands())) {
     if (dim == 1 && !dimIsScalable) {
       // If the mask for the unit dim is not a constant of 1, do nothing.
       auto constant = operand.getDefiningOp<arith::ConstantIndexOp>();
@@ -366,7 +367,7 @@ class TransferReadDropUnitDimsPattern
                                 PatternRewriter &rewriter) const override {
     auto loc = transferReadOp.getLoc();
     Value vector = transferReadOp.getVector();
-    VectorType vectorType = cast<VectorType>(vector.getType());
+    FixedVectorType vectorType = cast<FixedVectorType>(vector.getType());
     Value source = transferReadOp.getSource();
     MemRefType sourceType = dyn_cast<MemRefType>(source.getType());
     // TODO: support tensor types.
@@ -383,7 +384,7 @@ class TransferReadDropUnitDimsPattern
       return failure();
     // Check if the reduced vector shape matches the reduced source shape.
     // Otherwise, this case is not supported yet.
-    VectorType reducedVectorType = trimNonScalableUnitDims(vectorType);
+    VectorBaseType reducedVectorType = trimNonScalableUnitDims(vectorType);
     if (reducedRank != reducedVectorType.getRank())
       return failure();
     if (llvm::any_of(transferReadOp.getIndices(), [](Value v) {
@@ -434,7 +435,7 @@ class TransferWriteDropUnitDimsPattern
                                 PatternRewriter &rewriter) const override {
     auto loc = transferWriteOp.getLoc();
     Value vector = transferWriteOp.getVector();
-    VectorType vectorType = cast<VectorType>(vector.getType());
+    FixedVectorType vectorType = cast<FixedVectorType>(vector.getType());
     Value source = transferWriteOp.getSource();
     MemRefType sourceType = dyn_cast<MemRefType>(source.getType());
     // TODO: support tensor type.
@@ -451,7 +452,7 @@ class TransferWriteDropUnitDimsPattern
       return failure();
     // Check if the reduced vector shape matches the reduced destination shape.
     // Otherwise, this case is not supported yet.
-    VectorType reducedVectorType = trimNonScalableUnitDims(vectorType);
+    VectorBaseType reducedVectorType = trimNonScalableUnitDims(vectorType);
     if (reducedRank != reducedVectorType.getRank())
       return failure();
     if (llvm::any_of(transferWriteOp.getIndices(), [](Value v) {
@@ -543,7 +544,7 @@ class FlattenContiguousRowMajorTransferReadPattern
                                 PatternRewriter &rewriter) const override {
     auto loc = transferReadOp.getLoc();
     Value vector = transferReadOp.getVector();
-    VectorType vectorType = cast<VectorType>(vector.getType());
+    FixedVectorType vectorType = cast<FixedVectorType>(vector.getType());
     auto source = transferReadOp.getSource();
     MemRefType sourceType = dyn_cast<MemRefType>(source.getType());
 
@@ -630,8 +631,8 @@ class FlattenContiguousRowMajorTransferReadPattern
     }
 
     // 3. Create new vector.transfer_read that reads from the collapsed memref
-    VectorType flatVectorType = VectorType::get({vectorType.getNumElements()},
-                                                vectorType.getElementType());
+    FixedVectorType flatVectorType = FixedVectorType::get(
+        {vectorType.getNumElements()}, vectorType.getElementType());
     vector::TransferReadOp flatRead = rewriter.create<vector::TransferReadOp>(
         loc, flatVectorType, collapsedSource, collapsedIndices, collapsedMap);
     flatRead.setInBoundsAttr(rewriter.getBoolArrayAttr({true}));
@@ -639,7 +640,7 @@ class FlattenContiguousRowMajorTransferReadPattern
     // 4. Replace the old transfer_read with the new one reading from the
     // collapsed shape
     rewriter.replaceOpWithNewOp<vector::ShapeCastOp>(
-        transferReadOp, cast<VectorType>(vector.getType()), flatRead);
+        transferReadOp, cast<FixedVectorType>(vector.getType()), flatRead);
     return success();
   }
 };
@@ -656,7 +657,7 @@ class FlattenContiguousRowMajorTransferWritePattern
                                 PatternRewriter &rewriter) const override {
     auto loc = transferWriteOp.getLoc();
     Value vector = transferWriteOp.getVector();
-    VectorType vectorType = cast<VectorType>(vector.getType());
+    FixedVectorType vectorType = cast<FixedVectorType>(vector.getType());
     Value source = transferWriteOp.getSource();
     MemRefType sourceType = dyn_cast<MemRefType>(source.getType());
     // Contiguity check is valid on tensors only.
@@ -691,8 +692,8 @@ class FlattenContiguousRowMajorTransferWritePattern
         getAffineDimExpr(firstContiguousInnerDim, rewriter.getContext())};
     auto collapsedMap =
         AffineMap::get(collapsedRank, 0, dimExprs, rewriter.getContext());
-    VectorType flatVectorType = VectorType::get({vectorType.getNumElements()},
-                                                vectorType.getElementType());
+    FixedVectorType flatVectorType = FixedVectorType::get(
+        {vectorType.getNumElements()}, vectorType.getElementType());
     Value flatVector =
         rewriter.create<vector::ShapeCastOp>(loc, flatVectorType, vector);
     vector::TransferWriteOp flatWrite =
@@ -725,7 +726,7 @@ public:
     if (!xferOp)
       return failure();
     // Check that we are extracting a scalar and not a sub-vector.
-    if (isa<VectorType>(extractOp.getResult().getType()))
+    if (isa<FixedVectorType>(extractOp.getResult().getType()))
       return failure();
     // If multiple uses are not allowed, check if xfer has a single use.
     if (!allowMultipleUses && !xferOp.getResult().hasOneUse())

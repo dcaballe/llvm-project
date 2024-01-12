@@ -228,7 +228,7 @@ LogicalResult IndexCastOpLowering<OpTy, ExtCastTy>::matchAndRewrite(
     return success();
   }
 
-  if (!isa<VectorType>(resultType))
+  if (!isa<FixedVectorType>(resultType))
     return rewriter.notifyMatchFailure(op, "expected vector result type");
 
   return LLVM::detail::handleMultidimensionalVectors(
@@ -277,7 +277,7 @@ LogicalResult AddUIExtendedOpLowering::matchAndRewrite(
     return success();
   }
 
-  if (!isa<VectorType>(sumResultType))
+  if (!isa<FixedVectorType>(sumResultType))
     return rewriter.notifyMatchFailure(loc, "expected vector result types");
 
   return rewriter.notifyMatchFailure(loc,
@@ -312,9 +312,9 @@ LogicalResult MulIExtendedOpLowering<ArithMulOp, IsSigned>::matchAndRewrite(
       auto attrTy = rewriter.getIntegerType(resultBitwidth * 2);
       shiftValAttr = rewriter.getIntegerAttr(attrTy, resultBitwidth);
     } else {
-      auto vecTy = cast<VectorType>(resultType);
+      auto vecTy = cast<FixedVectorType>(resultType);
       unsigned resultBitwidth = vecTy.getElementTypeBitWidth();
-      auto attrTy = VectorType::get(
+      auto attrTy = FixedVectorType::get(
           vecTy.getShape(), rewriter.getIntegerType(resultBitwidth * 2));
       shiftValAttr = SplatElementsAttr::get(
           attrTy, APInt(resultBitwidth * 2, resultBitwidth));
@@ -338,7 +338,7 @@ LogicalResult MulIExtendedOpLowering<ArithMulOp, IsSigned>::matchAndRewrite(
     return success();
   }
 
-  if (!isa<VectorType>(resultType))
+  if (!isa<FixedVectorType>(resultType))
     return rewriter.notifyMatchFailure(op, "expected vector result type");
 
   return rewriter.notifyMatchFailure(op,
@@ -371,7 +371,7 @@ CmpIOpLowering::matchAndRewrite(arith::CmpIOp op, OpAdaptor adaptor,
     return success();
   }
 
-  if (!isa<VectorType>(resultType))
+  if (!isa<FixedVectorType>(resultType))
     return rewriter.notifyMatchFailure(op, "expected vector result type");
 
   return LLVM::detail::handleMultidimensionalVectors(
@@ -407,7 +407,7 @@ CmpFOpLowering::matchAndRewrite(arith::CmpFOp op, OpAdaptor adaptor,
     return success();
   }
 
-  if (!isa<VectorType>(resultType))
+  if (!isa<FixedVectorType>(resultType))
     return rewriter.notifyMatchFailure(op, "expected vector result type");
 
   return LLVM::detail::handleMultidimensionalVectors(

@@ -222,13 +222,13 @@ LogicalResult OpaqueType::verify(function_ref<InFlightDiagnostic()> emitError,
 }
 
 //===----------------------------------------------------------------------===//
-// VectorType
+// FixedVectorType
 //===----------------------------------------------------------------------===//
 
-LogicalResult VectorType::verify(function_ref<InFlightDiagnostic()> emitError,
-                                 ArrayRef<int64_t> shape, Type elementType,
-                                 ArrayRef<bool> scalableDims) {
-  if (!isValidElementType(elementType))
+LogicalResult
+FixedVectorType::verify(function_ref<InFlightDiagnostic()> emitError,
+                        ArrayRef<int64_t> shape, Type elementType) {
+  if (!VectorBaseType::isValidElementType(elementType))
     return emitError()
            << "vector elements must be int/index/float type but got "
            << elementType;
@@ -237,30 +237,51 @@ LogicalResult VectorType::verify(function_ref<InFlightDiagnostic()> emitError,
     return emitError()
            << "vector types must have positive constant sizes but got "
            << shape;
+  // TODO.
+  // if (getScalableBases().size() != shape.size())
+  //  return emitError() << "number of dims must match, got "
+  //                     << getScalableBases().size() << " and " <<
+  //                     shape.size();
 
-  if (scalableDims.size() != shape.size())
-    return emitError() << "number of dims must match, got "
-                       << scalableDims.size() << " and " << shape.size();
+  // TODO: Check that there are no scalable dims.
 
   return success();
 }
 
-VectorType VectorType::scaleElementBitwidth(unsigned scale) {
-  if (!scale)
-    return VectorType();
-  if (auto et = llvm::dyn_cast<IntegerType>(getElementType()))
-    if (auto scaledEt = et.scaleElementBitwidth(scale))
-      return VectorType::get(getShape(), scaledEt, getScalableDims());
-  if (auto et = llvm::dyn_cast<FloatType>(getElementType()))
-    if (auto scaledEt = et.scaleElementBitwidth(scale))
-      return VectorType::get(getShape(), scaledEt, getScalableDims());
-  return VectorType();
+FixedVectorType
+FixedVectorType::cloneWith(std::optional<ArrayRef<int64_t>> shape,
+                           Type elementType) const {
+  return FixedVectorType::get(shape.value_or(getShape()), elementType);
 }
 
-VectorType VectorType::cloneWith(std::optional<ArrayRef<int64_t>> shape,
-                                 Type elementType) const {
-  return VectorType::get(shape.value_or(getShape()), elementType,
-                         getScalableDims());
+//===----------------------------------------------------------------------===//
+// ScalableVectorType
+//===----------------------------------------------------------------------===//
+
+ArrayRef<int64_t> ScalableVectorType::getShape() const {
+  return getImpl()->shape;
+}
+
+Type ScalableVectorType::getElementType() const {
+  return getImpl()->elementType;
+}
+
+llvm::OwningArrayRef<int64_t> ScalableVectorType::getScalableBases() const {
+  return getImpl()->scalableBases;
+}
+
+ShapedType ScalableVectorType::cloneWith(std::optional<ArrayRef<int64_t>> shape,
+                                         Type elementType) const {
+  return ScalableVectorType::get(shape.value_or(getShape()), elementType,
+                                 getScalableBases());
+}
+
+LogicalResult
+ScalableVectorType::verify(function_ref<InFlightDiagnostic()> emitError,
+                           ArrayRef<int64_t> shape, Type elementType,
+                           ArrayRef<int64_t> scalableBases) {
+  // TODO.
+  return success();
 }
 
 //===----------------------------------------------------------------------===//
@@ -318,8 +339,8 @@ bool TensorType::isValidElementType(Type type) {
   // Note: Non standard/builtin types are allowed to exist within tensor
   // types. Dialects are expected to verify that tensor types have a valid
   // element type within that dialect.
-  return llvm::isa<ComplexType, FloatType, IntegerType, OpaqueType, VectorType,
-                   IndexType>(type) ||
+  return llvm::isa<ComplexType, FloatType, IntegerType, OpaqueType,
+                   FixedVectorType, IndexType>(type) ||
          !llvm::isa<BuiltinDialect>(type.getDialect());
 }
 

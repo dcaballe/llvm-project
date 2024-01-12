@@ -104,7 +104,7 @@ static bool isBoolScalarOrVector(Type type) {
   if (type.isInteger(1))
     return true;
 
-  if (auto vecType = dyn_cast<VectorType>(type))
+  if (auto vecType = dyn_cast<FixedVectorType>(type))
     return vecType.getElementType().isInteger(1);
 
   return false;
@@ -113,7 +113,7 @@ static bool isBoolScalarOrVector(Type type) {
 /// Creates a scalar/vector integer constant.
 static Value getScalarOrVectorConstInt(Type type, uint64_t value,
                                        OpBuilder &builder, Location loc) {
-  if (auto vectorType = dyn_cast<VectorType>(type)) {
+  if (auto vectorType = dyn_cast<FixedVectorType>(type)) {
     Attribute element = IntegerAttr::get(vectorType.getElementType(), value);
     auto attr = SplatElementsAttr::get(vectorType, element);
     return builder.create<spirv::ConstantOp>(loc, vectorType, attr);
@@ -133,7 +133,7 @@ static bool hasSameBitwidth(Type a, Type b) {
     unsigned bw = 0;
     if (type.isIntOrFloat())
       bw = type.getIntOrFloatBitWidth();
-    else if (auto vecType = dyn_cast<VectorType>(type))
+    else if (auto vecType = dyn_cast<FixedVectorType>(type))
       bw = vecType.getElementTypeBitWidth() * vecType.getNumElements();
     return bw;
   };
@@ -177,7 +177,7 @@ struct ConstantCompositeOpPattern final
       return failure();
 
     // arith.constant should only have vector or tenor types.
-    assert((isa<VectorType, RankedTensorType>(srcType)));
+    assert((isa<FixedVectorType, RankedTensorType>(srcType)));
 
     Type dstType = getTypeConverter()->convertType(srcType);
     if (!dstType)
@@ -209,7 +209,7 @@ struct ConstantCompositeOpPattern final
     if (auto arrayType = dyn_cast<spirv::ArrayType>(dstType))
       dstElemType = arrayType.getElementType();
     else
-      dstElemType = cast<VectorType>(dstType).getElementType();
+      dstElemType = cast<FixedVectorType>(dstType).getElementType();
 
     // If the source and destination element types are different, perform
     // attribute conversion.
@@ -243,7 +243,7 @@ struct ConstantCompositeOpPattern final
         dstAttrType =
             RankedTensorType::get(dstAttrType.getShape(), dstElemType);
       else
-        dstAttrType = VectorType::get(dstAttrType.getShape(), dstElemType);
+        dstAttrType = FixedVectorType::get(dstAttrType.getShape(), dstElemType);
 
       dstElementsAttr = DenseElementsAttr::get(dstAttrType, elements);
     }
@@ -525,7 +525,7 @@ struct ExtSII1Pattern final : public OpConversionPattern<arith::ExtSIOp> {
       allOnes = rewriter.create<spirv::ConstantOp>(
           loc, intTy,
           rewriter.getIntegerAttr(intTy, APInt::getAllOnes(componentBitwidth)));
-    } else if (auto vectorTy = dyn_cast<VectorType>(dstType)) {
+    } else if (auto vectorTy = dyn_cast<FixedVectorType>(dstType)) {
       unsigned componentBitwidth = vectorTy.getElementTypeBitWidth();
       allOnes = rewriter.create<spirv::ConstantOp>(
           loc, vectorTy,
@@ -794,8 +794,8 @@ public:
       // There are no direct corresponding instructions in SPIR-V for such
       // cases. Extend them to 32-bit and do comparision then.
       Type type = rewriter.getI32Type();
-      if (auto vectorType = dyn_cast<VectorType>(dstType))
-        type = VectorType::get(vectorType.getShape(), type);
+      if (auto vectorType = dyn_cast<FixedVectorType>(dstType))
+        type = FixedVectorType::get(vectorType.getShape(), type);
       Value extLhs =
           rewriter.create<arith::ExtUIOp>(op.getLoc(), type, adaptor.getLhs());
       Value extRhs =

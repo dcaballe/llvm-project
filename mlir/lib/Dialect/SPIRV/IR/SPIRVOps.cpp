@@ -199,7 +199,7 @@ template <typename BlockReadWriteOpTy>
 static LogicalResult verifyBlockReadWritePtrAndValTypes(BlockReadWriteOpTy op,
                                                         Value ptr, Value val) {
   auto valType = val.getType();
-  if (auto valVecTy = llvm::dyn_cast<VectorType>(valType))
+  if (auto valVecTy = llvm::dyn_cast<FixedVectorType>(valType))
     valType = valVecTy.getElementType();
 
   if (valType !=
@@ -404,7 +404,7 @@ LogicalResult spirv::CompositeConstructOp::verify() {
   }
 
   // Case 4. -- check that all constituents add up tp the expected vector type.
-  auto resultType = llvm::dyn_cast<VectorType>(cType);
+  auto resultType = llvm::dyn_cast<FixedVectorType>(cType);
   if (!resultType)
     return emitOpError(
         "expected to return a vector or cooperative matrix when the number of "
@@ -412,14 +412,15 @@ LogicalResult spirv::CompositeConstructOp::verify() {
 
   SmallVector<unsigned> sizes;
   for (Value component : constituents) {
-    if (!llvm::isa<VectorType>(component.getType()) &&
+    if (!llvm::isa<FixedVectorType>(component.getType()) &&
         !component.getType().isIntOrFloat())
       return emitOpError("operand type mismatch: expected operand to have "
                          "a scalar or vector type, but provided ")
              << component.getType();
 
     Type elementType = component.getType();
-    if (auto vectorType = llvm::dyn_cast<VectorType>(component.getType())) {
+    if (auto vectorType =
+            llvm::dyn_cast<FixedVectorType>(component.getType())) {
       sizes.push_back(vectorType.getNumElements());
       elementType = vectorType.getElementType();
     } else {
@@ -672,7 +673,7 @@ spirv::ConstantOp spirv::ConstantOp::getZero(Type type, Location loc,
     return builder.create<spirv::ConstantOp>(
         loc, type, builder.getFloatAttr(floatType, 0.0));
   }
-  if (auto vectorType = llvm::dyn_cast<VectorType>(type)) {
+  if (auto vectorType = llvm::dyn_cast<FixedVectorType>(type)) {
     Type elemType = vectorType.getElementType();
     if (llvm::isa<IntegerType>(elemType)) {
       return builder.create<spirv::ConstantOp>(
@@ -705,7 +706,7 @@ spirv::ConstantOp spirv::ConstantOp::getOne(Type type, Location loc,
     return builder.create<spirv::ConstantOp>(
         loc, type, builder.getFloatAttr(floatType, 1.0));
   }
-  if (auto vectorType = llvm::dyn_cast<VectorType>(type)) {
+  if (auto vectorType = llvm::dyn_cast<FixedVectorType>(type)) {
     Type elemType = vectorType.getElementType();
     if (llvm::isa<IntegerType>(elemType)) {
       return builder.create<spirv::ConstantOp>(
@@ -752,7 +753,7 @@ void mlir::spirv::ConstantOp::getAsmResultNames(
     specialName << '_' << type;
   }
 
-  if (auto vecType = llvm::dyn_cast<VectorType>(type)) {
+  if (auto vecType = llvm::dyn_cast<FixedVectorType>(type)) {
     specialName << "_vec_";
     specialName << vecType.getDimSize(0);
 
@@ -1253,7 +1254,7 @@ ParseResult spirv::INTELSubgroupBlockReadOp::parse(OpAsmParser &parser,
   }
 
   auto ptrType = spirv::PointerType::get(elementType, storageClass);
-  if (auto valVecTy = llvm::dyn_cast<VectorType>(elementType))
+  if (auto valVecTy = llvm::dyn_cast<FixedVectorType>(elementType))
     ptrType = spirv::PointerType::get(valVecTy.getElementType(), storageClass);
 
   if (parser.resolveOperand(ptrInfo, ptrType, result.operands)) {
@@ -1293,7 +1294,7 @@ ParseResult spirv::INTELSubgroupBlockWriteOp::parse(OpAsmParser &parser,
   }
 
   auto ptrType = spirv::PointerType::get(elementType, storageClass);
-  if (auto valVecTy = llvm::dyn_cast<VectorType>(elementType))
+  if (auto valVecTy = llvm::dyn_cast<FixedVectorType>(elementType))
     ptrType = spirv::PointerType::get(valVecTy.getElementType(), storageClass);
 
   if (parser.resolveOperands(operandInfo, {ptrType, elementType}, loc,
@@ -1645,7 +1646,7 @@ LogicalResult spirv::SpecConstantOp::verify() {
 //===----------------------------------------------------------------------===//
 
 LogicalResult spirv::VectorShuffleOp::verify() {
-  VectorType resultType = llvm::cast<VectorType>(getType());
+  FixedVectorType resultType = llvm::cast<FixedVectorType>(getType());
 
   size_t numResultElements = resultType.getNumElements();
   if (numResultElements != getComponents().size())
@@ -1655,8 +1656,8 @@ LogicalResult spirv::VectorShuffleOp::verify() {
            << getComponents().size() << ")";
 
   size_t totalSrcElements =
-      llvm::cast<VectorType>(getVector1().getType()).getNumElements() +
-      llvm::cast<VectorType>(getVector2().getType()).getNumElements();
+      llvm::cast<FixedVectorType>(getVector1().getType()).getNumElements() +
+      llvm::cast<FixedVectorType>(getVector2().getType()).getNumElements();
 
   for (const auto &selector : getComponents().getAsValueRange<IntegerAttr>()) {
     uint32_t index = selector.getZExtValue();
@@ -1910,11 +1911,11 @@ LogicalResult spirv::GLFrexpStructOp::verify() {
 
   Type significandTy = structTy.getElementType(0);
   Type exponentTy = structTy.getElementType(1);
-  VectorType exponentVecTy = llvm::dyn_cast<VectorType>(exponentTy);
+  FixedVectorType exponentVecTy = llvm::dyn_cast<FixedVectorType>(exponentTy);
   IntegerType exponentIntTy = llvm::dyn_cast<IntegerType>(exponentTy);
 
   Type operandTy = getOperand().getType();
-  VectorType operandVecTy = llvm::dyn_cast<VectorType>(operandTy);
+  FixedVectorType operandVecTy = llvm::dyn_cast<FixedVectorType>(operandTy);
   FloatType operandFTy = llvm::dyn_cast<FloatType>(operandTy);
 
   if (significandTy != operandTy)
@@ -1957,7 +1958,7 @@ LogicalResult spirv::GLLdexpOp::verify() {
     return emitOpError("operands must both be scalars or vectors");
 
   auto getNumElements = [](Type type) -> unsigned {
-    if (auto vectorType = llvm::dyn_cast<VectorType>(type))
+    if (auto vectorType = llvm::dyn_cast<FixedVectorType>(type))
       return vectorType.getNumElements();
     return 1;
   };
@@ -1973,7 +1974,8 @@ LogicalResult spirv::GLLdexpOp::verify() {
 //===----------------------------------------------------------------------===//
 
 LogicalResult spirv::ImageDrefGatherOp::verify() {
-  VectorType resultType = llvm::cast<VectorType>(getResult().getType());
+  FixedVectorType resultType =
+      llvm::cast<FixedVectorType>(getResult().getType());
   auto sampledImageType =
       llvm::cast<spirv::SampledImageType>(getSampledimage().getType());
   auto imageType =
@@ -2086,7 +2088,7 @@ LogicalResult spirv::ImageQuerySizeOp::verify() {
     componentNumber += 1;
 
   unsigned resultComponentNumber = 1;
-  if (auto resultVectorType = llvm::dyn_cast<VectorType>(resultType))
+  if (auto resultVectorType = llvm::dyn_cast<FixedVectorType>(resultType))
     resultComponentNumber = resultVectorType.getNumElements();
 
   if (componentNumber != resultComponentNumber)
@@ -2104,7 +2106,7 @@ LogicalResult spirv::ImageQuerySizeOp::verify() {
 LogicalResult spirv::VectorTimesScalarOp::verify() {
   if (getVector().getType() != getType())
     return emitOpError("vector operand and result type mismatch");
-  auto scalarType = llvm::cast<VectorType>(getType()).getElementType();
+  auto scalarType = llvm::cast<FixedVectorType>(getType()).getElementType();
   if (getScalar().getType() != scalarType)
     return emitOpError("scalar operand and result element type match");
   return success();

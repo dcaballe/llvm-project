@@ -48,8 +48,8 @@ public:
   LogicalResult matchAndRewrite(vector::BroadcastOp op,
                                 PatternRewriter &rewriter) const override {
     auto loc = op.getLoc();
-    VectorType dstType = op.getResultVectorType();
-    VectorType srcType = dyn_cast<VectorType>(op.getSourceType());
+    FixedVectorType dstType = op.getResultVectorType();
+    FixedVectorType srcType = dyn_cast<FixedVectorType>(op.getSourceType());
     Type eltType = dstType.getElementType();
 
     // Scalar to any vector can use splat.
@@ -84,7 +84,7 @@ public:
     //   %x = [%b,%b,%b,%b] : n-D
     if (srcRank < dstRank) {
       // Duplication.
-      VectorType resType = VectorType::Builder(dstType).dropDim(0);
+      VectorBaseType resType = VectorBaseType::Builder(dstType).dropDim(0);
       Value bcst =
           rewriter.create<vector::BroadcastOp>(loc, resType, op.getSource());
       Value result = rewriter.create<arith::ConstantOp>(
@@ -125,8 +125,8 @@ public:
     //   %a = [%u, %v]
     //   ..
     //   %x = [%a,%b,%c,%d]
-    VectorType resType =
-        VectorType::get(dstType.getShape().drop_front(), eltType);
+    FixedVectorType resType =
+        FixedVectorType::get(dstType.getShape().drop_front(), eltType);
     Value result = rewriter.create<arith::ConstantOp>(
         loc, dstType, rewriter.getZeroAttr(dstType));
     if (m == 0) {

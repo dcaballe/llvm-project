@@ -831,7 +831,7 @@ LogicalResult spirv::Deserializer::processType(spirv::Opcode opcode,
       return emitError(unknownLoc, "OpTypeVector references undefined <id> ")
              << operands[1];
     }
-    typeMap[operands[0]] = VectorType::get({operands[2]}, elementTy);
+    typeMap[operands[0]] = FixedVectorType::get({operands[2]}, elementTy);
   } break;
   case spirv::Opcode::OpTypePointer: {
     return processOpTypePointer(operands);
@@ -1418,7 +1418,7 @@ spirv::Deserializer::processConstantComposite(ArrayRef<uint32_t> operands) {
   }
 
   auto resultID = operands[1];
-  if (auto vectorType = dyn_cast<VectorType>(resultType)) {
+  if (auto vectorType = dyn_cast<FixedVectorType>(resultType)) {
     auto attr = DenseElementsAttr::get(vectorType, elements);
     // For normal constants, we just record the attribute (and its type) for
     // later materialization at use sites.
@@ -1567,7 +1567,7 @@ spirv::Deserializer::processConstantNull(ArrayRef<uint32_t> operands) {
   }
 
   auto resultID = operands[1];
-  if (resultType.isIntOrFloat() || isa<VectorType>(resultType)) {
+  if (resultType.isIntOrFloat() || isa<FixedVectorType>(resultType)) {
     auto attr = opBuilder.getZeroAttr(resultType);
     // For normal constants, we just record the attribute (and its type) for
     // later materialization at use sites.

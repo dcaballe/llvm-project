@@ -2036,7 +2036,7 @@ static LogicalResult appendMangledType(llvm::raw_string_ostream &ss, Type t) {
     }
     return success();
   }
-  if (auto vec = llvm::dyn_cast<VectorType>(t)) {
+  if (auto vec = llvm::dyn_cast<FixedVectorType>(t)) {
     ss << "vector";
     llvm::interleave(
         vec.getShape(), [&](int64_t i) { ss << i; }, [&]() { ss << "x"; });

@@ -21,7 +21,7 @@ static LogicalResult
 verifyPointerAndJointMatrixType(Operation *op, Type pointer, Type jointMatrix) {
   Type pointeeType = llvm::cast<spirv::PointerType>(pointer).getPointeeType();
   if (!llvm::isa<spirv::ScalarType>(pointeeType) &&
-      !llvm::isa<VectorType>(pointeeType))
+      !llvm::isa<FixedVectorType>(pointeeType))
     return op->emitError(
                "Pointer must point to a scalar or vector type but provided ")
            << pointeeType;

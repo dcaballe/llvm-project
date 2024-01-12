@@ -1199,7 +1199,7 @@ mlir::affine::getMemRefIntOrFloatEltSizeInBytes(MemRefType memRefType) {
   unsigned sizeInBits;
   if (elementType.isIntOrFloat()) {
     sizeInBits = elementType.getIntOrFloatBitWidth();
-  } else if (auto vectorType = dyn_cast<VectorType>(elementType)) {
+  } else if (auto vectorType = dyn_cast<FixedVectorType>(elementType)) {
     if (vectorType.getElementType().isIntOrFloat())
       sizeInBits =
           vectorType.getElementTypeBitWidth() * vectorType.getNumElements();
@@ -1247,7 +1247,7 @@ mlir::affine::getIntOrFloatMemRefSizeInBytes(MemRefType memRefType) {
   if (!memRefType.hasStaticShape())
     return std::nullopt;
   auto elementType = memRefType.getElementType();
-  if (!elementType.isIntOrFloat() && !isa<VectorType>(elementType))
+  if (!elementType.isIntOrFloat() && !isa<FixedVectorType>(elementType))
     return std::nullopt;
 
   auto sizeInBytes = getMemRefIntOrFloatEltSizeInBytes(memRefType);

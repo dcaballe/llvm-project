@@ -639,8 +639,9 @@ FailureOr<PackResult> linalg::pack(RewriterBase &rewriter,
 //===----------------------------------------------------------------------===//
 
 /// Return a copy of `tensorType` after permutation by `permutationVector`.
-// Note: Should be a new method in of MemRef/RankedTensor/VectorType::Builder
-// but this would introduce a dependence on Dialect in IR.
+// Note: Should be a new method in of
+// MemRef/RankedTensor/FixedVectorType::Builder but this would introduce a
+// dependence on Dialect in IR.
 // TODO: Restructure.
 static RankedTensorType permuteShape(RankedTensorType tensorType,
                                      ArrayRef<int64_t> permutationVector) {

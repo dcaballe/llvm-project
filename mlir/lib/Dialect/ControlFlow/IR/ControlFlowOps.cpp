@@ -468,7 +468,7 @@ void SwitchOp::build(OpBuilder &builder, OperationState &result, Value value,
                      ArrayRef<ValueRange> caseOperands) {
   DenseIntElementsAttr caseValuesAttr;
   if (!caseValues.empty()) {
-    ShapedType caseValueType = VectorType::get(
+    ShapedType caseValueType = FixedVectorType::get(
         static_cast<int64_t>(caseValues.size()), value.getType());
     caseValuesAttr = DenseIntElementsAttr::get(caseValueType, caseValues);
   }
@@ -482,7 +482,7 @@ void SwitchOp::build(OpBuilder &builder, OperationState &result, Value value,
                      ArrayRef<ValueRange> caseOperands) {
   DenseIntElementsAttr caseValuesAttr;
   if (!caseValues.empty()) {
-    ShapedType caseValueType = VectorType::get(
+    ShapedType caseValueType = FixedVectorType::get(
         static_cast<int64_t>(caseValues.size()), value.getType());
     caseValuesAttr = DenseIntElementsAttr::get(caseValueType, caseValues);
   }
@@ -538,7 +538,7 @@ static ParseResult parseSwitchOpCases(
 
   if (!values.empty()) {
     ShapedType caseValueType =
-        VectorType::get(static_cast<int64_t>(values.size()), flagType);
+        FixedVectorType::get(static_cast<int64_t>(values.size()), flagType);
     caseValues = DenseIntElementsAttr::get(caseValueType, values);
   }
   return success();

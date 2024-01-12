@@ -75,7 +75,7 @@ LogicalResult
 VecOpToScalarOp<Op>::matchAndRewrite(Op op, PatternRewriter &rewriter) const {
   auto opType = op.getType();
   auto loc = op.getLoc();
-  auto vecType = dyn_cast<VectorType>(opType);
+  auto vecType = dyn_cast<FixedVectorType>(opType);
 
   if (!vecType)
     return failure();

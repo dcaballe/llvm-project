@@ -140,9 +140,9 @@ void MmaSyncOp::build(::mlir::OpBuilder &odsBuilder,
 
 /// Performs verification for MmaSyncOp and MmaSparseSyncOp.
 static LogicalResult verifyMmaSyncOp(Operation *op,
-                                     TypedValue<VectorType> matrixA,
-                                     TypedValue<VectorType> matrixB,
-                                     TypedValue<VectorType> matrixC,
+                                     TypedValue<FixedVectorType> matrixA,
+                                     TypedValue<FixedVectorType> matrixB,
+                                     TypedValue<FixedVectorType> matrixC,
                                      const std::array<int64_t, 3> &mmaShape,
                                      bool tf32Enabled, bool sparse = false) {
 
@@ -290,7 +290,7 @@ LogicalResult LdMatrixOp::verify() {
   auto srcMemref = llvm::cast<MemRefType>(getSrcMemref().getType());
 
   // ldmatrix writes data to result/destination in vector registers
-  auto resVector = llvm::cast<VectorType>(getRes().getType());
+  auto resVector = llvm::cast<FixedVectorType>(getRes().getType());
 
   // vector register shape, element type, and bitwidth
   ArrayRef<int64_t> resShape = resVector.getShape();
@@ -535,8 +535,8 @@ LogicalResult WarpgroupMmaOp::verify() {
               "and transpose B (Column Major) for the time being ";
   MemRefType matrixA = getDescriptorA().getType().getTensor();
   MemRefType matrixB = getDescriptorB().getType().getTensor();
-  VectorType matrixC = getMatrixC().getType().getFragmented();
-  VectorType matrixD = getMatrixD().getType().getFragmented();
+  FixedVectorType matrixC = getMatrixC().getType().getFragmented();
+  FixedVectorType matrixD = getMatrixD().getType().getFragmented();
 
   if (matrixC != matrixD)
     return emitOpError() << "type of matrix C and matrix D must be the same";
@@ -587,7 +587,7 @@ LogicalResult WarpgroupMmaOp::verify() {
 
 LogicalResult WarpgroupMmaStoreOp::verify() {
   MemRefType dstMemrefType = getDstMemref().getType();
-  VectorType vtype = getMatrixD().getType().getFragmented();
+  FixedVectorType vtype = getMatrixD().getType().getFragmented();
 
   // Limitation
   if (!vtype.getElementType().isF32()) {

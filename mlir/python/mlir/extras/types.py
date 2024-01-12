@@ -28,7 +28,7 @@ from ..ir import (
     Type,
     UnrankedMemRefType,
     UnrankedTensorType,
-    VectorType,
+    FixedVectorType,
 )
 
 index = lambda: IndexType.get()
@@ -113,7 +113,7 @@ def vector(
         *shape,
         element_type=element_type,
         type_constructor=partial(
-            VectorType.get, scalable=scalable, scalable_dims=scalable_dims
+            FixedVectorType.get, scalable=scalable, scalable_dims=scalable_dims
         ),
     )
 

@@ -965,19 +965,19 @@ def AffineVectorLoadOp : AffineLoadOpBase<"vector_load"> {
 
   let builders = [
     /// Builds an affine vector load op with the specified map and operands.
-    OpBuilder<(ins "VectorType":$resultType, "AffineMap":$map,
+    OpBuilder<(ins "FixedVectorType":$resultType, "AffineMap":$map,
       "ValueRange":$operands)>,
     /// Builds an affine vector load op with an identity map and operands.
-    OpBuilder<(ins "VectorType":$resultType, "Value":$memref,
+    OpBuilder<(ins "FixedVectorType":$resultType, "Value":$memref,
       CArg<"ValueRange", "{}">:$indices)>,
     /// Builds an affine vector load op with the specified map and its operands.
-    OpBuilder<(ins "VectorType":$resultType, "Value":$memref,
+    OpBuilder<(ins "FixedVectorType":$resultType, "Value":$memref,
       "AffineMap":$map, "ValueRange":$mapOperands)>
   ];
 
   let extraClassDeclaration = extraClassDeclarationBase # [{
-    VectorType getVectorType() {
-      return ::llvm::cast<VectorType>(getResult().getType());
+    FixedVectorType getVectorType() {
+      return ::llvm::cast<FixedVectorType>(getResult().getType());
     }
   }];
 
@@ -1043,8 +1043,8 @@ def AffineVectorStoreOp : AffineStoreOpBase<"vector_store"> {
   ];
 
   let extraClassDeclaration = extraClassDeclarationBase # [{
-    VectorType getVectorType() {
-      return ::llvm::cast<VectorType>(getValue().getType());
+    FixedVectorType getVectorType() {
+      return ::llvm::cast<FixedVectorType>(getValue().getType());
     }
   }];
 

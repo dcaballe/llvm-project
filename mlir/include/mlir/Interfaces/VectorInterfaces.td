@@ -35,7 +35,7 @@ def VectorUnrollOpInterface : OpInterface<"VectorUnrollOpInterface"> {
       /*defaultImplementation=*/[{
         assert($_op->getNumResults() == 1);
         auto vt =
-            ::llvm::dyn_cast<::mlir::VectorType>($_op.getResult().getType());
+            ::llvm::dyn_cast<::mlir::VectorBaseType>($_op.getResult().getType());
         if (!vt)
           return ::std::nullopt;
         ::llvm::SmallVector<int64_t, 4> res(
@@ -185,11 +185,11 @@ def VectorTransferOpInterface : OpInterface<"VectorTransferOpInterface"> {
     }
 
     /// Return the mask type if the op has a mask. Otherwise, return an empty
-    /// VectorType.
-    ::mlir::VectorType getMaskType() {
+    /// VectorBaseType.
+    ::mlir::VectorBaseType getMaskType() {
       return $_op.getMask()
-        ? ::llvm::cast<::mlir::VectorType>($_op.getMask().getType())
-        : ::mlir::VectorType();
+        ? ::llvm::cast<::mlir::VectorBaseType>($_op.getMask().getType())
+        : ::mlir::VectorBaseType();
     }
 
     /// Return the shaped type of the "source" operand value.
@@ -203,8 +203,8 @@ def VectorTransferOpInterface : OpInterface<"VectorTransferOpInterface"> {
     }
 
     /// Return the type of the vector that this operation operates on.
-    ::mlir::VectorType getVectorType() {
-      return ::llvm::cast<::mlir::VectorType>($_op.getVector().getType());
+    ::mlir::VectorBaseType getVectorType() {
+      return ::llvm::cast<::mlir::VectorBaseType>($_op.getVector().getType());
     }
 
     /// Return "true" if at least one of the vector dimensions is a broadcasted

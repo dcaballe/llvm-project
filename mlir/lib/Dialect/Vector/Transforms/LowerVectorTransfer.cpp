@@ -37,12 +37,12 @@ inverseTransposeInBoundsAttr(OpBuilder &builder, ArrayAttr attr,
 /// dimensions.
 static Value extendVectorRank(OpBuilder &builder, Location loc, Value vec,
                               int64_t addedRank) {
-  auto originalVecType = cast<VectorType>(vec.getType());
+  auto originalVecType = cast<FixedVectorType>(vec.getType());
   SmallVector<int64_t> newShape(addedRank, 1);
   newShape.append(originalVecType.getShape().begin(),
                   originalVecType.getShape().end());
-  VectorType newVecType =
-      VectorType::get(newShape, originalVecType.getElementType());
+  FixedVectorType newVecType =
+      FixedVectorType::get(newShape, originalVecType.getElementType());
   return builder.create<vector::BroadcastOp>(loc, newVecType, vec);
 }
 
@@ -53,7 +53,7 @@ static Value extendMaskRank(OpBuilder &builder, Location loc, Value vec,
   Value broadcasted = extendVectorRank(builder, loc, vec, addedRank);
   SmallVector<int64_t> permutation;
   for (int64_t i = addedRank,
-               e = broadcasted.getType().cast<VectorType>().getRank();
+               e = broadcasted.getType().cast<FixedVectorType>().getRank();
        i < e; ++i)
     permutation.push_back(i);
   for (int64_t i = 0; i < addedRank; ++i)
@@ -115,11 +115,12 @@ struct TransferReadPermutationLowering
     // Apply the reverse transpose to deduce the type of the transfer_read.
     ArrayRef<int64_t> originalShape = op.getVectorType().getShape();
     SmallVector<int64_t> newVectorShape(originalShape.size());
-    ArrayRef<bool> originalScalableDims = op.getVectorType().getScalableDims();
-    SmallVector<bool> newScalableDims(originalShape.size());
+    ArrayRef<int64_t> originalScalableBases =
+        op.getVectorType().getScalableBases();
+    SmallVector<int64_t> newScalableBases(originalShape.size());
     for (const auto &pos : llvm::enumerate(permutation)) {
       newVectorShape[pos.value()] = originalShape[pos.index()];
-      newScalableDims[pos.value()] = originalScalableDims[pos.index()];
+      newScalableBases[pos.value()] = originalScalableBases[pos.index()];
     }
 
     // Transpose in_bounds attribute.
@@ -129,8 +130,8 @@ struct TransferReadPermutationLowering
                          : ArrayAttr();
 
     // Generate new transfer_read operation.
-    VectorType newReadType = VectorType::get(
-        newVectorShape, op.getVectorType().getElementType(), newScalableDims);
+    VectorBaseType newReadType = VectorBaseType::get(
+        newVectorShape, op.getVectorType().getElementType(), newScalableBases);
     Value newRead = rewriter.create<vector::TransferReadOp>(
         op.getLoc(), newReadType, op.getSource(), op.getIndices(),
         AffineMapAttr::get(newMap), op.getPadding(), op.getMask(),
@@ -317,7 +318,7 @@ struct TransferOpReduceRank : public OpRewritePattern<vector::TransferReadOp> {
     if (numLeadingBroadcast == 0)
       return rewriter.notifyMatchFailure(op, "no leading broadcasts in map");
 
-    VectorType originalVecType = op.getVectorType();
+    VectorBaseType originalVecType = op.getVectorType();
     unsigned reducedShapeRank = originalVecType.getRank() - numLeadingBroadcast;
     // Calculate new map, vector type and masks without the leading zeros.
     AffineMap newMap = AffineMap::get(
@@ -351,12 +352,12 @@ struct TransferOpReduceRank : public OpRewritePattern<vector::TransferReadOp> {
     SmallVector<int64_t> newShape(
         originalVecType.getShape().take_back(reducedShapeRank));
     SmallVector<bool> newScalableDims(
-        originalVecType.getScalableDims().take_back(reducedShapeRank));
+        originalVecType.getScalableBases().take_back(reducedShapeRank));
     // Vector rank cannot be zero. Handled by TransferReadToVectorLoadLowering.
     if (newShape.empty())
       return rewriter.notifyMatchFailure(op, "rank-reduced vector is 0-d");
 
-    VectorType newReadType = VectorType::get(
+    VectorBaseType newReadType = VectorBaseType::get(
         newShape, originalVecType.getElementType(), newScalableDims);
     ArrayAttr newInBoundsAttr =
         op.getInBounds()
@@ -434,17 +435,18 @@ struct TransferReadToVectorLoadLowering
                                                   vectorShape.end());
     for (unsigned i : broadcastedDims)
       unbroadcastedVectorShape[i] = 1;
-    VectorType unbroadcastedVectorType = read.getVectorType().cloneWith(
+    ShapedType unbroadcastedVectorType = read.getVectorType().cloneWith(
         unbroadcastedVectorShape, read.getVectorType().getElementType());
 
     // `vector.load` supports vector types as memref's elements only when the
     // resulting vector type is the same as the element type.
     auto memrefElTy = memRefType.getElementType();
-    if (isa<VectorType>(memrefElTy) && memrefElTy != unbroadcastedVectorType)
+    if (isa<VectorBaseType>(memrefElTy) &&
+        memrefElTy != unbroadcastedVectorType)
       return rewriter.notifyMatchFailure(read, "incompatible element type");
 
     // Otherwise, element types of the memref and the vector must match.
-    if (!isa<VectorType>(memrefElTy) &&
+    if (!isa<VectorBaseType>(memrefElTy) &&
         memrefElTy != read.getVectorType().getElementType())
       return rewriter.notifyMatchFailure(read, "non-matching element type");
 
@@ -586,13 +588,13 @@ struct TransferWriteToVectorStoreLowering
     // `vector.store` supports vector types as memref's elements only when the
     // type of the vector value being written is the same as the element type.
     auto memrefElTy = memRefType.getElementType();
-    if (isa<VectorType>(memrefElTy) && memrefElTy != write.getVectorType())
+    if (isa<VectorBaseType>(memrefElTy) && memrefElTy != write.getVectorType())
       return rewriter.notifyMatchFailure(write.getLoc(), [=](Diagnostic &diag) {
         diag << "elemental type mismatch: " << write;
       });
 
     // Otherwise, element types of the memref and the vector must match.
-    if (!isa<VectorType>(memrefElTy) &&
+    if (!isa<VectorBaseType>(memrefElTy) &&
         memrefElTy != write.getVectorType().getElementType())
       return rewriter.notifyMatchFailure(write.getLoc(), [=](Diagnostic &diag) {
         diag << "elemental type mismatch: " << write;

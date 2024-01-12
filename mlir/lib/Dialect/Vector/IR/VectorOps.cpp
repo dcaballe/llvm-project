@@ -150,10 +150,10 @@ static bool isSupportedCombiningKind(CombiningKind combiningKind,
 }
 
 AffineMap mlir::vector::getTransferMinorIdentityMap(ShapedType shapedType,
-                                                    VectorType vectorType) {
+                                                    VectorBaseType vectorType) {
   int64_t elementVectorRank = 0;
-  VectorType elementVectorType =
-      llvm::dyn_cast<VectorType>(shapedType.getElementType());
+  VectorBaseType elementVectorType =
+      llvm::dyn_cast<VectorBaseType>(shapedType.getElementType());
   if (elementVectorType)
     elementVectorRank += elementVectorType.getRank();
   // 0-d transfers are to/from tensor<t>/memref<t> and vector<1xt>.
@@ -425,7 +425,7 @@ LogicalResult MultiDimReductionOp::verify() {
   SmallVector<int64_t> targetShape;
   SmallVector<bool> scalableDims;
   Type inferredReturnType;
-  auto sourceScalableDims = getSourceVectorType().getScalableDims();
+  auto sourceScalableDims = getSourceVectorType().getScalableBases();
   for (auto it : llvm::enumerate(getSourceVectorType().getShape()))
     if (!llvm::any_of(getReductionDims().getValue(), [&](Attribute attr) {
           return llvm::cast<IntegerAttr>(attr).getValue() == it.index();
@@ -437,7 +437,7 @@ LogicalResult MultiDimReductionOp::verify() {
   if (targetShape.empty())
     inferredReturnType = getSourceVectorType().getElementType();
   else
-    inferredReturnType = VectorType::get(
+    inferredReturnType = VectorBaseType::get(
         targetShape, getSourceVectorType().getElementType(), scalableDims);
   if (getType() != inferredReturnType)
     return emitOpError() << "destination type " << getType()
@@ -450,9 +450,9 @@ LogicalResult MultiDimReductionOp::verify() {
 /// Returns the mask type expected by this operation.
 Type MultiDimReductionOp::getExpectedMaskType() {
   auto vecType = getSourceVectorType();
-  return VectorType::get(vecType.getShape(),
-                         IntegerType::get(vecType.getContext(), /*width=*/1),
-                         vecType.getScalableDims());
+  return VectorBaseType::get(
+      vecType.getShape(), IntegerType::get(vecType.getContext(), /*width=*/1),
+      vecType.getScalableBases());
 }
 
 namespace {
@@ -488,11 +488,12 @@ struct ElideUnitDimsInMultiDimReduction
     Location loc = reductionOp.getLoc();
     Value acc = reductionOp.getAcc();
     Value cast;
-    if (auto dstVecType = dyn_cast<VectorType>(reductionOp.getDestType())) {
+    if (auto dstVecType =
+            dyn_cast<FixedVectorType>(reductionOp.getDestType())) {
       if (mask) {
-        VectorType newMaskType =
-            VectorType::get(dstVecType.getShape(), rewriter.getI1Type(),
-                            dstVecType.getScalableDims());
+        FixedVectorType newMaskType =
+            FixedVectorType::get(dstVecType.getShape(), rewriter.getI1Type(),
+                                 dstVecType.getScalableBases());
         mask = rewriter.create<vector::ShapeCastOp>(loc, newMaskType, mask);
       }
       cast = rewriter.create<vector::ShapeCastOp>(
@@ -535,8 +536,8 @@ void vector::ReductionOp::build(OpBuilder &builder, OperationState &result,
                                 CombiningKind kind, Value vector, Value acc,
                                 arith::FastMathFlags fastMathFlags) {
   build(builder, result,
-        llvm::cast<VectorType>(vector.getType()).getElementType(), kind, vector,
-        acc, fastMathFlags);
+        llvm::cast<FixedVectorType>(vector.getType()).getElementType(), kind,
+        vector, acc, fastMathFlags);
 }
 
 LogicalResult ReductionOp::verify() {
@@ -560,9 +561,9 @@ LogicalResult ReductionOp::verify() {
 /// Returns the mask type expected by this operation.
 Type ReductionOp::getExpectedMaskType() {
   auto vecType = getSourceVectorType();
-  return VectorType::get(vecType.getShape(),
-                         IntegerType::get(vecType.getContext(), /*width=*/1),
-                         vecType.getScalableDims());
+  return FixedVectorType::get(
+      vecType.getShape(), IntegerType::get(vecType.getContext(), /*width=*/1),
+      vecType.getScalableBases());
 }
 
 Value mlir::vector::getVectorReductionOp(arith::AtomicRMWKind op,
@@ -762,12 +763,12 @@ ParseResult ContractionOp::parse(OpAsmParser &parser, OperationState &result) {
   if (masksInfo.size() != 2)
     return parser.emitError(parser.getNameLoc(),
                             "expected zero or exactly 2 vector mask operands");
-  auto lhsType = llvm::cast<VectorType>(types[0]);
-  auto rhsType = llvm::cast<VectorType>(types[1]);
+  auto lhsType = llvm::cast<VectorBaseType>(types[0]);
+  auto rhsType = llvm::cast<VectorBaseType>(types[1]);
   auto maskElementType = parser.getBuilder().getI1Type();
-  std::array<VectorType, 2> maskTypes = {
-      VectorType::Builder(lhsType).setElementType(maskElementType),
-      VectorType::Builder(rhsType).setElementType(maskElementType)};
+  std::array<VectorBaseType, 2> maskTypes = {
+      VectorBaseType::Builder(lhsType).setElementType(maskElementType),
+      VectorBaseType::Builder(rhsType).setElementType(maskElementType)};
   if (parser.resolveOperands(masksInfo, maskTypes, loc, result.operands))
     return failure();
   return success();
@@ -808,7 +809,7 @@ void ContractionOp::print(OpAsmPrinter &p) {
     << getResultType();
 }
 
-static bool verifyDimMap(VectorType lhsType, VectorType rhsType,
+static bool verifyDimMap(VectorBaseType lhsType, VectorBaseType rhsType,
                          const std::vector<std::pair<int64_t, int64_t>> &map) {
   for (auto &dimPair : map) {
     if (dimPair.first < 0 || dimPair.first >= lhsType.getRank() ||
@@ -820,8 +821,8 @@ static bool verifyDimMap(VectorType lhsType, VectorType rhsType,
 }
 
 static LogicalResult verifyOutputShape(
-    ContractionOp op, VectorType lhsType, VectorType rhsType, Type accType,
-    Type resType,
+    ContractionOp op, VectorBaseType lhsType, VectorBaseType rhsType,
+    Type accType, Type resType,
     const std::vector<std::pair<int64_t, int64_t>> &contractingDimMap,
     const std::vector<std::pair<int64_t, int64_t>> &batchDimMap) {
   DenseSet<int64_t> lhsContractingDimSet;
@@ -852,12 +853,13 @@ static LogicalResult verifyOutputShape(
   // Verify 'expectedResultDims'.
   if (expectedResultDims.empty()) {
     // No batch or free dimension implies a scalar result.
-    if (llvm::isa<VectorType>(resType) || llvm::isa<VectorType>(accType))
+    if (llvm::isa<VectorBaseType>(resType) ||
+        llvm::isa<VectorBaseType>(accType))
       return op.emitOpError("invalid accumulator/result vector shape");
   } else {
     // At least one batch or free dimension implies a vector result.
-    auto resVectorType = llvm::dyn_cast<VectorType>(resType);
-    auto accVectorType = llvm::dyn_cast<VectorType>(accType);
+    auto resVectorType = llvm::dyn_cast<VectorBaseType>(resType);
+    auto accVectorType = llvm::dyn_cast<VectorBaseType>(accType);
     if (!resVectorType || !accVectorType)
       return op.emitOpError("invalid accumulator/result vector shape");
 
@@ -873,7 +875,7 @@ static LogicalResult verifyOutputShape(
     SmallVector<AffineExpr, 4> extents(lhsMap.getNumInputs());
     for (auto pair :
          {std::make_pair(lhsType, lhsMap), std::make_pair(rhsType, rhsMap)}) {
-      VectorType v = pair.first;
+      VectorBaseType v = pair.first;
       auto map = pair.second;
       for (unsigned idx = 0, e = v.getRank(); idx < e; ++idx) {
         unsigned pos = map.getDimPosition(idx);
@@ -900,8 +902,8 @@ static LogicalResult verifyOutputShape(
           return cast<AffineConstantExpr>(e).getValue();
         }));
     auto expected =
-        VectorType::get(expectedShape, resVectorType.getElementType(),
-                        resVectorType.getScalableDims());
+        VectorBaseType::get(expectedShape, resVectorType.getElementType(),
+                            resVectorType.getScalableBases());
     if (resVectorType != expected || accVectorType != expected)
       return op.emitOpError(
                  "invalid accumulator/result vector shape, expected: ")
@@ -911,8 +913,8 @@ static LogicalResult verifyOutputShape(
 }
 
 LogicalResult ContractionOp::verify() {
-  VectorType lhsType = getLhsType();
-  VectorType rhsType = getRhsType();
+  VectorBaseType lhsType = getLhsType();
+  VectorBaseType rhsType = getRhsType();
   Type accType = getAccType();
   Type resType = getResultType();
 
@@ -935,7 +937,8 @@ LogicalResult ContractionOp::verify() {
     if (map.getNumSymbols() != 0)
       return emitOpError("expected indexing map ")
              << index << " to have no symbols";
-    auto vectorType = llvm::dyn_cast<VectorType>(getOperand(index).getType());
+    auto vectorType =
+        llvm::dyn_cast<VectorBaseType>(getOperand(index).getType());
     unsigned rank = vectorType ? vectorType.getShape().size() : 0;
     // Verify that the map has the right number of inputs, outputs, and indices.
     // This also correctly accounts for (..) -> () for rank-0 results.
@@ -971,7 +974,7 @@ LogicalResult ContractionOp::verify() {
     return failure();
 
   // Verify supported combining kind.
-  auto vectorType = llvm::dyn_cast<VectorType>(resType);
+  auto vectorType = llvm::dyn_cast<VectorBaseType>(resType);
   auto elementType = vectorType ? vectorType.getElementType() : resType;
   if (!isSupportedCombiningKind(getKind(), elementType))
     return emitOpError("unsupported contraction type");
@@ -987,8 +990,8 @@ Type ContractionOp::getExpectedMaskType() {
   auto indexingMaps = this->getIndexingMapsArray();
   AffineMap lhsIdxMap = indexingMaps[0];
   AffineMap rhsIdxMap = indexingMaps[1];
-  VectorType lhsType = this->getLhsType();
-  VectorType rhsType = this->getRhsType();
+  VectorBaseType lhsType = this->getLhsType();
+  VectorBaseType rhsType = this->getRhsType();
 
   unsigned numVecDims = lhsIdxMap.getNumDims();
   SmallVector<int64_t> maskShape(numVecDims, ShapedType::kDynamic);
@@ -999,20 +1002,20 @@ Type ContractionOp::getExpectedMaskType() {
   for (auto [dimIdx, dimSize] : llvm::enumerate(lhsType.getShape())) {
     maskShape[lhsIdxMap.getDimPosition(dimIdx)] = dimSize;
     maskShapeScalableDims[lhsIdxMap.getDimPosition(dimIdx)] =
-        lhsType.getScalableDims()[dimIdx];
+        lhsType.getScalableBases()[dimIdx];
   }
   for (auto [dimIdx, dimSize] : llvm::enumerate(rhsType.getShape())) {
     maskShape[rhsIdxMap.getDimPosition(dimIdx)] = dimSize;
     maskShapeScalableDims[rhsIdxMap.getDimPosition(dimIdx)] =
-        rhsType.getScalableDims()[dimIdx];
+        rhsType.getScalableBases()[dimIdx];
   }
 
   assert(!ShapedType::isDynamicShape(maskShape) &&
          "Mask shape couldn't be computed");
 
-  return VectorType::get(maskShape,
-                         IntegerType::get(lhsType.getContext(), /*width=*/1),
-                         maskShapeScalableDims);
+  return VectorBaseType::get(
+      maskShape, IntegerType::get(lhsType.getContext(), /*width=*/1),
+      maskShapeScalableDims);
 }
 
 SmallVector<StringRef> ContractionOp::getTraitAttrNames() {
@@ -1048,7 +1051,7 @@ getDimMap(ArrayRef<AffineMap> indexingMaps, ArrayAttr iteratorTypes,
 void ContractionOp::getIterationBounds(
     SmallVectorImpl<int64_t> &iterationBounds) {
   auto lhsShape = getLhsType().getShape();
-  auto resVectorType = llvm::dyn_cast<VectorType>(getResultType());
+  auto resVectorType = llvm::dyn_cast<VectorBaseType>(getResultType());
   SmallVector<AffineMap, 4> indexingMaps(getIndexingMapsArray());
   SmallVector<int64_t, 2> iterationShape;
   for (const auto &it : llvm::enumerate(getIteratorTypes())) {
@@ -1168,11 +1171,12 @@ void ContractionOp::getCanonicalizationPatterns(RewritePatternSet &results,
 void vector::ExtractElementOp::build(OpBuilder &builder, OperationState &result,
                                      Value source) {
   result.addOperands({source});
-  result.addTypes(llvm::cast<VectorType>(source.getType()).getElementType());
+  result.addTypes(
+      llvm::cast<VectorBaseType>(source.getType()).getElementType());
 }
 
 LogicalResult vector::ExtractElementOp::verify() {
-  VectorType vectorType = getSourceVectorType();
+  VectorBaseType vectorType = getSourceVectorType();
   if (vectorType.getRank() == 0) {
     if (getPosition())
       return emitOpError("expected position to be empty with 0-D vector");
@@ -1196,7 +1200,7 @@ OpFoldResult vector::ExtractElementOp::fold(FoldAdaptor adaptor) {
 
   // Fold extractelement(broadcast(X)) -> X.
   if (auto broadcast = getVector().getDefiningOp<vector::BroadcastOp>())
-    if (!llvm::isa<VectorType>(broadcast.getSource().getType()))
+    if (!llvm::isa<VectorBaseType>(broadcast.getSource().getType()))
       return broadcast.getSource();
 
   auto src = dyn_cast_or_null<DenseElementsAttr>(adaptor.getVector());
@@ -1246,16 +1250,16 @@ LogicalResult
 ExtractOp::inferReturnTypes(MLIRContext *, std::optional<Location>,
                             ExtractOp::Adaptor adaptor,
                             SmallVectorImpl<Type> &inferredReturnTypes) {
-  auto vectorType = llvm::cast<VectorType>(adaptor.getVector().getType());
+  auto vectorType = llvm::cast<VectorBaseType>(adaptor.getVector().getType());
   if (static_cast<int64_t>(adaptor.getStaticPosition().size()) ==
       vectorType.getRank()) {
     inferredReturnTypes.push_back(vectorType.getElementType());
   } else {
     auto n = std::min<size_t>(adaptor.getStaticPosition().size(),
                               vectorType.getRank());
-    inferredReturnTypes.push_back(VectorType::get(
+    inferredReturnTypes.push_back(VectorBaseType::get(
         vectorType.getShape().drop_front(n), vectorType.getElementType(),
-        vectorType.getScalableDims().drop_front(n)));
+        vectorType.getScalableBases().drop_front(n)));
   }
   return success();
 }
@@ -1263,7 +1267,7 @@ ExtractOp::inferReturnTypes(MLIRContext *, std::optional<Location>,
 bool ExtractOp::isCompatibleReturnTypes(TypeRange l, TypeRange r) {
   // Allow extracting 1-element vectors instead of scalars.
   auto isCompatible = [](TypeRange l, TypeRange r) {
-    auto vectorType = llvm::dyn_cast<VectorType>(l.front());
+    auto vectorType = llvm::dyn_cast<VectorBaseType>(l.front());
     return vectorType && vectorType.getShape().equals({1}) &&
            vectorType.getElementType() == r.front();
   };
@@ -1572,7 +1576,7 @@ Value ExtractFromInsertTransposeChainState::fold() {
 /// Returns true if the operation has a 0-D vector type operand or result.
 static bool hasZeroDimVectors(Operation *op) {
   auto hasZeroDimVectorType = [](Type type) -> bool {
-    auto vecType = dyn_cast<VectorType>(type);
+    auto vecType = dyn_cast<VectorBaseType>(type);
     return vecType && vecType.getRank() == 0;
   };
 
@@ -1599,8 +1603,9 @@ static Value foldExtractFromBroadcast(ExtractOp extractOp) {
   if (extractOp.getType() == source.getType())
     return source;
   auto getRank = [](Type type) {
-    return llvm::isa<VectorType>(type) ? llvm::cast<VectorType>(type).getRank()
-                                       : 0;
+    return llvm::isa<VectorBaseType>(type)
+               ? llvm::cast<VectorBaseType>(type).getRank()
+               : 0;
   };
 
   // If splat or broadcast from a scalar, just return the source scalar.
@@ -1612,8 +1617,8 @@ static Value foldExtractFromBroadcast(ExtractOp extractOp) {
   if (extractResultRank >= broadcastSrcRank)
     return Value();
   // Check that the dimension of the result haven't been broadcasted.
-  auto extractVecType = llvm::dyn_cast<VectorType>(extractOp.getType());
-  auto broadcastVecType = llvm::dyn_cast<VectorType>(source.getType());
+  auto extractVecType = llvm::dyn_cast<VectorBaseType>(extractOp.getType());
+  auto broadcastVecType = llvm::dyn_cast<VectorBaseType>(source.getType());
   if (extractVecType && broadcastVecType &&
       extractVecType.getShape() !=
           broadcastVecType.getShape().take_back(extractResultRank))
@@ -1660,18 +1665,18 @@ static Value foldExtractFromShapeCast(ExtractOp extractOp) {
     return Value();
 
   // Get the nth dimension size starting from lowest dimension.
-  auto getDimReverse = [](VectorType type, int64_t n) {
+  auto getDimReverse = [](VectorBaseType type, int64_t n) {
     return type.getShape().take_back(n + 1).front();
   };
   int64_t destinationRank =
-      llvm::isa<VectorType>(extractOp.getType())
-          ? llvm::cast<VectorType>(extractOp.getType()).getRank()
+      llvm::isa<VectorBaseType>(extractOp.getType())
+          ? llvm::cast<VectorBaseType>(extractOp.getType()).getRank()
           : 0;
   if (destinationRank > shapeCastOp.getSourceVectorType().getRank())
     return Value();
   if (destinationRank > 0) {
     auto destinationType =
-        llvm::cast<VectorType>(extractOp.getResult().getType());
+        llvm::cast<VectorBaseType>(extractOp.getResult().getType());
     for (int64_t i = 0; i < destinationRank; i++) {
       // The lowest dimension of the destination must match the lowest
       // dimension of the shapecast op source.
@@ -1746,7 +1751,7 @@ static Value foldExtractFromExtractStrided(ExtractOp extractOp) {
     sliceOffsets.pop_back();
   }
   unsigned destinationRank = 0;
-  if (auto vecType = llvm::dyn_cast<VectorType>(extractOp.getType()))
+  if (auto vecType = llvm::dyn_cast<VectorBaseType>(extractOp.getType()))
     destinationRank = vecType.getRank();
   // The dimensions of the result need to be untouched by the
   // extractStridedSlice op.
@@ -1773,8 +1778,8 @@ static Value foldExtractStridedOpFromInsertChain(ExtractOp extractOp) {
     return Value();
 
   int64_t destinationRank =
-      llvm::isa<VectorType>(extractOp.getType())
-          ? llvm::cast<VectorType>(extractOp.getType()).getRank()
+      llvm::isa<VectorBaseType>(extractOp.getType())
+          ? llvm::cast<VectorBaseType>(extractOp.getType()).getRank()
           : 0;
   auto insertOp = extractOp.getVector().getDefiningOp<InsertStridedSliceOp>();
   if (!insertOp)
@@ -1876,8 +1881,8 @@ public:
     if (extractOp.getType() == source.getType())
       return failure();
     auto getRank = [](Type type) {
-      return llvm::isa<VectorType>(type)
-                 ? llvm::cast<VectorType>(type).getRank()
+      return llvm::isa<VectorBaseType>(type)
+                 ? llvm::cast<VectorBaseType>(type).getRank()
                  : 0;
     };
     unsigned broadcastSrcRank = getRank(source.getType());
@@ -1890,7 +1895,8 @@ public:
 
     // Special case if broadcast src is a 0D vector.
     if (extractResultRank == 0) {
-      assert(broadcastSrcRank == 0 && llvm::isa<VectorType>(source.getType()));
+      assert(broadcastSrcRank == 0 &&
+             llvm::isa<VectorBaseType>(source.getType()));
       rewriter.replaceOpWithNewOp<vector::ExtractElementOp>(extractOp, source);
       return success();
     }
@@ -1917,7 +1923,7 @@ public:
     if (!splat)
       return failure();
     TypedAttr newAttr = splat.getSplatValue<TypedAttr>();
-    if (auto vecDstType = llvm::dyn_cast<VectorType>(extractOp.getType()))
+    if (auto vecDstType = llvm::dyn_cast<VectorBaseType>(extractOp.getType()))
       newAttr = DenseElementsAttr::get(vecDstType, newAttr);
     rewriter.replaceOpWithNewOp<arith::ConstantOp>(extractOp, newAttr);
     return success();
@@ -1943,7 +1949,7 @@ public:
     if (!matchPattern(sourceVector, m_Constant(&vectorCst)))
       return failure();
 
-    auto vecTy = llvm::cast<VectorType>(sourceVector.getType());
+    auto vecTy = llvm::cast<VectorBaseType>(sourceVector.getType());
     if (vecTy.isScalable())
       return failure();
 
@@ -1961,7 +1967,7 @@ public:
     auto denseValuesBegin = dense.value_begin<TypedAttr>() + elemBeginPosition;
 
     TypedAttr newAttr;
-    if (auto resVecTy = llvm::dyn_cast<VectorType>(extractOp.getType())) {
+    if (auto resVecTy = llvm::dyn_cast<VectorBaseType>(extractOp.getType())) {
       SmallVector<Attribute> elementValues(
           denseValuesBegin, denseValuesBegin + resVecTy.getNumElements());
       newAttr = DenseElementsAttr::get(resVecTy, elementValues);
@@ -1986,15 +1992,15 @@ public:
     if (!createMaskOp)
       return failure();
 
-    VectorType extractedMaskType =
-        llvm::dyn_cast<VectorType>(extractOp.getResult().getType());
+    VectorBaseType extractedMaskType =
+        llvm::dyn_cast<VectorBaseType>(extractOp.getResult().getType());
 
     if (!extractedMaskType)
       return failure();
 
     auto maskOperands = createMaskOp.getOperands();
     ArrayRef<int64_t> extractOpPos = extractOp.getStaticPosition();
-    VectorType maskType = createMaskOp.getVectorType();
+    VectorBaseType maskType = createMaskOp.getVectorType();
 
     bool containsUnknownDims = false;
     bool allFalse = getMaskFormat(createMaskOp) == MaskFormat::AllFalse;
@@ -2047,8 +2053,8 @@ LogicalResult foldExtractFromShapeCastToShapeCast(ExtractOp extractOp,
   if (!castOp)
     return failure();
 
-  VectorType sourceType = castOp.getSourceVectorType();
-  auto targetType = dyn_cast<VectorType>(extractOp.getResult().getType());
+  VectorBaseType sourceType = castOp.getSourceVectorType();
+  auto targetType = dyn_cast<VectorBaseType>(extractOp.getResult().getType());
   if (!targetType)
     return failure();
 
@@ -2108,7 +2114,7 @@ computeBroadcastedUnitDims(ArrayRef<int64_t> srcShape,
 
 llvm::SetVector<int64_t> BroadcastOp::computeBroadcastedUnitDims() {
   // Scalar broadcast is without any unit dim broadcast.
-  auto srcVectorType = llvm::dyn_cast<VectorType>(getSourceType());
+  auto srcVectorType = llvm::dyn_cast<VectorBaseType>(getSourceType());
   if (!srcVectorType)
     return {};
   return ::computeBroadcastedUnitDims(srcVectorType.getShape(),
@@ -2145,8 +2151,9 @@ Value BroadcastOp::createOrFoldBroadcastOp(
 
   Location loc = value.getLoc();
   Type elementType = getElementTypeOrSelf(value.getType());
-  VectorType srcVectorType = llvm::dyn_cast<VectorType>(value.getType());
-  VectorType dstVectorType = VectorType::get(dstShape, elementType);
+  FixedVectorType srcVectorType =
+      llvm::dyn_cast<FixedVectorType>(value.getType());
+  FixedVectorType dstVectorType = FixedVectorType::get(dstShape, elementType);
 
   // Step 2. If scalar -> dstShape broadcast, just do it.
   if (!srcVectorType) {
@@ -2208,7 +2215,8 @@ Value BroadcastOp::createOrFoldBroadcastOp(
              .empty() &&
          "unexpected dim-1 broadcast");
 
-  VectorType broadcastType = VectorType::get(broadcastShape, elementType);
+  FixedVectorType broadcastType =
+      FixedVectorType::get(broadcastShape, elementType);
   assert(vector::isBroadcastableTo(value.getType(), broadcastType) ==
              vector::BroadcastableToResult::Success &&
          "must be broadcastable");
@@ -2223,14 +2231,14 @@ Value BroadcastOp::createOrFoldBroadcastOp(
 }
 
 BroadcastableToResult
-mlir::vector::isBroadcastableTo(Type srcType, VectorType dstVectorType,
+mlir::vector::isBroadcastableTo(Type srcType, VectorBaseType dstVectorType,
                                 std::pair<int, int> *mismatchingDims) {
   // Broadcast scalar to vector of the same element type.
   if (srcType.isIntOrIndexOrFloat() && dstVectorType &&
       getElementTypeOrSelf(srcType) == getElementTypeOrSelf(dstVectorType))
     return BroadcastableToResult::Success;
   // From now on, only vectors broadcast.
-  VectorType srcVectorType = llvm::dyn_cast<VectorType>(srcType);
+  VectorBaseType srcVectorType = llvm::dyn_cast<VectorBaseType>(srcType);
   if (!srcVectorType)
     return BroadcastableToResult::SourceTypeNotAVector;
 
@@ -2321,9 +2329,9 @@ void ShuffleOp::build(OpBuilder &builder, OperationState &result, Value v1,
 }
 
 LogicalResult ShuffleOp::verify() {
-  VectorType resultType = getResultVectorType();
-  VectorType v1Type = getV1VectorType();
-  VectorType v2Type = getV2VectorType();
+  FixedVectorType resultType = getResultVectorType();
+  FixedVectorType v1Type = getV1VectorType();
+  FixedVectorType v2Type = getV2VectorType();
   // Verify ranks.
   int64_t resRank = resultType.getRank();
   int64_t v1Rank = v1Type.getRank();
@@ -2363,7 +2371,7 @@ LogicalResult
 ShuffleOp::inferReturnTypes(MLIRContext *, std::optional<Location>,
                             ShuffleOp::Adaptor adaptor,
                             SmallVectorImpl<Type> &inferredReturnTypes) {
-  auto v1Type = llvm::cast<VectorType>(adaptor.getV1().getType());
+  auto v1Type = llvm::cast<FixedVectorType>(adaptor.getV1().getType());
   auto v1Rank = v1Type.getRank();
   // Construct resulting type: leading dimension matches mask
   // length, all trailing dimensions match the operands.
@@ -2374,7 +2382,7 @@ ShuffleOp::inferReturnTypes(MLIRContext *, std::optional<Location>,
   if (v1Rank > 0)
     llvm::append_range(shape, v1Type.getShape().drop_front());
   inferredReturnTypes.push_back(
-      VectorType::get(shape, v1Type.getElementType()));
+      FixedVectorType::get(shape, v1Type.getElementType()));
   return success();
 }
 
@@ -2388,7 +2396,7 @@ static bool isStepIndexArray(ArrayAttr idxArr, uint64_t begin, size_t width) {
 }
 
 OpFoldResult vector::ShuffleOp::fold(FoldAdaptor adaptor) {
-  VectorType v1Type = getV1VectorType();
+  FixedVectorType v1Type = getV1VectorType();
   // For consistency: 0-D shuffle return type is 1-D, this cannot be a folding
   // but must be a canonicalization into a vector.broadcast.
   if (v1Type.getRank() == 0)
@@ -2409,7 +2417,7 @@ OpFoldResult vector::ShuffleOp::fold(FoldAdaptor adaptor) {
     return {};
 
   auto lhsType =
-      llvm::cast<VectorType>(llvm::cast<DenseElementsAttr>(lhs).getType());
+      llvm::cast<FixedVectorType>(llvm::cast<DenseElementsAttr>(lhs).getType());
   // Only support 1-D for now to avoid complicated n-D DenseElementsAttr
   // manipulation.
   if (lhsType.getRank() != 1)
@@ -2440,13 +2448,14 @@ struct Canonicalize0DShuffleOp : public OpRewritePattern<ShuffleOp> {
 
   LogicalResult matchAndRewrite(ShuffleOp shuffleOp,
                                 PatternRewriter &rewriter) const override {
-    VectorType v1VectorType = shuffleOp.getV1VectorType();
+    FixedVectorType v1VectorType = shuffleOp.getV1VectorType();
     ArrayAttr mask = shuffleOp.getMask();
     if (v1VectorType.getRank() > 0)
       return failure();
     if (mask.size() != 1)
       return failure();
-    VectorType resType = VectorType::Builder(v1VectorType).setShape({1});
+    VectorBaseType resType =
+        VectorBaseType::Builder(v1VectorType).setShape({1});
     if (llvm::cast<IntegerAttr>(mask[0]).getInt() == 0)
       rewriter.replaceOpWithNewOp<vector::BroadcastOp>(shuffleOp, resType,
                                                        shuffleOp.getV1());
@@ -2574,7 +2583,7 @@ LogicalResult InsertOp::verify() {
   if (position.size() > static_cast<unsigned>(destVectorType.getRank()))
     return emitOpError(
         "expected position attribute of rank no greater than dest vector rank");
-  auto srcVectorType = llvm::dyn_cast<VectorType>(getSourceType());
+  auto srcVectorType = llvm::dyn_cast<FixedVectorType>(getSourceType());
   if (srcVectorType &&
       (static_cast<unsigned>(srcVectorType.getRank()) + position.size() !=
        static_cast<unsigned>(destVectorType.getRank())))
@@ -2609,7 +2618,7 @@ public:
 
   LogicalResult matchAndRewrite(InsertOp insertOp,
                                 PatternRewriter &rewriter) const override {
-    auto srcVecType = llvm::dyn_cast<VectorType>(insertOp.getSourceType());
+    auto srcVecType = llvm::dyn_cast<FixedVectorType>(insertOp.getSourceType());
     if (!srcVecType || insertOp.getDestVectorType().getNumElements() !=
                            srcVecType.getNumElements())
       return failure();
@@ -2657,12 +2666,12 @@ public:
 
     // Return if 'InsertOp' operand is not defined by a compatible vector
     // ConstantOp.
-    TypedValue<VectorType> destVector = op.getDest();
+    TypedValue<FixedVectorType> destVector = op.getDest();
     Attribute vectorDestCst;
     if (!matchPattern(destVector, m_Constant(&vectorDestCst)))
       return failure();
 
-    VectorType destTy = destVector.getType();
+    FixedVectorType destTy = destVector.getType();
     if (destTy.isScalable())
       return failure();
 
@@ -2929,12 +2938,12 @@ public:
                                 PatternRewriter &rewriter) const override {
     // Return if 'InsertOp' operand is not defined by a compatible vector
     // ConstantOp.
-    TypedValue<VectorType> destVector = op.getDest();
+    TypedValue<FixedVectorType> destVector = op.getDest();
     Attribute vectorDestCst;
     if (!matchPattern(destVector, m_Constant(&vectorDestCst)))
       return failure();
 
-    VectorType destTy = destVector.getType();
+    FixedVectorType destTy = destVector.getType();
     if (destTy.isScalable())
       return failure();
 
@@ -2945,7 +2954,7 @@ public:
 
     auto denseDest = llvm::cast<DenseElementsAttr>(vectorDestCst);
 
-    TypedValue<VectorType> sourceValue = op.getSource();
+    TypedValue<FixedVectorType> sourceValue = op.getSource();
     Attribute sourceCst;
     if (!matchPattern(sourceValue, m_Constant(&sourceCst)))
       return failure();
@@ -2954,7 +2963,7 @@ public:
     if (op.hasNonUnitStrides())
       return failure();
 
-    VectorType sliceVecTy = sourceValue.getType();
+    FixedVectorType sliceVecTy = sourceValue.getType();
     ArrayRef<int64_t> sliceShape = sliceVecTy.getShape();
     int64_t rankDifference = destTy.getRank() - sliceVecTy.getRank();
     SmallVector<int64_t, 4> offsets = getI64SubArray(op.getOffsets());
@@ -3035,23 +3044,23 @@ ParseResult OuterProductOp::parse(OpAsmParser &parser, OperationState &result) {
   if (operandsInfo.size() < 2)
     return parser.emitError(parser.getNameLoc(),
                             "expected at least 2 operands");
-  VectorType vLHS = llvm::dyn_cast<VectorType>(tLHS);
-  VectorType vRHS = llvm::dyn_cast<VectorType>(tRHS);
+  VectorBaseType vLHS = llvm::dyn_cast<VectorBaseType>(tLHS);
+  VectorBaseType vRHS = llvm::dyn_cast<VectorBaseType>(tRHS);
   if (!vLHS)
     return parser.emitError(parser.getNameLoc(),
                             "expected vector type for operand #1");
 
-  VectorType resType;
+  VectorBaseType resType;
   if (vRHS) {
-    SmallVector<bool> scalableDimsRes{vLHS.getScalableDims()[0],
-                                      vRHS.getScalableDims()[0]};
-    resType = VectorType::get({vLHS.getDimSize(0), vRHS.getDimSize(0)},
-                              vLHS.getElementType(), scalableDimsRes);
+    SmallVector<int64_t> scalableBasesRes{vLHS.getScalableBases()[0],
+                                          vRHS.getScalableBases()[0]};
+    resType = VectorBaseType::get({vLHS.getDimSize(0), vRHS.getDimSize(0)},
+                                  vLHS.getElementType(), scalableBasesRes);
   } else {
     // Scalar RHS operand
-    SmallVector<bool> scalableDimsRes{vLHS.getScalableDims()[0]};
-    resType = VectorType::get({vLHS.getDimSize(0)}, vLHS.getElementType(),
-                              scalableDimsRes);
+    SmallVector<int64_t> scalableBasesRes{vLHS.getScalableBases()[0]};
+    resType = VectorBaseType::get({vLHS.getDimSize(0)}, vLHS.getElementType(),
+                                  scalableBasesRes);
   }
 
   if (!result.attributes.get(OuterProductOp::getKindAttrName(result.name))) {
@@ -3071,9 +3080,9 @@ ParseResult OuterProductOp::parse(OpAsmParser &parser, OperationState &result) {
 
 LogicalResult OuterProductOp::verify() {
   Type tRHS = getOperandTypeRHS();
-  VectorType vLHS = getOperandVectorTypeLHS(),
-             vRHS = llvm::dyn_cast<VectorType>(tRHS),
-             vACC = getOperandVectorTypeACC(), vRES = getResultVectorType();
+  VectorBaseType vLHS = getOperandVectorTypeLHS(),
+                 vRHS = llvm::dyn_cast<VectorBaseType>(tRHS),
+                 vACC = getOperandVectorTypeACC(), vRES = getResultVectorType();
 
   if (vLHS.getRank() != 1)
     return emitOpError("expected 1-d vector for operand #1");
@@ -3118,9 +3127,9 @@ LogicalResult OuterProductOp::verify() {
 /// verification purposes. It requires the operation to be vectorized."
 Type OuterProductOp::getExpectedMaskType() {
   auto vecType = this->getResultVectorType();
-  return VectorType::get(vecType.getShape(),
-                         IntegerType::get(vecType.getContext(), /*width=*/1),
-                         vecType.getScalableDims());
+  return VectorBaseType::get(
+      vecType.getShape(), IntegerType::get(vecType.getContext(), /*width=*/1),
+      vecType.getScalableBases());
 }
 
 //===----------------------------------------------------------------------===//
@@ -3192,7 +3201,7 @@ void ReshapeOp::getFixedVectorSizes(SmallVectorImpl<int64_t> &results) {
 // Inference works as follows:
 //   1. Add 'sizes' from prefix of dims in 'offsets'.
 //   2. Add sizes from 'vectorType' for remaining dims.
-static Type inferStridedSliceOpResultType(VectorType vectorType,
+static Type inferStridedSliceOpResultType(FixedVectorType vectorType,
                                           ArrayAttr offsets, ArrayAttr sizes,
                                           ArrayAttr strides) {
   assert(offsets.size() == sizes.size() && offsets.size() == strides.size());
@@ -3204,7 +3213,7 @@ static Type inferStridedSliceOpResultType(VectorType vectorType,
   for (unsigned e = vectorType.getShape().size(); idx < e; ++idx)
     shape.push_back(vectorType.getShape()[idx]);
 
-  return VectorType::get(shape, vectorType.getElementType());
+  return FixedVectorType::get(shape, vectorType.getElementType());
 }
 
 void ExtractStridedSliceOp::build(OpBuilder &builder, OperationState &result,
@@ -3215,9 +3224,9 @@ void ExtractStridedSliceOp::build(OpBuilder &builder, OperationState &result,
   auto offsetsAttr = getVectorSubscriptAttr(builder, offsets);
   auto sizesAttr = getVectorSubscriptAttr(builder, sizes);
   auto stridesAttr = getVectorSubscriptAttr(builder, strides);
-  result.addTypes(
-      inferStridedSliceOpResultType(llvm::cast<VectorType>(source.getType()),
-                                    offsetsAttr, sizesAttr, stridesAttr));
+  result.addTypes(inferStridedSliceOpResultType(
+      llvm::cast<FixedVectorType>(source.getType()), offsetsAttr, sizesAttr,
+      stridesAttr));
   result.addAttribute(ExtractStridedSliceOp::getOffsetsAttrName(result.name),
                       offsetsAttr);
   result.addAttribute(ExtractStridedSliceOp::getSizesAttrName(result.name),
@@ -3454,11 +3463,11 @@ public:
     if (extractStridedSliceOp.hasNonUnitStrides())
       return failure();
 
-    auto sourceVecTy = llvm::cast<VectorType>(sourceVector.getType());
+    auto sourceVecTy = llvm::cast<FixedVectorType>(sourceVector.getType());
     ArrayRef<int64_t> sourceShape = sourceVecTy.getShape();
     SmallVector<int64_t, 4> sourceStrides = computeStrides(sourceShape);
 
-    VectorType sliceVecTy = extractStridedSliceOp.getType();
+    FixedVectorType sliceVecTy = extractStridedSliceOp.getType();
     ArrayRef<int64_t> sliceShape = sliceVecTy.getShape();
     int64_t sliceRank = sliceVecTy.getRank();
 
@@ -3507,9 +3516,9 @@ public:
     if (!broadcast)
       return failure();
     auto srcVecType =
-        llvm::dyn_cast<VectorType>(broadcast.getSource().getType());
+        llvm::dyn_cast<FixedVectorType>(broadcast.getSource().getType());
     unsigned srcRank = srcVecType ? srcVecType.getRank() : 0;
-    auto dstVecType = llvm::cast<VectorType>(op.getType());
+    auto dstVecType = llvm::cast<FixedVectorType>(op.getType());
     unsigned dstRank = dstVecType.getRank();
     unsigned rankDiff = dstRank - srcRank;
     // Check if the most inner dimensions of the source of the broadcast are the
@@ -3572,7 +3581,7 @@ void ExtractStridedSliceOp::getCanonicalizationPatterns(
 
 /// 1. Builder that sets padding to zero and an empty mask (variant with attrs).
 void TransferReadOp::build(OpBuilder &builder, OperationState &result,
-                           VectorType vectorType, Value source,
+                           VectorBaseType vectorType, Value source,
                            ValueRange indices, AffineMapAttr permutationMapAttr,
                            /*optional*/ ArrayAttr inBoundsAttr) {
   Type elemType = llvm::cast<ShapedType>(source.getType()).getElementType();
@@ -3584,7 +3593,7 @@ void TransferReadOp::build(OpBuilder &builder, OperationState &result,
 
 /// 2. Builder that sets padding to zero an empty mask (variant without attrs).
 void TransferReadOp::build(OpBuilder &builder, OperationState &result,
-                           VectorType vectorType, Value source,
+                           VectorBaseType vectorType, Value source,
                            ValueRange indices, AffineMap permutationMap,
                            std::optional<ArrayRef<bool>> inBounds) {
   auto permutationMapAttr = AffineMapAttr::get(permutationMap);
@@ -3597,7 +3606,7 @@ void TransferReadOp::build(OpBuilder &builder, OperationState &result,
 
 /// 3. Builder that sets permutation map to 'getMinorIdentityMap'.
 void TransferReadOp::build(OpBuilder &builder, OperationState &result,
-                           VectorType vectorType, Value source,
+                           VectorBaseType vectorType, Value source,
                            ValueRange indices, Value padding,
                            std::optional<ArrayRef<bool>> inBounds) {
   AffineMap permutationMap = getTransferMinorIdentityMap(
@@ -3614,7 +3623,7 @@ void TransferReadOp::build(OpBuilder &builder, OperationState &result,
 /// 4. Builder that sets padding to zero and permutation map to
 /// 'getMinorIdentityMap'.
 void TransferReadOp::build(OpBuilder &builder, OperationState &result,
-                           VectorType vectorType, Value source,
+                           VectorBaseType vectorType, Value source,
                            ValueRange indices,
                            std::optional<ArrayRef<bool>> inBounds) {
   Type elemType = llvm::cast<ShapedType>(source.getType()).getElementType();
@@ -3654,8 +3663,8 @@ static LogicalResult verifyPermutationMap(AffineMap permutationMap,
 
 static LogicalResult
 verifyTransferOp(VectorTransferOpInterface op, ShapedType shapedType,
-                 VectorType vectorType, VectorType maskType,
-                 VectorType inferredMaskType, AffineMap permutationMap,
+                 VectorBaseType vectorType, VectorBaseType maskType,
+                 VectorBaseType inferredMaskType, AffineMap permutationMap,
                  ArrayAttr inBounds) {
   if (op->hasAttr("masked")) {
     return op->emitOpError("masked attribute has been removed. "
@@ -3668,7 +3677,7 @@ verifyTransferOp(VectorTransferOpInterface op, ShapedType shapedType,
 
   auto elementType = shapedType.getElementType();
   DataLayout dataLayout = DataLayout::closest(op);
-  if (auto vectorElementType = llvm::dyn_cast<VectorType>(elementType)) {
+  if (auto vectorElementType = llvm::dyn_cast<VectorBaseType>(elementType)) {
     // Memref or tensor has vector element type.
     unsigned sourceVecSize =
         dataLayout.getTypeSizeInBits(vectorElementType.getElementType()) *
@@ -3757,17 +3766,17 @@ void TransferReadOp::print(OpAsmPrinter &p) {
   p << " : " << getShapedType() << ", " << getVectorType();
 }
 
-VectorType mlir::vector::inferTransferOpMaskType(VectorType vecType,
-                                                 AffineMap permMap) {
+VectorBaseType mlir::vector::inferTransferOpMaskType(VectorBaseType vecType,
+                                                     AffineMap permMap) {
   auto i1Type = IntegerType::get(permMap.getContext(), 1);
   AffineMap invPermMap = inversePermutation(compressUnusedDims(permMap));
   assert(invPermMap && "Inversed permutation map couldn't be computed");
   SmallVector<int64_t, 8> maskShape = invPermMap.compose(vecType.getShape());
 
-  SmallVector<bool> scalableDims =
-      applyPermutationMap(invPermMap, vecType.getScalableDims());
+  SmallVector<int64_t> scalableBases =
+      applyPermutationMap(invPermMap, vecType.getScalableBases());
 
-  return VectorType::get(maskShape, i1Type, scalableDims);
+  return VectorBaseType::get(maskShape, i1Type, scalableBases);
 }
 
 ParseResult TransferReadOp::parse(OpAsmParser &parser, OperationState &result) {
@@ -3797,7 +3806,7 @@ ParseResult TransferReadOp::parse(OpAsmParser &parser, OperationState &result) {
   auto shapedType = llvm::dyn_cast<ShapedType>(types[0]);
   if (!shapedType || !llvm::isa<MemRefType, RankedTensorType>(shapedType))
     return parser.emitError(typesLoc, "requires memref or ranked tensor type");
-  VectorType vectorType = llvm::dyn_cast<VectorType>(types[1]);
+  VectorBaseType vectorType = llvm::dyn_cast<VectorBaseType>(types[1]);
   if (!vectorType)
     return parser.emitError(typesLoc, "requires vector type");
   auto permMapAttrName = TransferReadOp::getPermutationMapAttrName(result.name);
@@ -3815,7 +3824,7 @@ ParseResult TransferReadOp::parse(OpAsmParser &parser, OperationState &result) {
                             result.operands))
     return failure();
   if (hasMask.succeeded()) {
-    if (llvm::dyn_cast<VectorType>(shapedType.getElementType()))
+    if (llvm::dyn_cast<VectorBaseType>(shapedType.getElementType()))
       return parser.emitError(
           maskInfo.location, "does not support masks with vector element type");
     if (vectorType.getRank() != permMap.getNumResults()) {
@@ -3839,13 +3848,13 @@ ParseResult TransferReadOp::parse(OpAsmParser &parser, OperationState &result) {
 LogicalResult TransferReadOp::verify() {
   // Consistency of elemental types in source and vector.
   ShapedType shapedType = getShapedType();
-  VectorType vectorType = getVectorType();
-  VectorType maskType = getMaskType();
+  VectorBaseType vectorType = getVectorType();
+  VectorBaseType maskType = getMaskType();
   auto paddingType = getPadding().getType();
   auto permutationMap = getPermutationMap();
-  VectorType inferredMaskType =
+  VectorBaseType inferredMaskType =
       maskType ? inferTransferOpMaskType(vectorType, permutationMap)
-               : VectorType();
+               : VectorBaseType();
   auto sourceElementType = shapedType.getElementType();
 
   if (static_cast<int64_t>(getIndices().size()) != shapedType.getRank())
@@ -3858,7 +3867,7 @@ LogicalResult TransferReadOp::verify() {
     return failure();
 
   if (auto sourceVectorElementType =
-          llvm::dyn_cast<VectorType>(sourceElementType)) {
+          llvm::dyn_cast<VectorBaseType>(sourceElementType)) {
     // Source has vector element type.
     // Check that 'sourceVectorElementType' and 'paddingType' types match.
     if (sourceVectorElementType != paddingType)
@@ -3867,7 +3876,7 @@ LogicalResult TransferReadOp::verify() {
 
   } else {
     // Check that 'paddingType' is valid to store in a vector type.
-    if (!VectorType::isValidElementType(paddingType))
+    if (!VectorBaseType::isValidElementType(paddingType))
       return emitOpError("requires valid padding vector elemental type");
 
     // Check that padding type and vector element types match.
@@ -4079,7 +4088,7 @@ struct TransferReadAfterWriteToBroadcast
     SmallVector<int64_t> broadcastShape(destShape.size());
     for (const auto &pos : llvm::enumerate(permutation))
       broadcastShape[pos.value()] = destShape[pos.index()];
-    VectorType broadcastedType = VectorType::get(
+    FixedVectorType broadcastedType = FixedVectorType::get(
         broadcastShape, defWrite.getVectorType().getElementType());
     vec = rewriter.create<vector::BroadcastOp>(loc, broadcastedType, vec);
     SmallVector<int64_t> transposePerm(permutation.begin(), permutation.end());
@@ -4138,7 +4147,7 @@ void TransferWriteOp::build(OpBuilder &builder, OperationState &result,
 void TransferWriteOp::build(OpBuilder &builder, OperationState &result,
                             Value vector, Value dest, ValueRange indices,
                             std::optional<ArrayRef<bool>> inBounds) {
-  auto vectorType = llvm::cast<VectorType>(vector.getType());
+  auto vectorType = llvm::cast<FixedVectorType>(vector.getType());
   AffineMap permutationMap = getTransferMinorIdentityMap(
       llvm::cast<ShapedType>(dest.getType()), vectorType);
   build(builder, result, vector, dest, indices, permutationMap, inBounds);
@@ -4165,7 +4174,7 @@ ParseResult TransferWriteOp::parse(OpAsmParser &parser,
   if (types.size() != 2)
     return parser.emitError(typesLoc, "requires two types");
   auto indexType = builder.getIndexType();
-  VectorType vectorType = llvm::dyn_cast<VectorType>(types[0]);
+  FixedVectorType vectorType = llvm::dyn_cast<FixedVectorType>(types[0]);
   if (!vectorType)
     return parser.emitError(typesLoc, "requires vector type");
   ShapedType shapedType = llvm::dyn_cast<ShapedType>(types[1]);
@@ -4186,7 +4195,7 @@ ParseResult TransferWriteOp::parse(OpAsmParser &parser,
       parser.resolveOperands(indexInfo, indexType, result.operands))
     return failure();
   if (hasMask.succeeded()) {
-    if (llvm::dyn_cast<VectorType>(shapedType.getElementType()))
+    if (llvm::dyn_cast<FixedVectorType>(shapedType.getElementType()))
       return parser.emitError(
           maskInfo.location, "does not support masks with vector element type");
     if (vectorType.getRank() != permMap.getNumResults()) {
@@ -4217,12 +4226,12 @@ void TransferWriteOp::print(OpAsmPrinter &p) {
 LogicalResult TransferWriteOp::verify() {
   // Consistency of elemental types in shape and vector.
   ShapedType shapedType = getShapedType();
-  VectorType vectorType = getVectorType();
-  VectorType maskType = getMaskType();
+  VectorBaseType vectorType = getVectorType();
+  VectorBaseType maskType = getMaskType();
   auto permutationMap = getPermutationMap();
-  VectorType inferredMaskType =
+  VectorBaseType inferredMaskType =
       maskType ? inferTransferOpMaskType(vectorType, permutationMap)
-               : VectorType();
+               : VectorBaseType();
 
   if (llvm::size(getIndices()) != shapedType.getRank())
     return emitOpError("requires ") << shapedType.getRank() << " indices";
@@ -4559,7 +4568,7 @@ static LogicalResult verifyLoadStoreMemRefLayout(Operation *op,
 }
 
 LogicalResult vector::LoadOp::verify() {
-  VectorType resVecTy = getVectorType();
+  VectorBaseType resVecTy = getVectorType();
   MemRefType memRefTy = getMemRefType();
 
   if (failed(verifyLoadStoreMemRefLayout(*this, memRefTy)))
@@ -4567,7 +4576,7 @@ LogicalResult vector::LoadOp::verify() {
 
   // Checks for vector memrefs.
   Type memElemTy = memRefTy.getElementType();
-  if (auto memVecTy = llvm::dyn_cast<VectorType>(memElemTy)) {
+  if (auto memVecTy = llvm::dyn_cast<VectorBaseType>(memElemTy)) {
     if (memVecTy != resVecTy)
       return emitOpError("base memref and result vector types should match");
     memElemTy = memVecTy.getElementType();
@@ -4591,7 +4600,7 @@ OpFoldResult LoadOp::fold(FoldAdaptor) {
 //===----------------------------------------------------------------------===//
 
 LogicalResult vector::StoreOp::verify() {
-  VectorType valueVecTy = getVectorType();
+  VectorBaseType valueVecTy = getVectorType();
   MemRefType memRefTy = getMemRefType();
 
   if (failed(verifyLoadStoreMemRefLayout(*this, memRefTy)))
@@ -4599,7 +4608,7 @@ LogicalResult vector::StoreOp::verify() {
 
   // Checks for vector memrefs.
   Type memElemTy = memRefTy.getElementType();
-  if (auto memVecTy = llvm::dyn_cast<VectorType>(memElemTy)) {
+  if (auto memVecTy = llvm::dyn_cast<VectorBaseType>(memElemTy)) {
     if (memVecTy != valueVecTy)
       return emitOpError(
           "base memref and valueToStore vector types should match");
@@ -4623,9 +4632,9 @@ LogicalResult StoreOp::fold(FoldAdaptor adaptor,
 //===----------------------------------------------------------------------===//
 
 LogicalResult MaskedLoadOp::verify() {
-  VectorType maskVType = getMaskVectorType();
-  VectorType passVType = getPassThruVectorType();
-  VectorType resVType = getVectorType();
+  VectorBaseType maskVType = getMaskVectorType();
+  VectorBaseType passVType = getPassThruVectorType();
+  VectorBaseType resVType = getVectorType();
   MemRefType memType = getMemRefType();
 
   if (resVType.getElementType() != memType.getElementType())
@@ -4677,8 +4686,8 @@ OpFoldResult MaskedLoadOp::fold(FoldAdaptor) {
 //===----------------------------------------------------------------------===//
 
 LogicalResult MaskedStoreOp::verify() {
-  VectorType maskVType = getMaskVectorType();
-  VectorType valueVType = getVectorType();
+  VectorBaseType maskVType = getMaskVectorType();
+  VectorBaseType valueVType = getVectorType();
   MemRefType memType = getMemRefType();
 
   if (valueVType.getElementType() != memType.getElementType())
@@ -4727,9 +4736,9 @@ LogicalResult MaskedStoreOp::fold(FoldAdaptor adaptor,
 //===----------------------------------------------------------------------===//
 
 LogicalResult GatherOp::verify() {
-  VectorType indVType = getIndexVectorType();
-  VectorType maskVType = getMaskVectorType();
-  VectorType resVType = getVectorType();
+  VectorBaseType indVType = getIndexVectorType();
+  VectorBaseType maskVType = getMaskVectorType();
+  VectorBaseType resVType = getVectorType();
   ShapedType baseType = getBaseType();
 
   if (!llvm::isa<MemRefType, RankedTensorType>(baseType))
@@ -4754,9 +4763,9 @@ LogicalResult GatherOp::verify() {
 /// verification purposes. It requires the operation to be vectorized."
 Type GatherOp::getExpectedMaskType() {
   auto vecType = this->getIndexVectorType();
-  return VectorType::get(vecType.getShape(),
-                         IntegerType::get(vecType.getContext(), /*width=*/1),
-                         vecType.getScalableDims());
+  return VectorBaseType::get(
+      vecType.getShape(), IntegerType::get(vecType.getContext(), /*width=*/1),
+      vecType.getScalableBases());
 }
 
 std::optional<SmallVector<int64_t, 4>> GatherOp::getShapeForUnroll() {
@@ -4793,9 +4802,9 @@ void GatherOp::getCanonicalizationPatterns(RewritePatternSet &results,
 //===----------------------------------------------------------------------===//
 
 LogicalResult ScatterOp::verify() {
-  VectorType indVType = getIndexVectorType();
-  VectorType maskVType = getMaskVectorType();
-  VectorType valueVType = getVectorType();
+  VectorBaseType indVType = getIndexVectorType();
+  VectorBaseType maskVType = getMaskVectorType();
+  VectorBaseType valueVType = getVectorType();
   MemRefType memType = getMemRefType();
 
   if (valueVType.getElementType() != memType.getElementType())
@@ -4839,9 +4848,9 @@ void ScatterOp::getCanonicalizationPatterns(RewritePatternSet &results,
 //===----------------------------------------------------------------------===//
 
 LogicalResult ExpandLoadOp::verify() {
-  VectorType maskVType = getMaskVectorType();
-  VectorType passVType = getPassThruVectorType();
-  VectorType resVType = getVectorType();
+  FixedVectorType maskVType = getMaskVectorType();
+  FixedVectorType passVType = getPassThruVectorType();
+  FixedVectorType resVType = getVectorType();
   MemRefType memType = getMemRefType();
 
   if (resVType.getElementType() != memType.getElementType())
@@ -4887,8 +4896,8 @@ void ExpandLoadOp::getCanonicalizationPatterns(RewritePatternSet &results,
 //===----------------------------------------------------------------------===//
 
 LogicalResult CompressStoreOp::verify() {
-  VectorType maskVType = getMaskVectorType();
-  VectorType valueVType = getVectorType();
+  FixedVectorType maskVType = getMaskVectorType();
+  FixedVectorType valueVType = getVectorType();
   MemRefType memType = getMemRefType();
 
   if (valueVType.getElementType() != memType.getElementType())
@@ -4969,8 +4978,8 @@ static bool isValidShapeCast(ArrayRef<int64_t> a, ArrayRef<int64_t> b) {
 }
 
 static LogicalResult verifyVectorShapeCast(Operation *op,
-                                           VectorType sourceVectorType,
-                                           VectorType resultVectorType) {
+                                           FixedVectorType sourceVectorType,
+                                           FixedVectorType resultVectorType) {
   // Check that element type is the same.
   if (sourceVectorType.getElementType() != resultVectorType.getElementType())
     return op->emitOpError("source/result vectors must have same element type");
@@ -5000,9 +5009,9 @@ static LogicalResult verifyVectorShapeCast(Operation *op,
 
 LogicalResult ShapeCastOp::verify() {
   auto sourceVectorType =
-      llvm::dyn_cast_or_null<VectorType>(getSource().getType());
+      llvm::dyn_cast_or_null<FixedVectorType>(getSource().getType());
   auto resultVectorType =
-      llvm::dyn_cast_or_null<VectorType>(getResult().getType());
+      llvm::dyn_cast_or_null<FixedVectorType>(getResult().getType());
 
   // Check if source/result are of vector type.
   if (sourceVectorType && resultVectorType)
@@ -5022,8 +5031,10 @@ OpFoldResult ShapeCastOp::fold(FoldAdaptor adaptor) {
       return otherOp.getSource();
 
     // Only allows valid transitive folding.
-    VectorType srcType = llvm::cast<VectorType>(otherOp.getSource().getType());
-    VectorType resultType = llvm::cast<VectorType>(getResult().getType());
+    FixedVectorType srcType =
+        llvm::cast<FixedVectorType>(otherOp.getSource().getType());
+    FixedVectorType resultType =
+        llvm::cast<FixedVectorType>(getResult().getType());
     if (srcType.getRank() < resultType.getRank()) {
       if (!isValidShapeCast(srcType.getShape(), resultType.getShape()))
         return {};
@@ -5063,9 +5074,9 @@ public:
     auto dense = llvm::dyn_cast<SplatElementsAttr>(constantOp.getValue());
     if (!dense)
       return failure();
-    auto newAttr =
-        DenseElementsAttr::get(llvm::cast<VectorType>(shapeCastOp.getType()),
-                               dense.getSplatValue<Attribute>());
+    auto newAttr = DenseElementsAttr::get(
+        llvm::cast<FixedVectorType>(shapeCastOp.getType()),
+        dense.getSplatValue<Attribute>());
     rewriter.replaceOpWithNewOp<arith::ConstantOp>(shapeCastOp, newAttr);
     return success();
   }
@@ -5076,12 +5087,12 @@ public:
 ///
 ///   vector<4x1x1xi1> --> vector<4x1>
 ///
-static VectorType trimTrailingOneDims(VectorType oldType) {
+static VectorBaseType trimTrailingOneDims(VectorBaseType oldType) {
   ArrayRef<int64_t> oldShape = oldType.getShape();
   ArrayRef<int64_t> newShape = oldShape;
 
-  ArrayRef<bool> oldScalableDims = oldType.getScalableDims();
-  ArrayRef<bool> newScalableDims = oldScalableDims;
+  ArrayRef<int64_t> oldScalableDims = oldType.getScalableBases();
+  ArrayRef<int64_t> newScalableDims = oldScalableDims;
 
   while (!newShape.empty() && newShape.back() == 1 && !newScalableDims.back()) {
     newShape = newShape.drop_back(1);
@@ -5095,7 +5106,8 @@ static VectorType trimTrailingOneDims(VectorType oldType) {
     newScalableDims = oldScalableDims.take_back();
   }
 
-  return VectorType::get(newShape, oldType.getElementType(), newScalableDims);
+  return VectorBaseType::get(newShape, oldType.getElementType(),
+                             newScalableDims);
 }
 
 /// Folds qualifying shape_cast(create_mask) into a new create_mask
@@ -5123,10 +5135,10 @@ public:
     if (!createMaskOp && !constantMaskOp)
       return failure();
 
-    VectorType shapeOpResTy = shapeOp.getResultVectorType();
-    VectorType shapeOpSrcTy = shapeOp.getSourceVectorType();
+    VectorBaseType shapeOpResTy = shapeOp.getResultVectorType();
+    VectorBaseType shapeOpSrcTy = shapeOp.getSourceVectorType();
 
-    VectorType newVecType = trimTrailingOneDims(shapeOpSrcTy);
+    VectorBaseType newVecType = trimTrailingOneDims(shapeOpSrcTy);
     if (newVecType != shapeOpResTy)
       return failure();
 
@@ -5196,7 +5208,7 @@ public:
       return failure();
 
     ArrayRef<int64_t> broadcastSourceShape;
-    if (auto srcType = dyn_cast<VectorType>(broadcastOp.getSourceType()))
+    if (auto srcType = dyn_cast<VectorBaseType>(broadcastOp.getSourceType()))
       broadcastSourceShape = srcType.getShape();
     ArrayRef<int64_t> shapeCastTargetShape =
         shapeCastOp.getResultVectorType().getShape();
@@ -5213,7 +5225,7 @@ public:
 
     // Otherwise, if the final result has the same element count, we can replace
     // with a shape cast.
-    if (auto srcType = dyn_cast<VectorType>(broadcastOp.getSourceType())) {
+    if (auto srcType = dyn_cast<VectorBaseType>(broadcastOp.getSourceType())) {
       if (srcType.getNumElements() ==
           shapeCastOp.getResultVectorType().getNumElements()) {
         rewriter.replaceOpWithNewOp<vector::ShapeCastOp>(
@@ -5334,7 +5346,8 @@ OpFoldResult BitCastOp::fold(FoldAdaptor adaptor) {
 //===----------------------------------------------------------------------===//
 
 static SmallVector<int64_t, 8> extractShape(MemRefType memRefType) {
-  auto vectorType = llvm::dyn_cast<VectorType>(memRefType.getElementType());
+  auto vectorType =
+      llvm::dyn_cast<FixedVectorType>(memRefType.getElementType());
   SmallVector<int64_t, 8> res(memRefType.getShape().begin(),
                               memRefType.getShape().end());
   if (vectorType)
@@ -5348,9 +5361,9 @@ void TypeCastOp::build(OpBuilder &builder, OperationState &result,
                        Value source) {
   result.addOperands(source);
   MemRefType memRefType = llvm::cast<MemRefType>(source.getType());
-  VectorType vectorType =
-      VectorType::get(extractShape(memRefType),
-                      getElementTypeOrSelf(getElementTypeOrSelf(memRefType)));
+  FixedVectorType vectorType = FixedVectorType::get(
+      extractShape(memRefType),
+      getElementTypeOrSelf(getElementTypeOrSelf(memRefType)));
   result.addTypes(MemRefType::get({}, vectorType, MemRefLayoutAttrInterface(),
                                   memRefType.getMemorySpace()));
 }
@@ -5385,17 +5398,17 @@ LogicalResult TypeCastOp::verify() {
 
 void vector::TransposeOp::build(OpBuilder &builder, OperationState &result,
                                 Value vector, ArrayRef<int64_t> permutation) {
-  VectorType vt = llvm::cast<VectorType>(vector.getType());
+  FixedVectorType vt = llvm::cast<FixedVectorType>(vector.getType());
   SmallVector<int64_t, 4> transposedShape(vt.getRank());
   SmallVector<bool, 4> transposedScalableDims(vt.getRank());
   for (unsigned i = 0; i < permutation.size(); ++i) {
     transposedShape[i] = vt.getShape()[permutation[i]];
-    transposedScalableDims[i] = vt.getScalableDims()[permutation[i]];
+    transposedScalableDims[i] = vt.getScalableBases()[permutation[i]];
   }
 
   result.addOperands(vector);
-  result.addTypes(VectorType::get(transposedShape, vt.getElementType(),
-                                  transposedScalableDims));
+  result.addTypes(VectorBaseType::get(transposedShape, vt.getElementType(),
+                                      transposedScalableDims));
   result.addAttribute(TransposeOp::getPermutationAttrName(result.name),
                       builder.getDenseI64ArrayAttr(permutation));
 }
@@ -5422,8 +5435,8 @@ OpFoldResult vector::TransposeOp::fold(FoldAdaptor adaptor) {
 }
 
 LogicalResult vector::TransposeOp::verify() {
-  VectorType vectorType = getSourceVectorType();
-  VectorType resultType = getResultVectorType();
+  VectorBaseType vectorType = getSourceVectorType();
+  VectorBaseType resultType = getResultVectorType();
   int64_t rank = resultType.getRank();
   if (vectorType.getRank() != rank)
     return emitOpError("vector result rank mismatch: ") << rank;
@@ -5494,7 +5507,8 @@ struct FoldTransposedScalarBroadcast final
     if (!bcastOp)
       return failure();
 
-    auto srcVectorType = llvm::dyn_cast<VectorType>(bcastOp.getSourceType());
+    auto srcVectorType =
+        llvm::dyn_cast<FixedVectorType>(bcastOp.getSourceType());
     if (!srcVectorType || srcVectorType.getNumElements() == 1) {
       rewriter.replaceOpWithNewOp<vector::BroadcastOp>(
           transposeOp, transposeOp.getResultVectorType(), bcastOp.getSource());
@@ -5574,7 +5588,7 @@ void vector::TransposeOp::getCanonicalizationPatterns(
 //===----------------------------------------------------------------------===//
 
 LogicalResult ConstantMaskOp::verify() {
-  auto resultType = llvm::cast<VectorType>(getResult().getType());
+  auto resultType = llvm::cast<FixedVectorType>(getResult().getType());
   // Check the corner case of 0-D vectors first.
   if (resultType.getRank() == 0) {
     if (getMaskDimSizes().size() != 1)
@@ -5592,7 +5606,7 @@ LogicalResult ConstantMaskOp::verify() {
   // Verify that each array attr element is in bounds of corresponding vector
   // result dimension size.
   auto resultShape = resultType.getShape();
-  auto resultScalableDims = resultType.getScalableDims();
+  auto resultScalableDims = resultType.getScalableBases();
   SmallVector<int64_t, 4> maskDimSizes;
   for (const auto [index, intAttr] : llvm::enumerate(getMaskDimSizes())) {
     int64_t maskDimSize = llvm::cast<IntegerAttr>(intAttr).getInt();
@@ -5636,7 +5650,7 @@ bool ConstantMaskOp::isAllOnesMask() {
 //===----------------------------------------------------------------------===//
 
 void CreateMaskOp::build(OpBuilder &builder, OperationState &result,
-                         VectorType type,
+                         VectorBaseType type,
                          ArrayRef<OpFoldResult> mixedOperands) {
   SmallVector<Value> operands =
       getValueOrCreateConstantIndexOp(builder, result.location, mixedOperands);
@@ -5644,14 +5658,14 @@ void CreateMaskOp::build(OpBuilder &builder, OperationState &result,
 }
 
 LogicalResult CreateMaskOp::verify() {
-  auto vectorType = llvm::cast<VectorType>(getResult().getType());
+  auto vectorType = llvm::cast<VectorBaseType>(getResult().getType());
   // Verify that an operand was specified for each result vector each dimension.
   if (vectorType.getRank() == 0) {
     if (getNumOperands() != 1)
       return emitOpError(
           "must specify exactly one operand for 0-D create_mask");
   } else if (getNumOperands() !=
-             llvm::cast<VectorType>(getResult().getType()).getRank()) {
+             llvm::cast<VectorBaseType>(getResult().getType()).getRank()) {
     return emitOpError(
         "must specify an operand for each result vector dimension");
   }
@@ -5689,7 +5703,7 @@ public:
 
   LogicalResult matchAndRewrite(CreateMaskOp createMaskOp,
                                 PatternRewriter &rewriter) const override {
-    VectorType retTy = createMaskOp.getResult().getType();
+    FixedVectorType retTy = createMaskOp.getResult().getType();
     bool isScalable = retTy.isScalable();
 
     // Check every mask operand
@@ -5698,7 +5712,7 @@ public:
         // Most basic case - this operand is a constant value. Note that for
         // scalable dimensions, CreateMaskOp can be folded only if the
         // corresponding operand is negative or zero.
-        if (retTy.getScalableDims()[opIdx] && *cst > 0)
+        if (retTy.getScalableBases()[opIdx] && *cst > 0)
           return failure();
 
         continue;
@@ -5930,7 +5944,7 @@ LogicalResult MaskOp::verify() {
         "expects result type to match maskable operation result type");
 
   if (llvm::count_if(maskableOp->getResultTypes(),
-                     [](Type t) { return llvm::isa<VectorType>(t); }) > 1)
+                     [](Type t) { return llvm::isa<FixedVectorType>(t); }) > 1)
     return emitOpError("multiple vector results not supported");
 
   // Mask checks.
@@ -6025,8 +6039,8 @@ bool MaskOp::hasPassthru() { return getPassthru() != Value(); }
 //===----------------------------------------------------------------------===//
 
 LogicalResult ScanOp::verify() {
-  VectorType srcType = getSourceType();
-  VectorType initialType = getInitialValueType();
+  FixedVectorType srcType = getSourceType();
+  FixedVectorType initialType = getInitialValueType();
   // Check reduction dimension < rank.
   int64_t srcRank = srcType.getRank();
   int64_t reductionDim = getReductionDim();
@@ -6205,8 +6219,8 @@ static LogicalResult verifyDistributedType(Type expanded, Type distributed,
   // If the types matches there is no distribution.
   if (expanded == distributed)
     return success();
-  auto expandedVecType = llvm::dyn_cast<VectorType>(expanded);
-  auto distributedVecType = llvm::dyn_cast<VectorType>(distributed);
+  auto expandedVecType = llvm::dyn_cast<FixedVectorType>(expanded);
+  auto distributedVecType = llvm::dyn_cast<FixedVectorType>(distributed);
   if (!expandedVecType || !distributedVecType)
     return op->emitOpError("expected vector type for distributed operands.");
   if (expandedVecType.getRank() != distributedVecType.getRank() ||

@@ -63,9 +63,9 @@ static FailureOr<Operation *> getCompressedMaskOp(OpBuilder &rewriter,
   // new mask index) only happens on the last dimension of the vectors.
   Operation *newMask = nullptr;
   SmallVector<int64_t> shape(
-      maskOp->getResultTypes()[0].cast<VectorType>().getShape());
+      maskOp->getResultTypes()[0].cast<FixedVectorType>().getShape());
   shape.back() = numElements;
-  auto newMaskType = VectorType::get(shape, rewriter.getI1Type());
+  auto newMaskType = FixedVectorType::get(shape, rewriter.getI1Type());
   if (createMaskOp) {
     OperandRange maskOperands = createMaskOp.getOperands();
     size_t numMaskOperands = maskOperands.size();
@@ -162,7 +162,7 @@ struct ConvertVectorStore final : OpConversionPattern<vector::StoreOp> {
 
     auto numElements = origElements / scale;
     auto bitCast = rewriter.create<vector::BitCastOp>(
-        loc, VectorType::get(numElements, newElementType),
+        loc, FixedVectorType::get(numElements, newElementType),
         op.getValueToStore());
 
     rewriter.replaceOpWithNewOp<vector::StoreOp>(
@@ -238,7 +238,7 @@ struct ConvertVectorMaskedStore final
       return failure();
 
     auto numElements = (origElements + scale - 1) / scale;
-    auto newType = VectorType::get(numElements, newElementType);
+    auto newType = FixedVectorType::get(numElements, newElementType);
     auto passThru = rewriter.create<arith::ConstantOp>(
         loc, newType, rewriter.getZeroAttr(newType));
 
@@ -319,7 +319,8 @@ struct ConvertVectorLoad final : OpConversionPattern<vector::LoadOp> {
 
     auto numElements = (origElements + scale - 1) / scale;
     auto newLoad = rewriter.create<vector::LoadOp>(
-        loc, VectorType::get(numElements, newElementType), adaptor.getBase(),
+        loc, FixedVectorType::get(numElements, newElementType),
+        adaptor.getBase(),
         getValueOrCreateConstantIndexOp(rewriter, loc, linearizedIndices));
 
     auto bitCast =
@@ -419,7 +420,7 @@ struct ConvertVectorMaskedLoad final
       return failure();
 
     auto numElements = (origElements + scale - 1) / scale;
-    auto newType = VectorType::get(numElements, newElementType);
+    auto newType = FixedVectorType::get(numElements, newElementType);
     auto newPassThru =
         rewriter.create<vector::BitCastOp>(loc, newType, op.getPassThru());
 
@@ -486,7 +487,7 @@ struct ConvertVectorTransferRead final
             getAsOpFoldResult(adaptor.getIndices()));
 
     auto numElements = (origElements + scale - 1) / scale;
-    auto newReadType = VectorType::get(numElements, newElementType);
+    auto newReadType = FixedVectorType::get(numElements, newElementType);
 
     auto newRead = rewriter.create<vector::TransferReadOp>(
         loc, newReadType, adaptor.getSource(),
@@ -547,8 +548,8 @@ struct SourceElementRangeList : public SmallVector<SourceElementRange> {
 ///   [0] = {0, [0, 10)}, {1, [0, 5)}
 ///   [1] = {1, [5, 10)}, {2, [0, 10)}
 struct BitCastBitsEnumerator {
-  BitCastBitsEnumerator(VectorType sourceVectorType,
-                        VectorType targetVectorType);
+  BitCastBitsEnumerator(FixedVectorType sourceVectorType,
+                        FixedVectorType targetVectorType);
 
   int64_t getMaxNumberOfEntries() {
     int64_t numVectors = 0;
@@ -557,8 +558,8 @@ struct BitCastBitsEnumerator {
     return numVectors;
   }
 
-  VectorType sourceVectorType;
-  VectorType targetVectorType;
+  FixedVectorType sourceVectorType;
+  FixedVectorType targetVectorType;
   SmallVector<SourceElementRangeList> sourceElementRanges;
 };
 
@@ -640,11 +641,13 @@ struct BitCastRewriter {
     SmallVector<Attribute> masks, shiftRightAmounts, shiftLeftAmounts;
   };
 
-  BitCastRewriter(VectorType sourceVectorType, VectorType targetVectorType);
+  BitCastRewriter(FixedVectorType sourceVectorType,
+                  FixedVectorType targetVectorType);
 
   /// Verify that the preconditions for the rewrite are met.
   LogicalResult precondition(PatternRewriter &rewriter,
-                             VectorType preconditionVectorType, Operation *op);
+                             FixedVectorType preconditionVectorType,
+                             Operation *op);
 
   /// Precompute the metadata for the rewrite.
   SmallVector<BitCastRewriter::Metadata>
@@ -677,8 +680,8 @@ private:
   return os;
 }
 
-BitCastBitsEnumerator::BitCastBitsEnumerator(VectorType sourceVectorType,
-                                             VectorType targetVectorType)
+BitCastBitsEnumerator::BitCastBitsEnumerator(FixedVectorType sourceVectorType,
+                                             FixedVectorType targetVectorType)
     : sourceVectorType(sourceVectorType), targetVectorType(targetVectorType) {
 
   assert(sourceVectorType.getRank() == 1 && !sourceVectorType.isScalable() &&
@@ -713,14 +716,14 @@ BitCastBitsEnumerator::BitCastBitsEnumerator(VectorType sourceVectorType,
   }
 }
 
-BitCastRewriter::BitCastRewriter(VectorType sourceVectorType,
-                                 VectorType targetVectorType)
+BitCastRewriter::BitCastRewriter(FixedVectorType sourceVectorType,
+                                 FixedVectorType targetVectorType)
     : enumerator(BitCastBitsEnumerator(sourceVectorType, targetVectorType)) {
   LDBG("\n" << enumerator.sourceElementRanges);
 }
 
 LogicalResult BitCastRewriter::precondition(PatternRewriter &rewriter,
-                                            VectorType precondition,
+                                            FixedVectorType precondition,
                                             Operation *op) {
   if (precondition.getRank() != 1 || precondition.isScalable())
     return rewriter.notifyMatchFailure(op, "scalable or >1-D vector");
@@ -783,7 +786,7 @@ Value BitCastRewriter::rewriteStep(PatternRewriter &rewriter, Location loc,
       loc, initialValue, initialValue, metadata.shuffles);
 
   // Intersect with the mask.
-  VectorType shuffledVectorType = shuffleOp.getResultVectorType();
+  FixedVectorType shuffledVectorType = shuffleOp.getResultVectorType();
   auto constOp = rewriter.create<arith::ConstantOp>(
       loc, DenseElementsAttr::get(shuffledVectorType, metadata.masks));
   Value andValue = rewriter.create<arith::AndIOp>(loc, shuffleOp, constOp);
@@ -826,8 +829,8 @@ struct RewriteBitCastOfTruncI : OpRewritePattern<vector::BitCastOp> {
       return rewriter.notifyMatchFailure(bitCastOp, "not a trunci source");
 
     // Set up the BitCastRewriter and verify the precondition.
-    VectorType sourceVectorType = bitCastOp.getSourceVectorType();
-    VectorType targetVectorType = bitCastOp.getResultVectorType();
+    FixedVectorType sourceVectorType = bitCastOp.getSourceVectorType();
+    FixedVectorType targetVectorType = bitCastOp.getResultVectorType();
     BitCastRewriter bcr(sourceVectorType, targetVectorType);
     if (failed(bcr.precondition(rewriter, targetVectorType, bitCastOp)))
       return failure();
@@ -882,11 +885,12 @@ struct RewriteExtOfBitCast : OpRewritePattern<ExtOpType> {
       return rewriter.notifyMatchFailure(extOp, "not a bitcast source");
 
     // Set up the BitCastRewriter and verify the precondition.
-    VectorType sourceVectorType = bitCastOp.getSourceVectorType();
-    VectorType targetVectorType = bitCastOp.getResultVectorType();
+    FixedVectorType sourceVectorType = bitCastOp.getSourceVectorType();
+    FixedVectorType targetVectorType = bitCastOp.getResultVectorType();
     BitCastRewriter bcr(sourceVectorType, targetVectorType);
-    if (failed(bcr.precondition(
-            rewriter, cast<VectorType>(extOp.getOut().getType()), bitCastOp)))
+    if (failed(bcr.precondition(rewriter,
+                                cast<FixedVectorType>(extOp.getOut().getType()),
+                                bitCastOp)))
       return failure();
 
     // Perform the rewrite.
@@ -901,15 +905,17 @@ struct RewriteExtOfBitCast : OpRewritePattern<ExtOpType> {
     }
 
     // Finalize the rewrite.
-    bool narrowing =
-        cast<VectorType>(extOp.getOut().getType()).getElementTypeBitWidth() <=
-        shuffledElementType.getIntOrFloatBitWidth();
+    bool narrowing = cast<FixedVectorType>(extOp.getOut().getType())
+                         .getElementTypeBitWidth() <=
+                     shuffledElementType.getIntOrFloatBitWidth();
     if (narrowing) {
       rewriter.replaceOpWithNewOp<arith::TruncIOp>(
-          extOp, cast<VectorType>(extOp.getOut().getType()), runningResult);
+          extOp, cast<FixedVectorType>(extOp.getOut().getType()),
+          runningResult);
     } else {
       rewriter.replaceOpWithNewOp<ExtOpType>(
-          extOp, cast<VectorType>(extOp.getOut().getType()), runningResult);
+          extOp, cast<FixedVectorType>(extOp.getOut().getType()),
+          runningResult);
     }
 
     return success();

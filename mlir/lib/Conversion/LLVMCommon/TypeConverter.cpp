@@ -61,7 +61,7 @@ LLVMTypeConverter::LLVMTypeConverter(MLIRContext *ctx,
   addConversion([&](MemRefType type) { return convertMemRefType(type); });
   addConversion(
       [&](UnrankedMemRefType type) { return convertUnrankedMemRefType(type); });
-  addConversion([&](VectorType type) -> std::optional<Type> {
+  addConversion([&](FixedVectorType type) -> std::optional<Type> {
     FailureOr<Type> llvmType = convertVectorType(type);
     if (failed(llvmType))
       return std::nullopt;
@@ -484,18 +484,19 @@ Type LLVMTypeConverter::convertMemRefToBarePtr(BaseMemRefType type) const {
 ///    `!llvm.array<ax...array<jxvector<kxT>>>`.
 /// Returns failure for n-D scalable vector types as LLVM does not support
 /// arrays of scalable vectors.
-FailureOr<Type> LLVMTypeConverter::convertVectorType(VectorType type) const {
+FailureOr<Type>
+LLVMTypeConverter::convertVectorType(FixedVectorType type) const {
   auto elementType = convertType(type.getElementType());
   if (!elementType)
     return {};
   if (type.getShape().empty())
-    return VectorType::get({1}, elementType);
-  Type vectorType = VectorType::get(type.getShape().back(), elementType,
-                                    type.getScalableDims().back());
+    return FixedVectorType::get({1}, elementType);
+  Type vectorType = FixedVectorType::get(type.getShape().back(), elementType,
+                                         type.getScalableBases().back());
   assert(LLVM::isCompatibleVectorType(vectorType) &&
          "expected vector type compatible with the LLVM dialect");
   // Only the trailing dimension can be scalable.
-  if (llvm::is_contained(type.getScalableDims().drop_back(), true))
+  if (llvm::is_contained(type.getScalableBases().drop_back(), true))
     return failure();
   auto shape = type.getShape();
   for (int i = shape.size() - 2; i >= 0; --i)

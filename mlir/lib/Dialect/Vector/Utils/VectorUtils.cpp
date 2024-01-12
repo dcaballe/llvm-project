@@ -78,7 +78,7 @@ static bool areDimsTransposedIn2DSlice(int64_t dim0, int64_t dim1,
 
 FailureOr<std::pair<int, int>>
 mlir::vector::isTranspose2DSlice(vector::TransposeOp op) {
-  VectorType srcType = op.getSourceVectorType();
+  VectorBaseType srcType = op.getSourceVectorType();
   SmallVector<int64_t> srcGtOneDims;
   for (auto [index, size] : llvm::enumerate(srcType.getShape()))
     if (size > 1)
@@ -197,7 +197,7 @@ AffineMap mlir::makePermutationMap(
 }
 
 bool matcher::operatesOnSuperVectorsOf(Operation &op,
-                                       VectorType subVectorType) {
+                                       VectorBaseType subVectorType) {
   // First, extract the vector type and distinguish between:
   //   a. ops that *must* lower a super-vector (i.e. vector.transfer_read,
   //      vector.transfer_write); and
@@ -209,9 +209,9 @@ bool matcher::operatesOnSuperVectorsOf(Operation &op,
   /// do not have to special case. Maybe a trait, or just a method, unclear atm.
   bool mustDivide = false;
   (void)mustDivide;
-  VectorType superVectorType;
+  FixedVectorType superVectorType;
   if (auto transfer = dyn_cast<VectorTransferOpInterface>(op)) {
-    superVectorType = transfer.getVectorType();
+    superVectorType = cast<FixedVectorType>(transfer.getVectorType());
     mustDivide = true;
   } else if (op.getNumResults() == 0) {
     if (!isa<func::ReturnOp>(op)) {
@@ -220,7 +220,7 @@ bool matcher::operatesOnSuperVectorsOf(Operation &op,
     }
     return false;
   } else if (op.getNumResults() == 1) {
-    if (auto v = dyn_cast<VectorType>(op.getResult(0).getType())) {
+    if (auto v = dyn_cast<FixedVectorType>(op.getResult(0).getType())) {
       superVectorType = v;
     } else {
       // Not a vector type.
@@ -250,7 +250,8 @@ bool matcher::operatesOnSuperVectorsOf(Operation &op,
   return ratio.has_value();
 }
 
-bool vector::isContiguousSlice(MemRefType memrefType, VectorType vectorType) {
+bool vector::isContiguousSlice(MemRefType memrefType,
+                               FixedVectorType vectorType) {
   if (vectorType.isScalable())
     return false;
 

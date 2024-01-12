@@ -353,8 +353,8 @@ def LinalgStructuredInterface
       /*defaultImplementation=*/[{
         assert(opOperand->getOwner() == this->getOperation());
         Type t = opOperand->get().getType();
-        // A VectorType is an elemental type, do not consider its rank for the operand.
-        if (isa<VectorType>(t))
+        // A FixedVectorType is an elemental type, do not consider its rank for the operand.
+        if (isa<FixedVectorType>(t))
           return 0;
         // Tensor and Memref container types have a rank.
         if (auto shapedType = ::llvm::dyn_cast<ShapedType>(t)) {
@@ -402,8 +402,8 @@ def LinalgStructuredInterface
       /*defaultImplementation=*/[{
         assert(opOperand->getOwner() == this->getOperation());
         Type t = opOperand->get().getType();
-        // A VectorType is an elemental type, do not consider its rank for the operand.
-        if (isa<VectorType>(t))
+        // A FixedVectorType is an elemental type, do not consider its rank for the operand.
+        if (isa<FixedVectorType>(t))
           return {};
         if (auto shapedType = ::llvm::dyn_cast<ShapedType>(t)) {
           // Failsafe.

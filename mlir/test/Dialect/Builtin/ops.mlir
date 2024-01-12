@@ -20,7 +20,7 @@
 %result3 = unrealized_conversion_cast %operand, %operand : !foo.type, !foo.type to !bar.tuple_type<!foo.type, !foo.type>
 
 //===----------------------------------------------------------------------===//
-// VectorType
+// FixedVectorType
 //===----------------------------------------------------------------------===//
 
 // A basic 1D scalable vector

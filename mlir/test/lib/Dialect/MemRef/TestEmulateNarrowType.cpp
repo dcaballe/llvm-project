@@ -64,19 +64,20 @@ struct TestEmulateNarrowTypePass
     });
 
     // Convert vector type.
-    typeConverter.addConversion([this](VectorType ty) -> std::optional<Type> {
-      auto intTy = dyn_cast<IntegerType>(ty.getElementType());
-      if (!intTy)
-        return ty;
+    typeConverter.addConversion(
+        [this](FixedVectorType ty) -> std::optional<Type> {
+          auto intTy = dyn_cast<IntegerType>(ty.getElementType());
+          if (!intTy)
+            return ty;
 
-      unsigned width = intTy.getWidth();
-      if (width >= arithComputeBitwidth)
-        return ty;
+          unsigned width = intTy.getWidth();
+          if (width >= arithComputeBitwidth)
+            return ty;
 
-      return VectorType::get(
-          to_vector(ty.getShape()),
-          IntegerType::get(ty.getContext(), arithComputeBitwidth));
-    });
+          return FixedVectorType::get(
+              to_vector(ty.getShape()),
+              IntegerType::get(ty.getContext(), arithComputeBitwidth));
+        });
 
     memref::populateMemRefNarrowTypeEmulationConversions(typeConverter);
     ConversionTarget target(*ctx);

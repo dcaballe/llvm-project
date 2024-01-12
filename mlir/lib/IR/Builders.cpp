@@ -131,36 +131,39 @@ IntegerAttr Builder::getI64IntegerAttr(int64_t value) {
 
 DenseIntElementsAttr Builder::getBoolVectorAttr(ArrayRef<bool> values) {
   return DenseIntElementsAttr::get(
-      VectorType::get(static_cast<int64_t>(values.size()), getI1Type()),
+      FixedVectorType::get(static_cast<int64_t>(values.size()), getI1Type()),
       values);
 }
 
 DenseIntElementsAttr Builder::getI32VectorAttr(ArrayRef<int32_t> values) {
   return DenseIntElementsAttr::get(
-      VectorType::get(static_cast<int64_t>(values.size()), getIntegerType(32)),
+      FixedVectorType::get(static_cast<int64_t>(values.size()),
+                           getIntegerType(32)),
       values);
 }
 
 DenseIntElementsAttr Builder::getI64VectorAttr(ArrayRef<int64_t> values) {
   return DenseIntElementsAttr::get(
-      VectorType::get(static_cast<int64_t>(values.size()), getIntegerType(64)),
+      FixedVectorType::get(static_cast<int64_t>(values.size()),
+                           getIntegerType(64)),
       values);
 }
 
 DenseIntElementsAttr Builder::getIndexVectorAttr(ArrayRef<int64_t> values) {
   return DenseIntElementsAttr::get(
-      VectorType::get(static_cast<int64_t>(values.size()), getIndexType()),
+      FixedVectorType::get(static_cast<int64_t>(values.size()), getIndexType()),
       values);
 }
 
 DenseFPElementsAttr Builder::getF32VectorAttr(ArrayRef<float> values) {
   return DenseFPElementsAttr::get(
-      VectorType::get(static_cast<float>(values.size()), getF32Type()), values);
+      FixedVectorType::get(static_cast<float>(values.size()), getF32Type()),
+      values);
 }
 
 DenseFPElementsAttr Builder::getF64VectorAttr(ArrayRef<double> values) {
   return DenseFPElementsAttr::get(
-      VectorType::get(static_cast<double>(values.size()), getF64Type()),
+      FixedVectorType::get(static_cast<double>(values.size()), getF64Type()),
       values);
 }
 
@@ -336,7 +339,7 @@ TypedAttr Builder::getZeroAttr(Type type) {
   if (llvm::dyn_cast<IntegerType>(type))
     return getIntegerAttr(type,
                           APInt(llvm::cast<IntegerType>(type).getWidth(), 0));
-  if (llvm::isa<RankedTensorType, VectorType>(type)) {
+  if (llvm::isa<RankedTensorType, FixedVectorType>(type)) {
     auto vtType = llvm::cast<ShapedType>(type);
     auto element = getZeroAttr(vtType.getElementType());
     if (!element)

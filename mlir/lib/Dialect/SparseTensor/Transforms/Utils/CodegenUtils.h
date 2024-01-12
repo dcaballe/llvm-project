@@ -334,7 +334,7 @@ Value genMapBuffers(OpBuilder &builder, Location loc, SparseTensorType stt,
 
 /// Generates a 0-valued constant of the given type.  In addition to
 /// the scalar types (`ComplexType`, `FloatType`, `IndexType`,
-/// `IntegerType`), this also works for `RankedTensorType` and `VectorType`
+/// `IntegerType`), this also works for `RankedTensorType` and `FixedVectorType`
 /// (for which it generates a constant `DenseElementsAttr` of zeros).
 inline Value constantZero(OpBuilder &builder, Location loc, Type tp) {
   if (auto ctp = dyn_cast<ComplexType>(tp)) {

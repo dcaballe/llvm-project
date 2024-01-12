@@ -262,7 +262,7 @@ static bool isContiguousAccess(Value iv, LoadOrStoreOp memoryOp,
 template <typename LoadOrStoreOp>
 static bool isVectorElement(LoadOrStoreOp memoryOp) {
   auto memRefType = memoryOp.getMemRefType();
-  return isa<VectorType>(memRefType.getElementType());
+  return isa<FixedVectorType>(memRefType.getElementType());
 }
 
 using VectorizableOpFun = std::function<bool(AffineForOp, Operation &)>;
@@ -286,12 +286,12 @@ isVectorizableLoopBodyWithOpCond(AffineForOp loop,
   auto types = matcher::Op([](Operation &op) -> bool {
     if (llvm::any_of(op.getOperandTypes(), [](Type type) {
           if (MemRefType t = dyn_cast<MemRefType>(type))
-            return !VectorType::isValidElementType(t.getElementType());
-          return !VectorType::isValidElementType(type);
+            return !VectorBaseType::isValidElementType(t.getElementType());
+          return !VectorBaseType::isValidElementType(type);
         }))
       return true;
     return llvm::any_of(op.getResultTypes(), [](Type type) {
-      return !VectorType::isValidElementType(type);
+      return !VectorBaseType::isValidElementType(type);
     });
   });
   SmallVector<NestedMatch, 8> opsMatched;

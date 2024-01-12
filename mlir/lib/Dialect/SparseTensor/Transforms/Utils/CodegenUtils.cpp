@@ -193,7 +193,7 @@ mlir::TypedAttr mlir::sparse_tensor::getOneAttr(Builder &builder, Type tp) {
     return builder.getIndexAttr(1);
   if (auto intTp = dyn_cast<IntegerType>(tp))
     return builder.getIntegerAttr(tp, APInt(intTp.getWidth(), 1));
-  if (isa<RankedTensorType, VectorType>(tp)) {
+  if (isa<RankedTensorType, FixedVectorType>(tp)) {
     auto shapedTp = cast<ShapedType>(tp);
     if (auto one = getOneAttr(builder, shapedTp.getElementType()))
       return DenseElementsAttr::get(shapedTp, one);

@@ -33,3 +33,70 @@ int64_t ShapedType::getNumElements(ArrayRef<int64_t> shape) {
   }
   return num;
 }
+
+//===----------------------------------------------------------------------===//
+// VectorBaseType
+//===----------------------------------------------------------------------===//
+
+VectorBaseType VectorBaseType::get(ArrayRef<int64_t> shape, Type elementType,
+                                   ArrayRef<int64_t> scalableBases) {
+  if (any_of(scalableBases,
+             [](int64_t scalableBase) { return scalableBase != 0; })) {
+    return ScalableVectorType::get(shape, elementType, scalableBases);
+  }
+
+  return FixedVectorType::get(shape, elementType);
+}
+
+VectorBaseType
+VectorBaseType::getChecked(function_ref<::mlir::InFlightDiagnostic()> emitError,
+                           ArrayRef<int64_t> shape, Type elementType,
+                           ArrayRef<int64_t> scalableBases) {
+  if (any_of(scalableBases,
+             [](int64_t scalableBase) { return scalableBase != 0; })) {
+    return ScalableVectorType::getChecked(emitError, shape, elementType,
+                                          scalableBases);
+  }
+
+  return FixedVectorType::getChecked(emitError, shape, elementType);
+}
+
+VectorBaseType VectorBaseType::get(ArrayRef<int64_t> shape, Type elementType,
+                                   ArrayRef<bool> scalableDims) {
+  if (any_of(scalableDims,
+             [](bool scalableDim) { return scalableDim == true; })) {
+    return ScalableVectorType::get(shape, elementType, scalableDims);
+  }
+
+  return FixedVectorType::get(shape, elementType);
+}
+
+VectorBaseType
+VectorBaseType::getChecked(function_ref<::mlir::InFlightDiagnostic()> emitError,
+                           ArrayRef<int64_t> shape, Type elementType,
+                           ArrayRef<bool> scalableDims) {
+  if (any_of(scalableDims,
+             [](bool scalableDim) { return scalableDim == true; })) {
+    return ScalableVectorType::getChecked(emitError, shape, elementType,
+                                          scalableDims);
+  }
+
+  return FixedVectorType::getChecked(emitError, shape, elementType);
+}
+
+VectorBaseType VectorBaseType::scaleElementBitwidth(unsigned scale) {
+  if (!scale)
+    return VectorBaseType();
+  if (auto et = llvm::dyn_cast<IntegerType>(getElementType()))
+    if (auto scaledEt = et.scaleElementBitwidth(scale))
+      return VectorBaseType::get(getShape(), scaledEt, getScalableBases());
+  if (auto et = llvm::dyn_cast<FloatType>(getElementType()))
+    if (auto scaledEt = et.scaleElementBitwidth(scale))
+      return VectorBaseType::get(getShape(), scaledEt, getScalableBases());
+  return VectorBaseType();
+}
+
+bool VectorBaseType::isValidElementType(Type t) {
+  return ::llvm::isa<::mlir::IntegerType, ::mlir::IndexType, ::mlir::FloatType>(
+      t);
+}

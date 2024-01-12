@@ -545,14 +545,15 @@ LogicalResult impl::scalarizeVectorOp(Operation *op, ValueRange operands,
                                       const LLVMTypeConverter &converter) {
   TypeRange operandTypes(operands);
   if (llvm::none_of(operandTypes,
-                    [](Type type) { return isa<VectorType>(type); })) {
+                    [](Type type) { return isa<FixedVectorType>(type); })) {
     return rewriter.notifyMatchFailure(op, "expected vector operand");
   }
   if (op->getNumRegions() != 0 || op->getNumSuccessors() != 0)
     return rewriter.notifyMatchFailure(op, "expected no region/successor");
   if (op->getNumResults() != 1)
     return rewriter.notifyMatchFailure(op, "expected single result");
-  VectorType vectorType = dyn_cast<VectorType>(op->getResult(0).getType());
+  FixedVectorType vectorType =
+      dyn_cast<FixedVectorType>(op->getResult(0).getType());
   if (!vectorType)
     return rewriter.notifyMatchFailure(op, "expected vector result");
 
@@ -565,7 +566,7 @@ LogicalResult impl::scalarizeVectorOp(Operation *op, ValueRange operands,
   for (int64_t i = 0; i < vectorType.getNumElements(); ++i) {
     Value index = rewriter.create<LLVM::ConstantOp>(loc, indexType, i);
     auto extractElement = [&](Value operand) -> Value {
-      if (!isa<VectorType>(operand.getType()))
+      if (!isa<FixedVectorType>(operand.getType()))
         return operand;
       return rewriter.create<LLVM::ExtractElementOp>(loc, operand, index);
     };

@@ -148,7 +148,7 @@ struct constant_float_value_binder {
       return false;
 
     Type type = op->getResult(0).getType();
-    if (isa<FloatType, VectorType, RankedTensorType>(type))
+    if (isa<FloatType, FixedVectorType, RankedTensorType>(type))
       return match(attr);
 
     return false;
@@ -196,7 +196,7 @@ struct constant_int_value_binder {
       return false;
 
     Type type = op->getResult(0).getType();
-    if (isa<IntegerType, IndexType, VectorType, RankedTensorType>(type))
+    if (isa<IntegerType, IndexType, FixedVectorType, RankedTensorType>(type))
       return match(attr);
 
     return false;

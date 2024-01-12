@@ -143,7 +143,7 @@ Type OpTrait::util::getBroadcastedType(Type type1, Type type2,
   // If one of the types is unranked tensor, then the other type shouldn't be
   // vector and the result should have unranked tensor type.
   if (isa<UnrankedTensorType>(type1) || isa<UnrankedTensorType>(type2)) {
-    if (isa<VectorType>(type1) || isa<VectorType>(type2))
+    if (isa<FixedVectorType>(type1) || isa<FixedVectorType>(type2))
       return {};
     return UnrankedTensorType::get(elementType);
   }
@@ -151,7 +151,7 @@ Type OpTrait::util::getBroadcastedType(Type type1, Type type2,
   // Returns the type kind if the given type is a vector or ranked tensor type.
   // Returns std::nullopt otherwise.
   auto getCompositeTypeKind = [](Type type) -> std::optional<TypeID> {
-    if (isa<VectorType, RankedTensorType>(type))
+    if (isa<FixedVectorType, RankedTensorType>(type))
       return type.getTypeID();
     return std::nullopt;
   };
@@ -178,8 +178,8 @@ Type OpTrait::util::getBroadcastedType(Type type1, Type type2,
     return {};
 
   // Compose the final broadcasted type
-  if (resultCompositeKind == VectorType::getTypeID())
-    return VectorType::get(resultShape, elementType);
+  if (resultCompositeKind == FixedVectorType::getTypeID())
+    return FixedVectorType::get(resultShape, elementType);
   if (resultCompositeKind == RankedTensorType::getTypeID())
     return RankedTensorType::get(resultShape, elementType);
   return elementType;
@@ -190,7 +190,7 @@ template <typename iterator_range>
 static std::tuple<bool, bool> hasTensorOrVectorType(iterator_range types) {
   return std::make_tuple(
       llvm::any_of(types, [](Type t) { return isa<TensorType>(t); }),
-      llvm::any_of(types, [](Type t) { return isa<VectorType>(t); }));
+      llvm::any_of(types, [](Type t) { return isa<FixedVectorType>(t); }));
 }
 
 static bool isCompatibleInferredReturnShape(ArrayRef<int64_t> inferred,

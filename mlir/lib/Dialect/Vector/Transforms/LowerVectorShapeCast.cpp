@@ -114,7 +114,7 @@ public:
   }
 };
 
-static void incIdx(llvm::MutableArrayRef<int64_t> idx, VectorType tp,
+static void incIdx(llvm::MutableArrayRef<int64_t> idx, FixedVectorType tp,
                    int dimIdx, int initialStep = 1) {
   int step = initialStep;
   for (int d = dimIdx; d >= 0; d--) {
@@ -273,7 +273,7 @@ public:
     // The subvector type to move from the source to the result. Note that this
     // is a scalable vector. This rewrite will generate code in terms of the
     // "min" size (vscale == 1 case), that scales to any vscale.
-    auto extractionVectorType = VectorType::get(
+    auto extractionVectorType = FixedVectorType::get(
         {minExtractionSize}, sourceVectorType.getElementType(), {true});
 
     Value result = rewriter.create<arith::ConstantOp>(
@@ -343,9 +343,9 @@ public:
     return success();
   }
 
-  static bool isTrailingDimScalable(VectorType type) {
-    return type.getRank() >= 1 && type.getScalableDims().back() &&
-           !llvm::is_contained(type.getScalableDims().drop_back(), true);
+  static bool isTrailingDimScalable(FixedVectorType type) {
+    return type.getRank() >= 1 && type.getScalableBases().back() &&
+           !llvm::is_contained(type.getScalableBases().drop_back(), true);
   }
 };
 

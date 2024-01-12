@@ -16,7 +16,7 @@ using namespace mlir;
 // Iterates on the llvm array type until we hit a non-array type (which is
 // asserted to be an llvm vector type).
 LLVM::detail::NDVectorTypeInfo
-LLVM::detail::extractNDVectorTypeInfo(VectorType vectorType,
+LLVM::detail::extractNDVectorTypeInfo(FixedVectorType vectorType,
                                       const LLVMTypeConverter &converter) {
   assert(vectorType.getRank() > 1 && "expected >1D vector type");
   NDVectorTypeInfo info;
@@ -81,7 +81,7 @@ LogicalResult LLVM::detail::handleMultidimensionalVectors(
     Operation *op, ValueRange operands, const LLVMTypeConverter &typeConverter,
     std::function<Value(Type, ValueRange)> createOperand,
     ConversionPatternRewriter &rewriter) {
-  auto resultNDVectorType = cast<VectorType>(op->getResult(0).getType());
+  auto resultNDVectorType = cast<FixedVectorType>(op->getResult(0).getType());
   auto resultTypeInfo =
       extractNDVectorTypeInfo(resultNDVectorType, typeConverter);
   auto result1DVectorTy = resultTypeInfo.llvm1DVectorTy;

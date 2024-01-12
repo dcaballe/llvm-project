@@ -99,8 +99,8 @@ def ArmSMETileOpInterface : OpInterface<"ArmSMETileOpInterface"> {
       }]
     >,
     InterfaceMethod<
-      "Returns the VectorType of the tile used by this operation.",
-      /*returnType=*/"VectorType",
+      "Returns the ScalableVectorType of the tile used by this operation.",
+      /*returnType=*/"ScalableVectorType",
       /*methodName=*/"getTileType"
     >
   ];
@@ -156,7 +156,7 @@ def nxnxv2f64  : SMETileType<F64,  [2,  2 ], "vector<[2]x[2]xf64>">;
 def SMETile : AnyTypeOf<[nxnxv16i8, nxnxv8i16, nxnxv4i32, nxnxv2i64, nxnxv1i128,
                          nxnxv8f16, nxnxv8bf16, nxnxv4f32, nxnxv2f64],
                         "a vector type that fits into a SME tile",
-                        "VectorType">
+                        "ScalableVectorType">
 {
   let description = [{
     Possible vector types:
@@ -182,15 +182,15 @@ class HasMatchingMaskTypeConstraint<string vector, string mask> :
   OptionalTypesMatchWith<
     mask # " has i1 element type and same shape as " # vector,
     vector, mask,
-    "::llvm::cast<mlir::VectorType>($_self).cloneWith({}, IntegerType::get($_ctxt, 1))">;
+    "::llvm::cast<mlir::ScalableVectorType>($_self).cloneWith({}, IntegerType::get($_ctxt, 1))">;
 
 class TileSliceMaskConstraint<string tile, string mask> :
   TypesMatchWith<
     "`" # mask # "` has i1 element type and the shape is a slice of `" # tile # "`",
     tile, mask,
-    "VectorType("
-      "VectorType::Builder("
-        "::llvm::cast<mlir::VectorType>($_self)"
+    "VectorBaseType("
+      "VectorBaseType::Builder("
+        "::llvm::cast<mlir::ScalableVectorType>($_self)"
       ").dropDim(0).setElementType(IntegerType::get($_self.getContext(), 1)))">;
 
 //===----------------------------------------------------------------------===//
@@ -287,8 +287,8 @@ def GetTileOp : ArmSME_Op<"get_tile", [ArmSMETileOpInterface]> {
   let assemblyFormat = "attr-dict `:` type($tile)";
 
   let extraClassDeclaration = [{
-    VectorType getTileType() {
-      return ::llvm::cast<VectorType>(getTile().getType());
+    ScalableVectorType getTileType() {
+      return ::llvm::cast<ScalableVectorType>(getTile().getType());
     }
 
     std::optional<arm_sme::ArmSMETileType> getAllocatedTileType() {
@@ -335,13 +335,13 @@ def ZeroOp : ArmSME_Op<"zero", [ArmSMETileOpInterface]> {
     ```
   }];
   let extraClassDeclaration = [{
-    VectorType getVectorType() {
-      return ::llvm::cast<VectorType>(getRes().getType());
+    ScalableVectorType getVectorType() {
+      return ::llvm::cast<ScalableVectorType>(getRes().getType());
     }
     std::optional<arm_sme::ArmSMETileType> getAllocatedTileType() {
       return arm_sme::getSMETileType(getVectorType());
     }
-    VectorType getTileType() {
+    ScalableVectorType getTileType() {
       return getVectorType();
     }
   }];
@@ -354,7 +354,7 @@ def TileLoadOp : ArmSME_Op<"tile_load", [
   OptionalTypesMatchWith<
     "padding type matches element type of result",
     "result", "padding",
-    "::llvm::cast<VectorType>($_self).getElementType()"
+    "::llvm::cast<ScalableVectorType>($_self).getElementType()"
   >,
   HasMatchingMaskTypeConstraint<"result", "mask">,
   PredOpTrait<
@@ -414,23 +414,23 @@ def TileLoadOp : ArmSME_Op<"tile_load", [
     MemRefType getMemRefType() {
       return ::llvm::cast<MemRefType>(getBase().getType());
     }
-    VectorType getVectorType() {
-      return ::llvm::cast<VectorType>(getResult().getType());
+    ScalableVectorType getVectorType() {
+      return ::llvm::cast<ScalableVectorType>(getResult().getType());
     }
     std::optional<arm_sme::ArmSMETileType> getAllocatedTileType() {
       return arm_sme::getSMETileType(getVectorType());
     }
-    VectorType getTileType() {
+    ScalableVectorType getTileType() {
       return getVectorType();
     }
   }];
 
   let builders = [
-    OpBuilder<(ins "VectorType":$resultType, "Value":$base,
+    OpBuilder<(ins "ScalableVectorType":$resultType, "Value":$base,
                    "ValueRange":$indices, "TileSliceLayout":$layout), [{
       build($_builder, $_state, resultType, base, indices, {}, {}, layout);
     }]>,
-    OpBuilder<(ins "VectorType":$resultType, "Value":$base,
+    OpBuilder<(ins "ScalableVectorType":$resultType, "Value":$base,
                    "ValueRange":$indices), [{
       build($_builder, $_state, resultType, base, indices, {}, {}, {});
     }]>,
@@ -488,10 +488,10 @@ def TileStoreOp : ArmSME_Op<"tile_store", [
     MemRefType getMemRefType() {
       return ::llvm::cast<MemRefType>(getBase().getType());
     }
-    VectorType getVectorType() {
-      return ::llvm::cast<VectorType>(getValueToStore().getType());
+    ScalableVectorType getVectorType() {
+      return ::llvm::cast<ScalableVectorType>(getValueToStore().getType());
     }
-    VectorType getTileType() {
+    ScalableVectorType getTileType() {
       return getVectorType();
     }
   }];
@@ -555,10 +555,10 @@ def LoadTileSliceOp : ArmSME_Op<"load_tile_slice", [
     MemRefType getMemRefType() {
       return ::llvm::cast<MemRefType>(getBase().getType());
     }
-    VectorType getVectorType() {
-      return ::llvm::cast<VectorType>(getResult().getType());
+    ScalableVectorType getVectorType() {
+      return ::llvm::cast<ScalableVectorType>(getResult().getType());
     }
-    VectorType getTileType() {
+    ScalableVectorType getTileType() {
       return getVectorType();
     }
   }];
@@ -615,10 +615,10 @@ def StoreTileSliceOp : ArmSME_Op<"store_tile_slice", [
     MemRefType getMemRefType() {
       return ::llvm::cast<MemRefType>(getBase().getType());
     }
-    VectorType getVectorType() {
-      return ::llvm::cast<VectorType>(getTile().getType());
+    ScalableVectorType getVectorType() {
+      return ::llvm::cast<ScalableVectorType>(getTile().getType());
     }
-    VectorType getTileType() {
+    ScalableVectorType getTileType() {
       return getVectorType();
     }
   }];
@@ -635,10 +635,10 @@ def MoveVectorToTileSliceOp : ArmSME_Op<"move_vector_to_tile_slice", [
     TypesMatchWith<
       "type of 'vector' matches type of 'tile' slice",
       "tile", "vector",
-      "VectorType::get("
-        "::llvm::cast<mlir::VectorType>($_self).getShape().drop_front(),"
-        "::llvm::cast<mlir::VectorType>($_self).getElementType(),"
-        "/*scalableDims=*/{true})">,
+      "ScalableVectorType::get("
+        "::llvm::cast<mlir::ScalableVectorType>($_self).getShape().drop_front(),"
+        "::llvm::cast<mlir::ScalableVectorType>($_self).getElementType(),"
+        "/*scalableDims=*/ArrayRef<bool>({true}))">,
 ]> {
   let summary = "Move 1-D scalable vector to slice of 2-D tile";
   let description = [{
@@ -667,8 +667,8 @@ def MoveVectorToTileSliceOp : ArmSME_Op<"move_vector_to_tile_slice", [
   let results = (outs SMETile:$result);
 
   let extraClassDeclaration = [{
-    VectorType getTileType() {
-      return ::llvm::cast<VectorType>(getTile().getType());
+    ScalableVectorType getTileType() {
+      return ::llvm::cast<ScalableVectorType>(getTile().getType());
     }
   }];
 
@@ -683,7 +683,7 @@ def MoveTileSliceToVectorOp : ArmSME_Op<"move_tile_slice_to_vector", [
     TypesMatchWith<
       "type of 'result' matches type of 'tile' slice",
       "tile", "result",
-      "VectorType(VectorType::Builder(::llvm::cast<mlir::VectorType>($_self)).dropDim(0))">,
+      "VectorBaseType(VectorBaseType::Builder(::llvm::cast<mlir::VectorBaseType>($_self)).dropDim(0))">,
 ]> {
   let summary = "Move slice of a 2-D tile to a 1-D scalable vector";
   let description = [{
@@ -712,9 +712,11 @@ def MoveTileSliceToVectorOp : ArmSME_Op<"move_tile_slice_to_vector", [
   let results = (outs SVEVector:$result);
 
   let extraClassDeclaration = [{
-    VectorType getSliceType() { return getResult().getType(); }
-    VectorType getTileType() {
-      return ::llvm::cast<VectorType>(getTile().getType());
+    ScalableVectorType getSliceType() {
+      return ::llvm::cast<ScalableVectorType>(getResult().getType());
+    }
+    ScalableVectorType getTileType() {
+      return ::llvm::cast<ScalableVectorType>(getTile().getType());
     }
   }];
 
@@ -728,10 +730,10 @@ class OuterProductResultTileTypeConstraint<string operand> :
   OptionalTypesMatchWith<operand # "type is derived from `lhs` and `rhs`",
     "lhs", operand,
     "[&]{"
-    "  auto vectorType = ::llvm::cast<mlir::VectorType>($_self);"
+    "  auto vectorType = ::llvm::cast<mlir::ScalableVectorType>($_self);"
     "  int64_t size = vectorType.getDimSize(0);"
-    "  return VectorType::get("
-    "    { size, size }, vectorType.getElementType(), { true, true });"
+    "  return ScalableVectorType::get("
+    "    { size, size }, vectorType.getElementType(), ArrayRef<bool>({ true, true }));"
     "}()">;
 
 def OuterProductOp :
@@ -799,16 +801,16 @@ let arguments = (ins
   }];
 
   let extraClassDeclaration = [{
-    VectorType getLhsType() { return llvm::cast<VectorType>(getLhs().getType()); }
-    VectorType getRhsType() { return llvm::cast<VectorType>(getRhs().getType()); }
-    VectorType getResultType() { return llvm::cast<VectorType>(getResult().getType()); }
+    ScalableVectorType getLhsType() { return llvm::cast<ScalableVectorType>(getLhs().getType()); }
+    ScalableVectorType getRhsType() { return llvm::cast<ScalableVectorType>(getRhs().getType()); }
+    ScalableVectorType getResultType() { return llvm::cast<ScalableVectorType>(getResult().getType()); }
     std::optional<arm_sme::ArmSMETileType> getAllocatedTileType() {
       // The outerproduct op allocates a new tile if no accumulator is passed.
       if (!getAcc())
         return arm_sme::getSMETileType(getResultType());
       return std::nullopt;
     }
-    VectorType getTileType() {
+    ScalableVectorType getTileType() {
       return getResultType();
     }
   }];

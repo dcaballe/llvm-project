@@ -26,7 +26,7 @@ class FloatType;
 class FunctionType;
 class IndexType;
 class MemRefType;
-class VectorType;
+class FixedVectorType;
 class RankedTensorType;
 class UnrankedTensorType;
 class TupleType;

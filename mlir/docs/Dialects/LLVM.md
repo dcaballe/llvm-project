@@ -223,7 +223,7 @@ dialect-compatible types_. The following types are compatible:
 -   Floating point types - `bfloat`, `half`, `float`, `double` , `f80`, `f128`
     (`FloatType`).
 -   1D vectors of signless integers or floating point types - `vector<NxT>`
-    (`VectorType`).
+    (`FixedVectorType`).
 
 Note that only a subset of types that can be represented by a given class is
 compatible. For example, signed and unsigned integers are not compatible. LLVM

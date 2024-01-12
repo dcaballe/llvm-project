@@ -19,7 +19,7 @@ def testPrintOp():
     module = Module.create()
     with InsertionPoint(module.body):
 
-        @func.FuncOp.from_py_func(VectorType.get((12, 5), F32Type.get()))
+        @func.FuncOp.from_py_func(FixedVectorType.get((12, 5), F32Type.get()))
         def print_vector(arg):
             return vector.PrintOp(source=arg)
 
@@ -36,13 +36,13 @@ def testPrintOp():
 def testTransferReadOp():
     module = Module.create()
     with InsertionPoint(module.body):
-        vector_type = VectorType.get([2, 3], F32Type.get())
+        vector_type = FixedVectorType.get([2, 3], F32Type.get())
         memref_type = MemRefType.get(
             [ShapedType.get_dynamic_size(), ShapedType.get_dynamic_size()],
             F32Type.get(),
         )
         index_type = IndexType.get()
-        mask_type = VectorType.get(vector_type.shape, IntegerType.get_signless(1))
+        mask_type = FixedVectorType.get(vector_type.shape, IntegerType.get_signless(1))
         identity_map = AffineMap.get_identity(vector_type.rank)
         identity_map_attr = AffineMapAttr.get(identity_map)
         f = func.FuncOp(
@@ -72,7 +72,7 @@ def testBitEnumCombiningKind():
     module = Module.create()
     with InsertionPoint(module.body):
         f32 = F32Type.get()
-        vector_type = VectorType.get([16], f32)
+        vector_type = FixedVectorType.get([16], f32)
 
         @func.FuncOp.from_py_func(vector_type)
         def reduction(arg):

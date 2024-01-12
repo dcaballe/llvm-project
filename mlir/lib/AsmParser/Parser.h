@@ -214,9 +214,10 @@ public:
   Type parseTupleType();
 
   /// Parse a vector type.
-  VectorType parseVectorType();
+  FixedVectorType parseVectorType();
   ParseResult parseVectorDimensionList(SmallVectorImpl<int64_t> &dimensions,
                                        SmallVectorImpl<bool> &scalableDims);
+
   ParseResult parseDimensionListRanked(SmallVectorImpl<int64_t> &dimensions,
                                        bool allowDynamic = true,
                                        bool withTrailingX = true);

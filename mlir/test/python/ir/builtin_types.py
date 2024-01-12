@@ -258,7 +258,7 @@ def testComplexType():
 @run
 def testConcreteShapedType():
     with Context() as ctx:
-        vector = VectorType(Type.parse("vector<2x3xf32>"))
+        vector = FixedVectorType(Type.parse("vector<2x3xf32>"))
         # CHECK: element type: f32
         print("element type:", vector.element_type)
         # CHECK: whether the given shaped type is ranked: True
@@ -297,11 +297,11 @@ def testVectorType():
         f32 = F32Type.get()
         shape = [2, 3]
         # CHECK: vector type: vector<2x3xf32>
-        print("vector type:", VectorType.get(shape, f32))
+        print("vector type:", FixedVectorType.get(shape, f32))
 
         none = NoneType.get()
         try:
-            VectorType.get(shape, none)
+            FixedVectorType.get(shape, none)
         except MLIRError as e:
             # CHECK: Invalid type:
             # CHECK: error: unknown: vector elements must be int/index/float type but got 'none'
@@ -309,8 +309,8 @@ def testVectorType():
         else:
             print("Exception not produced")
 
-        scalable_1 = VectorType.get(shape, f32, scalable=[False, True])
-        scalable_2 = VectorType.get([2, 3, 4], f32, scalable=[True, False, True])
+        scalable_1 = ScalableVectorType.get(shape, f32, scalable=[False, True])
+        scalable_2 = ScalableVectorType.get([2, 3, 4], f32, scalable=[True, False, True])
         assert scalable_1.scalable
         assert scalable_2.scalable
         assert scalable_1.scalable_dims == [False, True]
@@ -320,13 +320,13 @@ def testVectorType():
         # CHECK: scalable 2: vector<[2]x3x[4]xf32>
         print("scalable 2: ", scalable_2)
 
-        scalable_3 = VectorType.get(shape, f32, scalable_dims=[1])
-        scalable_4 = VectorType.get([2, 3, 4], f32, scalable_dims=[0, 2])
+        scalable_3 = ScalableVectorType.get(shape, f32, scalable_dims=[1])
+        scalable_4 = ScalableVectorType.get([2, 3, 4], f32, scalable_dims=[0, 2])
         assert scalable_3 == scalable_1
         assert scalable_4 == scalable_2
 
         try:
-            VectorType.get(shape, f32, scalable=[False, True, True])
+            ScalableVectorType.get(shape, f32, scalable=[False, True, True])
         except ValueError as e:
             # CHECK: Expected len(scalable) == len(shape).
             print(e)
@@ -334,7 +334,7 @@ def testVectorType():
             print("Exception not produced")
 
         try:
-            VectorType.get(shape, f32, scalable=[False, True], scalable_dims=[1])
+            ScalableVectorType.get(shape, f32, scalable=[False, True], scalable_dims=[1])
         except ValueError as e:
             # CHECK: kwargs are mutually exclusive.
             print(e)
@@ -342,7 +342,7 @@ def testVectorType():
             print("Exception not produced")
 
         try:
-            VectorType.get(shape, f32, scalable_dims=[42])
+            ScalableVectorType.get(shape, f32, scalable_dims=[42])
         except ValueError as e:
             # CHECK: Scalable dimension index out of bounds.
             print(e)
@@ -511,7 +511,7 @@ def testTupleType():
     with Context() as ctx:
         i32 = IntegerType(Type.parse("i32"))
         f32 = F32Type.get()
-        vector = VectorType(Type.parse("vector<2x3xf32>"))
+        vector = FixedVectorType(Type.parse("vector<2x3xf32>"))
         l = [i32, f32, vector]
         tuple_type = TupleType.get_tuple(l)
         # CHECK: tuple type: tuple<i32, f32, vector<2x3xf32>>
@@ -579,7 +579,7 @@ def testTypeIDs():
             (F64Type, F64Type.get()),
             (NoneType, NoneType.get()),
             (ComplexType, ComplexType.get(f32)),
-            (VectorType, VectorType.get([2, 3], f32)),
+            (FixedVectorType, FixedVectorType.get([2, 3], f32)),
             (RankedTensorType, RankedTensorType.get([2, 3], f32)),
             (UnrankedTensorType, UnrankedTensorType.get(f32)),
             (MemRefType, MemRefType.get([2, 3], f32)),
@@ -602,7 +602,7 @@ def testTypeIDs():
         # CHECK: F64Type(f64)
         # CHECK: NoneType(none)
         # CHECK: ComplexType(complex<f32>)
-        # CHECK: VectorType(vector<2x3xf32>)
+        # CHECK: FixedVectorType(vector<2x3xf32>)
         # CHECK: RankedTensorType(tensor<2x3xf32>)
         # CHECK: UnrankedTensorType(tensor<*xf32>)
         # CHECK: MemRefType(memref<2x3xf32>)
@@ -712,7 +712,7 @@ def testConcreteTypesRoundTrip():
         # CHECK: RankedTensorType(tensor<10x10xf32>)
         print(repr(ranked_tensor.type))
 
-        vector = VectorType.get([10, 10], f32)
+        vector = FixedVectorType.get([10, 10], f32)
         tuple_type = TupleType.get_tuple([f32, vector])
         # CHECK: TupleType
         print(type(tuple_type).__name__)
@@ -720,7 +720,7 @@ def testConcreteTypesRoundTrip():
         print(repr(tuple_type))
         # CHECK: F32Type(f32)
         print(repr(tuple_type.get_type(0)))
-        # CHECK: VectorType(vector<10x10xf32>)
+        # CHECK: FixedVectorType(vector<10x10xf32>)
         print(repr(tuple_type.get_type(1)))
 
         index_type = IndexType.get()
@@ -800,8 +800,8 @@ def testTypeWrappers():
 
         vec_1 = T.vector(2, 3, T.f32())
         vec_2 = T.vector(2, 3, 4, T.f32())
-        assert repr(vec_1) == "VectorType(vector<2x3xf32>)"
-        assert repr(vec_2) == "VectorType(vector<2x3x4xf32>)"
+        assert repr(vec_1) == "FixedVectorType(vector<2x3xf32>)"
+        assert repr(vec_2) == "FixedVectorType(vector<2x3x4xf32>)"
 
         m1 = T.memref(2, 3, 4, T.f64())
         assert repr(m1) == "MemRefType(memref<2x3x4xf64>)"
@@ -833,7 +833,7 @@ def testTypeWrappers():
         assert repr(t3) == 'RankedTensorType(tensor<?x3x?xf64, "encoding">)'
 
         v = T.vector(3, 3, 3, T.f64())
-        assert repr(v) == "VectorType(vector<3x3x3xf64>)"
+        assert repr(v) == "FixedVectorType(vector<3x3x3xf64>)"
 
         m5 = T.memref(S, 3, S, T.f64())
         assert repr(m5) == "MemRefType(memref<?x3x?xf64>)"
@@ -851,8 +851,8 @@ def testTypeWrappers():
 
         scalable_1 = T.vector(2, 3, T.f32(), scalable=[False, True])
         scalable_2 = T.vector(2, 3, 4, T.f32(), scalable=[True, False, True])
-        assert repr(scalable_1) == "VectorType(vector<2x[3]xf32>)"
-        assert repr(scalable_2) == "VectorType(vector<[2]x3x[4]xf32>)"
+        assert repr(scalable_1) == "FixedVectorType(vector<2x[3]xf32>)"
+        assert repr(scalable_2) == "FixedVectorType(vector<[2]x3x[4]xf32>)"
 
         scalable_3 = T.vector(2, 3, T.f32(), scalable_dims=[1])
         scalable_4 = T.vector(2, 3, 4, T.f32(), scalable_dims=[0, 2])

@@ -1773,7 +1773,7 @@ LogicalResult WhileOp::inferReturnTypeComponents(
 }
 
 std::optional<SmallVector<int64_t, 4>> ApplyScaleOp::getShapeForUnroll() {
-  if (auto vt = llvm::dyn_cast<VectorType>(getType()))
+  if (auto vt = llvm::dyn_cast<FixedVectorType>(getType()))
     return llvm::to_vector<4>(vt.getShape());
   return std::nullopt;
 }

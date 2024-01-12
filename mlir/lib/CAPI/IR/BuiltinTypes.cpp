@@ -262,48 +262,55 @@ int64_t mlirShapedTypeGetDynamicStrideOrOffset() {
 // Vector type.
 //===----------------------------------------------------------------------===//
 
-MlirTypeID mlirVectorTypeGetTypeID() { return wrap(VectorType::getTypeID()); }
-
-bool mlirTypeIsAVector(MlirType type) {
-  return llvm::isa<VectorType>(unwrap(type));
+MlirTypeID mlirFixedVectorTypeGetTypeID() {
+  return wrap(FixedVectorType::getTypeID());
 }
 
-MlirType mlirVectorTypeGet(intptr_t rank, const int64_t *shape,
-                           MlirType elementType) {
-  return wrap(VectorType::get(llvm::ArrayRef(shape, static_cast<size_t>(rank)),
-                              unwrap(elementType)));
+bool mlirTypeIsFixedVector(MlirType type) {
+  return llvm::isa<FixedVectorType>(unwrap(type));
 }
 
-MlirType mlirVectorTypeGetChecked(MlirLocation loc, intptr_t rank,
-                                  const int64_t *shape, MlirType elementType) {
-  return wrap(VectorType::getChecked(
+MlirType mlirFixedVectorTypeGet(intptr_t rank, const int64_t *shape,
+                                MlirType elementType) {
+  return wrap(FixedVectorType::get(
+      llvm::ArrayRef(shape, static_cast<size_t>(rank)), unwrap(elementType)));
+}
+
+MlirType mlirFixedVectorTypeGetChecked(MlirLocation loc, intptr_t rank,
+                                       const int64_t *shape,
+                                       MlirType elementType) {
+  return wrap(FixedVectorType::getChecked(
       unwrap(loc), llvm::ArrayRef(shape, static_cast<size_t>(rank)),
       unwrap(elementType)));
 }
 
-MlirType mlirVectorTypeGetScalable(intptr_t rank, const int64_t *shape,
+MlirTypeID mlirScalableVectorTypeGetTypeID() {
+  return wrap(ScalableVectorType::getTypeID());
+}
+
+MlirType mlirScalableVectorTypeGet(intptr_t rank, const int64_t *shape,
                                    const bool *scalable, MlirType elementType) {
-  return wrap(VectorType::get(
+  return wrap(ScalableVectorType::get(
       llvm::ArrayRef(shape, static_cast<size_t>(rank)), unwrap(elementType),
       llvm::ArrayRef(scalable, static_cast<size_t>(rank))));
 }
 
-MlirType mlirVectorTypeGetScalableChecked(MlirLocation loc, intptr_t rank,
+MlirType mlirScalableVectorTypeGetChecked(MlirLocation loc, intptr_t rank,
                                           const int64_t *shape,
                                           const bool *scalable,
                                           MlirType elementType) {
-  return wrap(VectorType::getChecked(
+  return wrap(ScalableVectorType::getChecked(
       unwrap(loc), llvm::ArrayRef(shape, static_cast<size_t>(rank)),
       unwrap(elementType),
       llvm::ArrayRef(scalable, static_cast<size_t>(rank))));
 }
 
-bool mlirVectorTypeIsScalable(MlirType type) {
-  return unwrap(type).cast<VectorType>().isScalable();
+bool mlirTypeIsScalableVector(MlirType type) {
+  return unwrap(type).cast<VectorBaseType>().isScalable();
 }
 
 bool mlirVectorTypeIsDimScalable(MlirType type, intptr_t dim) {
-  return unwrap(type).cast<VectorType>().getScalableDims()[dim];
+  return unwrap(type).cast<VectorBaseType>().getScalableBases()[dim] > 0;
 }
 
 //===----------------------------------------------------------------------===//

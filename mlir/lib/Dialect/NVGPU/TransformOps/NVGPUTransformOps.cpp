@@ -651,7 +651,7 @@ private:
 template <typename ApplyFn, typename ReduceFn>
 static void foreachIndividualVectorElement(Value vector, ApplyFn applyFn,
                                            ReduceFn reduceFn) {
-  VectorType vectorType = vector.getType().cast<VectorType>();
+  FixedVectorType vectorType = vector.getType().cast<FixedVectorType>();
   auto vectorShape = vectorType.getShape();
   auto strides = computeStrides(vectorShape);
   for (int64_t idx = 0, e = vectorShape[0] * strides[0]; idx < e; ++idx) {
@@ -684,7 +684,7 @@ Value MmaSyncBuilder::buildMmaSyncMemRefLoadOperand(
   auto loads = buildMemRefLoads(b, loc, laneId, memref, indexFn);
 
   Type elementType = getElementTypeOrSelf(memref.getType());
-  auto vt = VectorType::get(vectorShape, elementType);
+  auto vt = FixedVectorType::get(vectorShape, elementType);
   Value res = b.create<vector::SplatOp>(loc, vt, loads[0]);
   foreachIndividualVectorElement(
       res,

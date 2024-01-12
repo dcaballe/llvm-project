@@ -173,16 +173,17 @@ struct TestExternalFallbackTypeIntegerModel
           TestExternalFallbackTypeIntegerModel, IntegerType> {};
 
 /// The interface provides a default implementation that expects
-/// ConcreteType::getWidth to exist, which is *not* the case for VectorType. Use
-/// FallbackModel instead to override this and make sure the code still compiles
-/// because we never instantiate the ExternalModel class template with a
-/// template argument that would have led to compilation failures.
+/// ConcreteType::getWidth to exist, which is *not* the case for
+/// FixedVectorType. Use FallbackModel instead to override this and make sure
+/// the code still compiles because we never instantiate the ExternalModel class
+/// template with a template argument that would have led to compilation
+/// failures.
 struct TestExternalFallbackTypeVectorModel
     : public TestExternalFallbackTypeInterface::FallbackModel<
           TestExternalFallbackTypeVectorModel> {
   unsigned getBitwidth(Type type) const {
-    IntegerType elementType =
-        dyn_cast_or_null<IntegerType>(cast<VectorType>(type).getElementType());
+    IntegerType elementType = dyn_cast_or_null<IntegerType>(
+        cast<FixedVectorType>(type).getElementType());
     return elementType ? elementType.getWidth() : 0;
   }
 };
@@ -197,9 +198,10 @@ TEST(InterfaceAttachment, Fallback) {
   ASSERT_TRUE(isa<TestExternalFallbackTypeInterface>(i8));
 
   // Call the method so it is guaranteed not to be instantiated.
-  VectorType vec = VectorType::get({42}, i8);
+  FixedVectorType vec = FixedVectorType::get({42}, i8);
   ASSERT_FALSE(isa<TestExternalFallbackTypeInterface>(vec));
-  VectorType::attachInterface<TestExternalFallbackTypeVectorModel>(context);
+  FixedVectorType::attachInterface<TestExternalFallbackTypeVectorModel>(
+      context);
   ASSERT_TRUE(isa<TestExternalFallbackTypeInterface>(vec));
   EXPECT_EQ(cast<TestExternalFallbackTypeInterface>(vec).getBitwidth(), 8u);
 }

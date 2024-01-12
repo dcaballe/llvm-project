@@ -160,7 +160,7 @@ getTypeNumBytes(const SPIRVConversionOptions &options, Type type) {
     return 2 * *elementSize;
   }
 
-  if (auto vecType = dyn_cast<VectorType>(type)) {
+  if (auto vecType = dyn_cast<FixedVectorType>(type)) {
     auto elementSize = getTypeNumBytes(options, vecType.getElementType());
     if (!elementSize)
       return std::nullopt;
@@ -299,9 +299,9 @@ convertIndexElementType(ShapedType type,
 /// Converts a vector `type` to a suitable type under the given `targetEnv`.
 static Type
 convertVectorType(const spirv::TargetEnv &targetEnv,
-                  const SPIRVConversionOptions &options, VectorType type,
+                  const SPIRVConversionOptions &options, FixedVectorType type,
                   std::optional<spirv::StorageClass> storageClass = {}) {
-  type = cast<VectorType>(convertIndexElementType(type, options));
+  type = cast<FixedVectorType>(convertIndexElementType(type, options));
   auto scalarType = dyn_cast_or_null<spirv::ScalarType>(type.getElementType());
   if (!scalarType) {
     // If this is not a spec allowed scalar type, try to handle sub-byte integer
@@ -324,7 +324,7 @@ convertVectorType(const spirv::TargetEnv &targetEnv,
       return nullptr;
     }
 
-    return VectorType::get(type.getShape(), elementType);
+    return FixedVectorType::get(type.getShape(), elementType);
   }
 
   if (type.getRank() <= 1 && type.getNumElements() == 1)
@@ -350,7 +350,7 @@ convertVectorType(const spirv::TargetEnv &targetEnv,
   auto elementType =
       convertScalarType(targetEnv, options, scalarType, storageClass);
   if (elementType)
-    return VectorType::get(type.getShape(), elementType);
+    return FixedVectorType::get(type.getShape(), elementType);
   return nullptr;
 }
 
@@ -375,7 +375,7 @@ convertComplexType(const spirv::TargetEnv &targetEnv,
     return nullptr;
   }
 
-  return VectorType::get(2, elementType);
+  return FixedVectorType::get(2, elementType);
 }
 
 /// Converts a tensor `type` to a suitable type under the given `targetEnv`.
@@ -546,7 +546,7 @@ static Type convertMemrefType(const spirv::TargetEnv &targetEnv,
 
   Type arrayElemType;
   Type elementType = type.getElementType();
-  if (auto vecType = dyn_cast<VectorType>(elementType)) {
+  if (auto vecType = dyn_cast<FixedVectorType>(elementType)) {
     arrayElemType =
         convertVectorType(targetEnv, options, vecType, storageClass);
   } else if (auto complexType = dyn_cast<ComplexType>(elementType)) {
@@ -693,8 +693,8 @@ SPIRVTypeConverter::SPIRVTypeConverter(spirv::TargetEnvAttr targetAttr,
   // Add conversions. The order matters here: later ones will be tried earlier.
 
   // Allow all SPIR-V dialect specific types. This assumes all builtin types
-  // adopted in the SPIR-V dialect (i.e., IntegerType, FloatType, VectorType)
-  // were tried before.
+  // adopted in the SPIR-V dialect (i.e., IntegerType, FloatType,
+  // FixedVectorType) were tried before.
   //
   // TODO: This assumes that the SPIR-V types are valid to use in the given
   // target environment, which should be the case if the whole pipeline is
@@ -722,7 +722,7 @@ SPIRVTypeConverter::SPIRVTypeConverter(spirv::TargetEnvAttr targetAttr,
     return convertComplexType(this->targetEnv, this->options, complexType);
   });
 
-  addConversion([this](VectorType vectorType) {
+  addConversion([this](FixedVectorType vectorType) {
     return convertVectorType(this->targetEnv, this->options, vectorType);
   });
 
@@ -858,8 +858,8 @@ getOrInsertBuiltinVariable(Block &body, Location loc, spirv::BuiltIn builtin,
   case spirv::BuiltIn::WorkgroupId:
   case spirv::BuiltIn::LocalInvocationId:
   case spirv::BuiltIn::GlobalInvocationId: {
-    auto ptrType = spirv::PointerType::get(VectorType::get({3}, integerType),
-                                           spirv::StorageClass::Input);
+    auto ptrType = spirv::PointerType::get(
+        FixedVectorType::get({3}, integerType), spirv::StorageClass::Input);
     std::string name = getBuiltinVarName(builtin, prefix, suffix);
     newVarOp =
         builder.create<spirv::GlobalVariableOp>(loc, ptrType, name, builtin);

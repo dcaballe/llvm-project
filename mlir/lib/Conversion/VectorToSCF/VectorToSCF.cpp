@@ -311,22 +311,22 @@ static BufferAllocs allocBuffers(OpBuilder &b, OpTy xferOp) {
   return result;
 }
 
-/// Given a MemRefType with VectorType element type, unpack one dimension from
-/// the VectorType into the MemRefType.
+/// Given a MemRefType with VectorBaseType element type, unpack one dimension
+/// from the VectorBaseType into the MemRefType.
 ///
 /// E.g.: memref<9xvector<5x6xf32>> --> memref<9x5xvector<6xf32>>
 static FailureOr<MemRefType> unpackOneDim(MemRefType type) {
-  auto vectorType = dyn_cast<VectorType>(type.getElementType());
+  auto vectorType = dyn_cast<VectorBaseType>(type.getElementType());
   // Vectors with leading scalable dims are not supported.
   // It may be possible to support these in future by using dynamic memref dims.
-  if (vectorType.getScalableDims().front())
+  if (vectorType.getScalableBases().front())
     return failure();
   auto memrefShape = type.getShape();
   SmallVector<int64_t, 8> newMemrefShape;
   newMemrefShape.append(memrefShape.begin(), memrefShape.end());
   newMemrefShape.push_back(vectorType.getDimSize(0));
   return MemRefType::get(newMemrefShape,
-                         VectorType::Builder(vectorType).dropDim(0));
+                         VectorBaseType::Builder(vectorType).dropDim(0));
 }
 
 /// Given a transfer op, find the memref from which the mask is loaded. This
@@ -414,7 +414,7 @@ struct Strategy<TransferReadOp> {
 
     Location loc = xferOp.getLoc();
     auto bufferType = dyn_cast<ShapedType>(buffer.getType());
-    auto vecType = dyn_cast<VectorType>(bufferType.getElementType());
+    auto vecType = dyn_cast<FixedVectorType>(bufferType.getElementType());
     auto inBoundsAttr = dropFirstElem(b, xferOp.getInBoundsAttr());
     auto newXferOp = b.create<vector::TransferReadOp>(
         loc, vecType, xferOp.getSource(), xferIndices,
@@ -438,7 +438,7 @@ struct Strategy<TransferReadOp> {
 
     Location loc = xferOp.getLoc();
     auto bufferType = dyn_cast<ShapedType>(buffer.getType());
-    auto vecType = dyn_cast<VectorType>(bufferType.getElementType());
+    auto vecType = dyn_cast<FixedVectorType>(bufferType.getElementType());
     auto vec = b.create<vector::SplatOp>(loc, vecType, xferOp.getPadding());
     b.create<memref::StoreOp>(loc, vec, buffer, storeIndices);
 
@@ -548,7 +548,7 @@ LogicalResult checkPrepareXferOp(OpTy xferOp,
     return failure();
   // Currently the unpacking of the leading dimension into the memref is not
   // supported for scalable dimensions.
-  if (xferOp.getVectorType().getScalableDims().front())
+  if (xferOp.getVectorType().getScalableBases().front())
     return failure();
   if (isTensorOp(xferOp) && !options.lowerTensors)
     return failure();
@@ -694,7 +694,8 @@ struct DecomposePrintOpConversion : public VectorToSCFPattern<vector::PrintOp> {
     if (!printOp.getSource())
       return failure();
 
-    VectorType vectorType = dyn_cast<VectorType>(printOp.getPrintType());
+    FixedVectorType vectorType =
+        dyn_cast<FixedVectorType>(printOp.getPrintType());
     if (!vectorType)
       return failure();
 
@@ -738,7 +739,7 @@ struct DecomposePrintOpConversion : public VectorToSCFPattern<vector::PrintOp> {
       vectorType = targetVectorType;
     }
 
-    auto scalableDimensions = vectorType.getScalableDims();
+    auto scalableDimensions = vectorType.getScalableBases();
     auto shape = vectorType.getShape();
     constexpr int64_t singletonShape[] = {1};
     if (vectorType.getRank() == 0)
@@ -751,7 +752,7 @@ struct DecomposePrintOpConversion : public VectorToSCFPattern<vector::PrintOp> {
       auto flatLength = std::accumulate(shape.begin(), shape.end(), 1,
                                         std::multiplies<int64_t>());
       auto flatVectorType =
-          VectorType::get({flatLength}, vectorType.getElementType());
+          FixedVectorType::get({flatLength}, vectorType.getElementType());
       value = rewriter.create<vector::ShapeCastOp>(loc, flatVectorType, value);
     }
 
@@ -1109,7 +1110,8 @@ struct UnrollTransferReadConversion
       return rewriter.notifyMatchFailure(
           xferOp, "not yet supported: element type mismatch");
     auto xferVecType = xferOp.getVectorType();
-    if (xferVecType.getScalableDims()[0]) {
+
+    if (xferVecType.isScalableDim(0)) {
       // Cannot unroll a scalable dimension at compile time.
       return rewriter.notifyMatchFailure(
           xferOp, "scalable dimensions cannot be unrolled");
@@ -1117,9 +1119,10 @@ struct UnrollTransferReadConversion
 
     auto insertOp = getInsertOp(xferOp);
     auto vec = buildResultVector(rewriter, xferOp);
-    auto vecType = dyn_cast<VectorType>(vec.getType());
+    auto vecType = dyn_cast<FixedVectorType>(vec.getType());
 
-    VectorType newXferVecType = VectorType::Builder(xferVecType).dropDim(0);
+    VectorBaseType newXferVecType =
+        VectorBaseType::Builder(xferVecType).dropDim(0);
 
     int64_t dimSize = xferVecType.getShape()[0];
 
@@ -1233,7 +1236,7 @@ struct UnrollTransferWriteConversion
   /// accesses, and broadcasts and transposes in permutation maps.
   LogicalResult matchAndRewrite(TransferWriteOp xferOp,
                                 PatternRewriter &rewriter) const override {
-    VectorType inputVectorTy = xferOp.getVectorType();
+    VectorBaseType inputVectorTy = xferOp.getVectorType();
 
     if (inputVectorTy.getRank() <= options.targetRank)
       return failure();
@@ -1246,7 +1249,7 @@ struct UnrollTransferWriteConversion
       return failure();
 
     auto vec = getDataVector(xferOp);
-    if (inputVectorTy.getScalableDims()[0]) {
+    if (inputVectorTy.getScalableBases()[0]) {
       // Cannot unroll a scalable dimension at compile time.
       return failure();
     }
@@ -1283,7 +1286,8 @@ struct UnrollTransferWriteConversion
               // argument into `transfer_write` to become a scalar. We solve
               // this by broadcasting the scalar to a 0D vector.
               xferVec = b.create<vector::BroadcastOp>(
-                  loc, VectorType::get({}, extracted.getType()), extracted);
+                  loc, FixedVectorType::get({}, extracted.getType()),
+                  extracted);
             } else {
               xferVec = extracted;
             }

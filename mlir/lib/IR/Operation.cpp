@@ -904,7 +904,7 @@ LogicalResult OpTrait::impl::verifyAtLeastNOperands(Operation *op,
 /// If this is a vector type, or a tensor type, return the scalar element type
 /// that it is built around, otherwise return the type unmodified.
 static Type getTensorOrVectorElementType(Type type) {
-  if (auto vec = llvm::dyn_cast<VectorType>(type))
+  if (auto vec = llvm::dyn_cast<FixedVectorType>(type))
     return vec.getElementType();
 
   // Look through tensor<vector<...>> to find the underlying element type.
@@ -1289,7 +1289,7 @@ LogicalResult OpTrait::impl::verifyNoRegionArguments(Operation *op) {
 
 LogicalResult OpTrait::impl::verifyElementwise(Operation *op) {
   auto isMappableType = [](Type type) {
-    return llvm::isa<VectorType, TensorType>(type);
+    return llvm::isa<FixedVectorType, TensorType>(type);
   };
   auto resultMappableTypes = llvm::to_vector<1>(
       llvm::make_filter_range(op->getResultTypes(), isMappableType));

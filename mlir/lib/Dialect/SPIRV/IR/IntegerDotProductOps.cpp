@@ -109,7 +109,7 @@ getIntegerDotProductCapabilities(Operation *op) {
     return capabilities;
   }
 
-  auto vecTy = llvm::cast<VectorType>(factorTy);
+  auto vecTy = llvm::cast<FixedVectorType>(factorTy);
   if (vecTy.getElementTypeBitWidth() == 8) {
     capabilities.push_back(dotProductInput4x8BitCap);
     return capabilities;

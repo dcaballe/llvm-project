@@ -131,7 +131,7 @@ LogicalResult mlir::verifyCompatibleShapes(TypeRange types) {
   bool hasScalableVecTypes = false;
   bool hasNonScalableVecTypes = false;
   for (Type t : types) {
-    auto vType = llvm::dyn_cast<VectorType>(t);
+    auto vType = llvm::dyn_cast<FixedVectorType>(t);
     if (vType && vType.isScalable())
       hasScalableVecTypes = true;
     else

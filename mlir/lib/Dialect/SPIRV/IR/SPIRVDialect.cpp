@@ -180,7 +180,7 @@ static Type parseAndVerifyType(SPIRVDialect const &dialect,
           << type;
       return Type();
     }
-  } else if (auto t = llvm::dyn_cast<VectorType>(type)) {
+  } else if (auto t = llvm::dyn_cast<FixedVectorType>(type)) {
     if (t.getRank() != 1) {
       parser.emitError(typeLoc, "only 1-D vector allowed but found ") << t;
       return Type();
@@ -207,7 +207,7 @@ static Type parseAndVerifyMatrixType(SPIRVDialect const &dialect,
   if (parser.parseType(type))
     return Type();
 
-  if (auto t = llvm::dyn_cast<VectorType>(type)) {
+  if (auto t = llvm::dyn_cast<FixedVectorType>(type)) {
     if (t.getRank() != 1) {
       parser.emitError(typeLoc, "only 1-D vector allowed but found ") << t;
       return Type();

@@ -312,7 +312,7 @@ buildSequentialConstant(ArrayRef<llvm::Constant *> &constants,
   llvm::Type *elementType;
   if (auto *arrayTy = dyn_cast<llvm::ArrayType>(type)) {
     elementType = arrayTy->getElementType();
-  } else if (auto *vectorTy = dyn_cast<llvm::VectorType>(type)) {
+  } else if (auto *vectorTy = dyn_cast<llvm::FixedVectorType>(type)) {
     elementType = vectorTy->getElementType();
   } else {
     emitError(loc) << "expected sequential LLVM types wrapping a scalar";
@@ -339,7 +339,7 @@ static llvm::Type *getInnermostElementType(llvm::Type *type) {
   do {
     if (auto *arrayTy = dyn_cast<llvm::ArrayType>(type)) {
       type = arrayTy->getElementType();
-    } else if (auto *vectorTy = dyn_cast<llvm::VectorType>(type)) {
+    } else if (auto *vectorTy = dyn_cast<llvm::FixedVectorType>(type)) {
       type = vectorTy->getElementType();
     } else {
       return type;
@@ -381,7 +381,7 @@ convertDenseElementsAttr(Location loc, DenseElementsAttr denseElementsAttr,
 
   // Compute the shape of all dimensions but the innermost. Note that the
   // innermost dimension may be that of the vector element type.
-  bool hasVectorElementType = isa<VectorType>(type.getElementType());
+  bool hasVectorElementType = isa<FixedVectorType>(type.getElementType());
   int64_t numAggregates =
       denseElementsAttr.getNumElements() /
       (hasVectorElementType ? 1
@@ -392,7 +392,7 @@ convertDenseElementsAttr(Location loc, DenseElementsAttr denseElementsAttr,
 
   // Handle the case of vector splat, LLVM has special support for it.
   if (denseElementsAttr.isSplat() &&
-      (isa<VectorType>(type) || hasVectorElementType)) {
+      (isa<FixedVectorType>(type) || hasVectorElementType)) {
     llvm::Constant *splatValue = LLVM::detail::getLLVMConstant(
         innermostLLVMType, denseElementsAttr.getSplatValue<Attribute>(), loc,
         moduleTranslation);
@@ -409,7 +409,7 @@ convertDenseElementsAttr(Location loc, DenseElementsAttr denseElementsAttr,
   // a piece of raw data.
   std::function<llvm::Constant *(StringRef)> buildCstData;
   if (isa<TensorType>(type)) {
-    auto vectorElementType = dyn_cast<VectorType>(type.getElementType());
+    auto vectorElementType = dyn_cast<FixedVectorType>(type.getElementType());
     if (vectorElementType && vectorElementType.getRank() == 1) {
       buildCstData = [&](StringRef data) {
         return llvm::ConstantDataVector::getRaw(
@@ -421,7 +421,7 @@ convertDenseElementsAttr(Location loc, DenseElementsAttr denseElementsAttr,
                                                innermostLLVMType);
       };
     }
-  } else if (isa<VectorType>(type)) {
+  } else if (isa<FixedVectorType>(type)) {
     buildCstData = [&](StringRef data) {
       return llvm::ConstantDataVector::getRaw(data, type.getShape().back(),
                                               innermostLLVMType);
@@ -521,7 +521,7 @@ llvm::Constant *mlir::LLVM::detail::getLLVMConstant(
     // another sequence type. The recursion terminates because each step removes
     // one outer sequential type.
     bool elementTypeSequential =
-        isa<llvm::ArrayType, llvm::VectorType>(elementType);
+        isa<llvm::ArrayType, llvm::FixedVectorType>(elementType);
     llvm::Constant *child = getLLVMConstant(
         elementType,
         elementTypeSequential ? splatAttr

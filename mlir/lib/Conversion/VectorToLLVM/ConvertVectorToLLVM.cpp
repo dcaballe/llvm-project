@@ -35,10 +35,10 @@ using namespace mlir;
 using namespace mlir::vector;
 
 // Helper to reduce vector type by *all* but one rank at back.
-static VectorType reducedVectorTypeBack(VectorType tp) {
+static VectorBaseType reducedVectorTypeBack(VectorBaseType tp) {
   assert((tp.getRank() > 1) && "unlowerable vector type");
-  return VectorType::get(tp.getShape().take_back(), tp.getElementType(),
-                         tp.getScalableDims().take_back());
+  return VectorBaseType::get(tp.getShape().take_back(), tp.getElementType(),
+                             tp.getScalableBases().take_back());
 }
 
 // Helper that picks the proper sequence for inserting.
@@ -140,7 +140,7 @@ public:
   matchAndRewrite(vector::BitCastOp bitCastOp, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     // Only 0-D and 1-D vectors can be lowered to LLVM.
-    VectorType resultTy = bitCastOp.getResultVectorType();
+    FixedVectorType resultTy = bitCastOp.getResultVectorType();
     if (resultTy.getRank() > 1)
       return failure();
     Type newResultTy = typeConverter->convertType(resultTy);
@@ -190,7 +190,8 @@ public:
 /// couterparts.
 static void replaceLoadOrStoreOp(vector::LoadOp loadOp,
                                  vector::LoadOpAdaptor adaptor,
-                                 VectorType vectorTy, Value ptr, unsigned align,
+                                 VectorBaseType vectorTy, Value ptr,
+                                 unsigned align,
                                  ConversionPatternRewriter &rewriter) {
   rewriter.replaceOpWithNewOp<LLVM::LoadOp>(loadOp, vectorTy, ptr, align,
                                             /*volatile_=*/false,
@@ -199,7 +200,8 @@ static void replaceLoadOrStoreOp(vector::LoadOp loadOp,
 
 static void replaceLoadOrStoreOp(vector::MaskedLoadOp loadOp,
                                  vector::MaskedLoadOpAdaptor adaptor,
-                                 VectorType vectorTy, Value ptr, unsigned align,
+                                 VectorBaseType vectorTy, Value ptr,
+                                 unsigned align,
                                  ConversionPatternRewriter &rewriter) {
   rewriter.replaceOpWithNewOp<LLVM::MaskedLoadOp>(
       loadOp, vectorTy, ptr, adaptor.getMask(), adaptor.getPassThru(), align);
@@ -207,7 +209,8 @@ static void replaceLoadOrStoreOp(vector::MaskedLoadOp loadOp,
 
 static void replaceLoadOrStoreOp(vector::StoreOp storeOp,
                                  vector::StoreOpAdaptor adaptor,
-                                 VectorType vectorTy, Value ptr, unsigned align,
+                                 VectorBaseType vectorTy, Value ptr,
+                                 unsigned align,
                                  ConversionPatternRewriter &rewriter) {
   rewriter.replaceOpWithNewOp<LLVM::StoreOp>(storeOp, adaptor.getValueToStore(),
                                              ptr, align, /*volatile_=*/false,
@@ -216,7 +219,8 @@ static void replaceLoadOrStoreOp(vector::StoreOp storeOp,
 
 static void replaceLoadOrStoreOp(vector::MaskedStoreOp storeOp,
                                  vector::MaskedStoreOpAdaptor adaptor,
-                                 VectorType vectorTy, Value ptr, unsigned align,
+                                 VectorBaseType vectorTy, Value ptr,
+                                 unsigned align,
                                  ConversionPatternRewriter &rewriter) {
   rewriter.replaceOpWithNewOp<LLVM::MaskedStoreOp>(
       storeOp, adaptor.getValueToStore(), ptr, adaptor.getMask(), align);
@@ -234,7 +238,7 @@ public:
                   typename LoadOrStoreOp::Adaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     // Only 1-D vectors can be lowered to LLVM.
-    VectorType vectorTy = loadOrStoreOp.getVectorType();
+    VectorBaseType vectorTy = loadOrStoreOp.getVectorType();
     if (vectorTy.getRank() > 1)
       return failure();
 
@@ -247,7 +251,7 @@ public:
       return failure();
 
     // Resolve address.
-    auto vtype = cast<VectorType>(
+    auto vtype = cast<VectorBaseType>(
         this->typeConverter->convertType(loadOrStoreOp.getVectorType()));
     Value dataPtr = this->getStridedElementPtr(loc, memRefTy, adaptor.getBase(),
                                                adaptor.getIndices(), rewriter);
@@ -340,7 +344,7 @@ public:
       return failure();
 
     // Resolve address.
-    VectorType vType = scatter.getVectorType();
+    VectorBaseType vType = scatter.getVectorType();
     Value ptr = getStridedElementPtr(loc, memRefType, adaptor.getBase(),
                                      adaptor.getIndices(), rewriter);
     Value ptrs = getIndexedPtrs(
@@ -528,7 +532,7 @@ static Value getOrCreateAccumulator(ConversionPatternRewriter &rewriter,
 /// dynamic vector lengths at runtime.
 static Value createVectorLengthValue(ConversionPatternRewriter &rewriter,
                                      Location loc, Type llvmType) {
-  VectorType vType = cast<VectorType>(llvmType);
+  FixedVectorType vType = cast<FixedVectorType>(llvmType);
   auto vShape = vType.getShape();
   assert(vShape.size() == 1 && "Unexpected multi-dim vector type");
 
@@ -1014,7 +1018,7 @@ public:
     if (auto arrayType = dyn_cast<LLVM::LLVMArrayType>(llvmType))
       eltType = arrayType.getElementType();
     else
-      eltType = cast<VectorType>(llvmType).getElementType();
+      eltType = cast<FixedVectorType>(llvmType).getElementType();
     Value insert = rewriter.create<LLVM::UndefOp>(loc, llvmType);
     int64_t insPos = 0;
     for (const auto &en : llvm::enumerate(maskArrayAttr)) {
@@ -1099,7 +1103,7 @@ public:
     }
 
     // One-shot extraction of vector from array (only requires extractvalue).
-    if (isa<VectorType>(resultType)) {
+    if (isa<FixedVectorType>(resultType)) {
       if (extractOp.hasDynamicPosition())
         return failure();
 
@@ -1150,7 +1154,7 @@ public:
   LogicalResult
   matchAndRewrite(vector::FMAOp fmaOp, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    VectorType vType = fmaOp.getVectorType();
+    VectorBaseType vType = fmaOp.getVectorType();
     if (vType.getRank() > 1)
       return failure();
 
@@ -1227,7 +1231,7 @@ public:
     }
 
     // One-shot insertion of a vector into an array (only requires insertvalue).
-    if (isa<VectorType>(sourceType)) {
+    if (isa<FixedVectorType>(sourceType)) {
       if (insertOp.hasDynamicPosition())
         return failure();
 
@@ -1472,7 +1476,7 @@ public:
   LogicalResult matchAndRewrite(vector::CreateMaskOp op,
                                 PatternRewriter &rewriter) const override {
     auto dstType = op.getType();
-    if (dstType.getRank() != 1 || !cast<VectorType>(dstType).isScalable())
+    if (dstType.getRank() != 1 || !cast<FixedVectorType>(dstType).isScalable())
       return failure();
     IntegerType idxType =
         force32BitVectorIndices ? rewriter.getI32Type() : rewriter.getI64Type();
@@ -1521,7 +1525,7 @@ public:
 
     if (auto value = adaptor.getSource()) {
       Type printType = printOp.getPrintType();
-      if (isa<VectorType>(printType)) {
+      if (isa<FixedVectorType>(printType)) {
         // Vectors should be broken into elementary print ops in VectorToSCF.
         return failure();
       }
@@ -1652,7 +1656,7 @@ struct VectorSplatOpLowering : public ConvertOpToLLVMPattern<vector::SplatOp> {
   LogicalResult
   matchAndRewrite(vector::SplatOp splatOp, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    VectorType resultType = cast<VectorType>(splatOp.getType());
+    FixedVectorType resultType = cast<FixedVectorType>(splatOp.getType());
     if (resultType.getRank() > 1)
       return failure();
 
@@ -1675,7 +1679,7 @@ struct VectorSplatOpLowering : public ConvertOpToLLVMPattern<vector::SplatOp> {
     auto v = rewriter.create<LLVM::InsertElementOp>(
         splatOp.getLoc(), vectorType, undef, adaptor.getInput(), zero);
 
-    int64_t width = cast<VectorType>(splatOp.getType()).getDimSize(0);
+    int64_t width = cast<FixedVectorType>(splatOp.getType()).getDimSize(0);
     SmallVector<int32_t> zeroValues(width, 0);
 
     // Shuffle the value across the desired number of elements.
@@ -1694,7 +1698,7 @@ struct VectorSplatNdOpLowering : public ConvertOpToLLVMPattern<SplatOp> {
   LogicalResult
   matchAndRewrite(SplatOp splatOp, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    VectorType resultType = splatOp.getType();
+    FixedVectorType resultType = splatOp.getType();
     if (resultType.getRank() <= 1)
       return failure();
 

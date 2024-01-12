@@ -95,9 +95,9 @@ struct ShapeCastOpFolder : public OpRewritePattern<vector::ShapeCastOp> {
                                 PatternRewriter &rewriter) const override {
     // Check if 'shapeCastOp' has vector source/result type.
     auto sourceVectorType =
-        dyn_cast_or_null<VectorType>(shapeCastOp.getSource().getType());
+        dyn_cast_or_null<FixedVectorType>(shapeCastOp.getSource().getType());
     auto resultVectorType =
-        dyn_cast_or_null<VectorType>(shapeCastOp.getResult().getType());
+        dyn_cast_or_null<FixedVectorType>(shapeCastOp.getResult().getType());
     if (!sourceVectorType || !resultVectorType)
       return failure();
 
@@ -107,7 +107,7 @@ struct ShapeCastOpFolder : public OpRewritePattern<vector::ShapeCastOp> {
     if (!sourceShapeCastOp)
       return failure();
     auto operandSourceVectorType =
-        cast<VectorType>(sourceShapeCastOp.getSource().getType());
+        cast<FixedVectorType>(sourceShapeCastOp.getSource().getType());
     auto operandResultVectorType = sourceShapeCastOp.getType();
 
     // Check if shape cast operations invert each other.
@@ -343,7 +343,7 @@ struct CombineContractBroadcast
       if (!broadcast)
         continue;
       // contractionOp can only take vector as operands.
-      auto srcType = dyn_cast<VectorType>(broadcast.getSourceType());
+      auto srcType = dyn_cast<FixedVectorType>(broadcast.getSourceType());
       if (!srcType ||
           srcType.getRank() == broadcast.getResultVectorType().getRank())
         continue;
@@ -456,7 +456,7 @@ struct ReorderCastOpsOnBroadcast
       return failure();
 
     Type castResTy = getElementTypeOrSelf(op->getResult(0));
-    if (auto vecTy = dyn_cast<VectorType>(bcastOp.getSourceType()))
+    if (auto vecTy = dyn_cast<FixedVectorType>(bcastOp.getSourceType()))
       castResTy = vecTy.clone(castResTy);
     auto *castOp =
         rewriter.create(op->getLoc(), op->getName().getIdentifier(),
@@ -495,12 +495,12 @@ struct ReorderElementwiseOpsOnTranspose final
     transposeMaps.reserve(op->getNumOperands());
     // Record the initial type before transposition. We'll use its shape later.
     // Any type will do here as we will check all transpose maps are the same.
-    VectorType srcType;
+    FixedVectorType srcType;
     for (Value operand : op->getOperands()) {
       auto transposeOp = operand.getDefiningOp<vector::TransposeOp>();
       if (transposeOp) {
         transposeMaps.push_back(transposeOp.getPermutation());
-        srcType = transposeOp.getSourceVectorType();
+        srcType = cast<FixedVectorType>(transposeOp.getSourceVectorType());
       } else if (!matchPattern(operand, m_Constant())) {
         return failure();
       }
@@ -529,15 +529,15 @@ struct ReorderElementwiseOpsOnTranspose final
         srcValues.push_back(transposeOp.getVector());
       } else {
         // This is a constant. Create a reverse transpose op for it.
-        auto vectorType =
-            srcType.clone(cast<VectorType>(operand.getType()).getElementType());
+        auto vectorType = srcType.clone(
+            cast<FixedVectorType>(operand.getType()).getElementType());
         srcValues.push_back(rewriter.create<vector::TransposeOp>(
             operand.getLoc(), vectorType, operand, invOrder));
       }
     }
 
     auto vectorType = srcType.clone(
-        cast<VectorType>(op->getResultTypes()[0]).getElementType());
+        cast<FixedVectorType>(op->getResultTypes()[0]).getElementType());
     Operation *elementwiseOp =
         rewriter.create(op->getLoc(), op->getName().getIdentifier(), srcValues,
                         vectorType, op->getAttrs());
@@ -578,8 +578,8 @@ struct BubbleDownVectorBitCastForExtract
     if (!castOp)
       return failure();
 
-    VectorType castSrcType = castOp.getSourceVectorType();
-    VectorType castDstType = castOp.getResultVectorType();
+    FixedVectorType castSrcType = castOp.getSourceVectorType();
+    FixedVectorType castDstType = castOp.getResultVectorType();
     assert(castSrcType.getRank() == castDstType.getRank());
 
     // Fail to match if we only have one element in the cast op source.
@@ -608,7 +608,8 @@ struct BubbleDownVectorBitCastForExtract
     Location loc = extractOp.getLoc();
     Value packedValue = rewriter.create<vector::ExtractOp>(
         loc, castOp.getSource(), index / expandRatio);
-    Type packedVecType = VectorType::get(/*shape=*/{1}, packedValue.getType());
+    Type packedVecType =
+        FixedVectorType::get(/*shape=*/{1}, packedValue.getType());
     Value zero = rewriter.create<arith::ConstantOp>(
         loc, packedVecType, rewriter.getZeroAttr(packedVecType));
     packedValue = rewriter.create<vector::InsertOp>(loc, packedValue, zero,
@@ -616,8 +617,8 @@ struct BubbleDownVectorBitCastForExtract
 
     // Cast it to a vector with the desired scalar's type.
     // E.g. f32 -> vector<2xf16>
-    VectorType packedType =
-        VectorType::get({expandRatio}, castDstType.getElementType());
+    FixedVectorType packedType =
+        FixedVectorType::get({expandRatio}, castDstType.getElementType());
     Value castedValue =
         rewriter.create<vector::BitCastOp>(loc, packedType, packedValue);
 
@@ -650,8 +651,8 @@ struct BubbleDownBitCastForStridedSliceExtract
     if (!castOp)
       return failure();
 
-    VectorType castSrcType = castOp.getSourceVectorType();
-    VectorType castDstType = castOp.getResultVectorType();
+    FixedVectorType castSrcType = castOp.getSourceVectorType();
+    FixedVectorType castDstType = castOp.getResultVectorType();
     assert(castSrcType.getRank() == castDstType.getRank());
 
     int64_t castSrcLastDim = castSrcType.getShape().back();
@@ -692,11 +693,11 @@ struct BubbleDownBitCastForStridedSliceExtract
       newSizes = rewriter.getI64ArrayAttr(sizes);
     }
 
-    SmallVector<int64_t> dims =
-        llvm::to_vector<4>(cast<VectorType>(extractOp.getType()).getShape());
+    SmallVector<int64_t> dims = llvm::to_vector<4>(
+        cast<FixedVectorType>(extractOp.getType()).getShape());
     dims.back() = dims.back() / expandRatio;
-    VectorType newExtractType =
-        VectorType::get(dims, castSrcType.getElementType());
+    FixedVectorType newExtractType =
+        FixedVectorType::get(dims, castSrcType.getElementType());
 
     auto newExtractOp = rewriter.create<vector::ExtractStridedSliceOp>(
         extractOp.getLoc(), newExtractType, castOp.getSource(), newOffsets,
@@ -726,8 +727,8 @@ struct BubbleUpBitCastForStridedSliceInsert
 
   LogicalResult matchAndRewrite(vector::BitCastOp bitcastOp,
                                 PatternRewriter &rewriter) const override {
-    VectorType castSrcType = bitcastOp.getSourceVectorType();
-    VectorType castDstType = bitcastOp.getResultVectorType();
+    FixedVectorType castSrcType = bitcastOp.getSourceVectorType();
+    FixedVectorType castDstType = bitcastOp.getResultVectorType();
     assert(castSrcType.getRank() == castDstType.getRank());
     // Skip 0-D vector which will not from InsertStridedSliceOp.
     if (castSrcType.getRank() == 0)
@@ -777,8 +778,8 @@ struct BubbleUpBitCastForStridedSliceInsert
     SmallVector<int64_t> srcDims =
         llvm::to_vector<4>(insertOp.getSourceVectorType().getShape());
     srcDims.back() = srcDims.back() / shrinkRatio;
-    VectorType newCastSrcType =
-        VectorType::get(srcDims, castDstType.getElementType());
+    FixedVectorType newCastSrcType =
+        FixedVectorType::get(srcDims, castDstType.getElementType());
 
     auto newCastSrcOp = rewriter.create<vector::BitCastOp>(
         bitcastOp.getLoc(), newCastSrcType, insertOp.getSource());
@@ -786,8 +787,8 @@ struct BubbleUpBitCastForStridedSliceInsert
     SmallVector<int64_t> dstDims =
         llvm::to_vector<4>(insertOp.getDestVectorType().getShape());
     dstDims.back() = dstDims.back() / shrinkRatio;
-    VectorType newCastDstType =
-        VectorType::get(dstDims, castDstType.getElementType());
+    FixedVectorType newCastDstType =
+        FixedVectorType::get(dstDims, castDstType.getElementType());
 
     auto newCastDstOp = rewriter.create<vector::BitCastOp>(
         bitcastOp.getLoc(), newCastDstType, insertOp.getDest());
@@ -833,8 +834,8 @@ public:
     if (controlFn && !controlFn(bitcastOp))
       return failure();
 
-    VectorType castSrcType = bitcastOp.getSourceVectorType();
-    VectorType castDstType = bitcastOp.getResultVectorType();
+    FixedVectorType castSrcType = bitcastOp.getSourceVectorType();
+    FixedVectorType castDstType = bitcastOp.getResultVectorType();
     assert(castSrcType.getRank() == castDstType.getRank());
 
     // Only support rank 1 case for now.
@@ -863,9 +864,9 @@ public:
 
     SmallVector<int64_t> sliceShape{castDstLastDim};
     SmallVector<int64_t> strides{1};
-    VectorType newCastDstType =
-        VectorType::get(SmallVector<int64_t>{castDstLastDim / shrinkRatio},
-                        castDstType.getElementType());
+    FixedVectorType newCastDstType =
+        FixedVectorType::get(SmallVector<int64_t>{castDstLastDim / shrinkRatio},
+                             castDstType.getElementType());
 
     for (int i = 0, e = shrinkRatio; i < e; ++i) {
       Value extracted = rewriter.create<ExtractStridedSliceOp>(
@@ -985,10 +986,12 @@ static Value buildVectorComparison(PatternRewriter &rewriter, Operation *op,
   DenseIntElementsAttr indicesAttr;
   if (dim == 0 && force32BitVectorIndices) {
     indicesAttr = DenseIntElementsAttr::get(
-        VectorType::get(ArrayRef<int64_t>{}, idxType), ArrayRef<int32_t>{0});
+        FixedVectorType::get(ArrayRef<int64_t>{}, idxType),
+        ArrayRef<int32_t>{0});
   } else if (dim == 0) {
     indicesAttr = DenseIntElementsAttr::get(
-        VectorType::get(ArrayRef<int64_t>{}, idxType), ArrayRef<int64_t>{0});
+        FixedVectorType::get(ArrayRef<int64_t>{}, idxType),
+        ArrayRef<int64_t>{0});
   } else if (force32BitVectorIndices) {
     indicesAttr = rewriter.getI32VectorAttr(
         llvm::to_vector<4>(llvm::seq<int32_t>(0, dim)));
@@ -1028,7 +1031,7 @@ public:
       return failure();
 
     Location loc = xferOp->getLoc();
-    VectorType vtp = xferOp.getVectorType();
+    VectorBaseType vtp = xferOp.getVectorType();
 
     // Create the in-bounds mask with all elements between [0 .. dim - offset)
     // set and [dim - offset .. vector_length) unset.
@@ -1042,8 +1045,8 @@ public:
     Value b = rewriter.create<arith::SubIOp>(loc, dim.getType(), dim, off);
     Value mask = rewriter.create<vector::CreateMaskOp>(
         loc,
-        VectorType::get(vtp.getShape(), rewriter.getI1Type(),
-                        vtp.getScalableDims()),
+        VectorBaseType::get(vtp.getShape(), rewriter.getI1Type(),
+                            vtp.getScalableBases()),
         b);
     if (xferOp.getMask()) {
       // Intersect the in-bounds with the mask specified as an op parameter.
@@ -1075,7 +1078,7 @@ public:
   LogicalResult matchAndRewrite(vector::CreateMaskOp op,
                                 PatternRewriter &rewriter) const override {
     auto dstType = op.getType();
-    if (cast<VectorType>(dstType).isScalable())
+    if (cast<VectorBaseType>(dstType).isScalable())
       return failure();
     int64_t rank = dstType.getRank();
     if (rank > 1)
@@ -1118,13 +1121,13 @@ struct FoldI1Select : public OpRewritePattern<arith::SelectOp> {
 
   LogicalResult matchAndRewrite(arith::SelectOp selectOp,
                                 PatternRewriter &rewriter) const override {
-    auto vecType = dyn_cast<VectorType>(selectOp.getType());
+    auto vecType = dyn_cast<FixedVectorType>(selectOp.getType());
     if (!vecType || !vecType.getElementType().isInteger(1))
       return failure();
 
     // Only scalar conditions can be folded.
     Value cond = selectOp.getCondition();
-    if (isa<VectorType>(cond.getType()))
+    if (isa<FixedVectorType>(cond.getType()))
       return failure();
 
     // TODO: Support n-D and scalable vectors.
@@ -1146,7 +1149,7 @@ struct FoldI1Select : public OpRewritePattern<arith::SelectOp> {
 
     // Replace select with its condition broadcasted to single element vector.
     auto elemType = rewriter.getIntegerType(vecType.getNumElements());
-    auto bcastType = VectorType::get(/*shape=*/{1}, elemType);
+    auto bcastType = FixedVectorType::get(/*shape=*/{1}, elemType);
     rewriter.replaceOpWithNewOp<vector::BroadcastOp>(selectOp, bcastType, cond);
     return success();
   }
@@ -1204,8 +1207,8 @@ class DropInnerMostUnitDims : public OpRewritePattern<vector::TransferReadOp> {
       return failure();
 
     auto resultTargetVecType =
-        VectorType::get(targetType.getShape().drop_back(dimsToDrop),
-                        targetType.getElementType());
+        FixedVectorType::get(targetType.getShape().drop_back(dimsToDrop),
+                             targetType.getElementType());
 
     MemRefType resultMemrefType;
     MemRefLayoutAttrInterface layout = srcType.getLayout();
@@ -1313,17 +1316,17 @@ struct CanonicalizeContractMatmulToMMT final
       if (auto sext = mat.getDefiningOp<arith::ExtSIOp>()) {
         Value trans =
             rewriter.create<vector::TransposeOp>(loc, sext.getIn(), perm);
-        VectorType newType =
-            cast<VectorType>(trans.getType())
-                .clone(cast<VectorType>(mat.getType()).getElementType());
+        FixedVectorType newType =
+            cast<FixedVectorType>(trans.getType())
+                .clone(cast<FixedVectorType>(mat.getType()).getElementType());
         return rewriter.create<arith::ExtSIOp>(loc, newType, trans);
       }
       if (auto zext = mat.getDefiningOp<arith::ExtUIOp>()) {
         Value trans =
             rewriter.create<vector::TransposeOp>(loc, zext.getIn(), perm);
-        VectorType newType =
-            VectorType::get(cast<VectorType>(trans.getType()).getShape(),
-                            cast<VectorType>(mat.getType()).getElementType());
+        FixedVectorType newType = FixedVectorType::get(
+            cast<FixedVectorType>(trans.getType()).getShape(),
+            cast<FixedVectorType>(mat.getType()).getElementType());
         return rewriter.create<arith::ExtUIOp>(loc, newType, trans);
       }
       return rewriter.create<vector::TransposeOp>(loc, mat, perm);
@@ -1485,23 +1488,25 @@ struct DropUnitDimFromElementwiseOps final
     if (op->getNumResults() != 1 || op->getNumRegions() != 0)
       return failure();
 
-    auto resultVectorType = dyn_cast<VectorType>(op->getResult(0).getType());
+    auto resultVectorType =
+        dyn_cast<FixedVectorType>(op->getResult(0).getType());
     if (!resultVectorType)
       return failure();
 
     // Check the pre-conditions. For `Elementwise` Ops all operands are
     // guaranteed to have identical shapes and it suffices to only check the
     // first one.
-    auto sourceVectorType = cast<VectorType>(op->getOperands()[0].getType());
+    auto sourceVectorType =
+        cast<FixedVectorType>(op->getOperands()[0].getType());
     if (sourceVectorType.getRank() < 2)
       return failure();
 
     bool hasTrailingDimUnitFixed =
         ((sourceVectorType.getShape().back() == 1) &&
-         (!sourceVectorType.getScalableDims().back()));
+         (!sourceVectorType.getScalableBases().back()));
     bool hasLeadingDimUnitFixed =
         ((sourceVectorType.getShape().front() == 1) &&
-         (!sourceVectorType.getScalableDims().front()));
+         (!sourceVectorType.getScalableBases().front()));
     if (!hasLeadingDimUnitFixed && !hasTrailingDimUnitFixed)
       return failure();
 
@@ -1512,14 +1517,15 @@ struct DropUnitDimFromElementwiseOps final
     SmallVector<Value> newOperands;
     auto loc = op->getLoc();
     for (auto operand : op->getOperands()) {
-      auto opVectorType = cast<VectorType>(operand.getType());
-      VectorType newVType = VectorType::Builder(opVectorType).dropDim(dim);
+      auto opVectorType = cast<FixedVectorType>(operand.getType());
+      VectorBaseType newVType =
+          VectorBaseType::Builder(opVectorType).dropDim(dim);
       auto opSC = rewriter.create<vector::ShapeCastOp>(loc, newVType, operand);
       newOperands.push_back(opSC);
     }
 
-    VectorType newResultVectorType =
-        VectorType::Builder(resultVectorType).dropDim(dim);
+    VectorBaseType newResultVectorType =
+        VectorBaseType::Builder(resultVectorType).dropDim(dim);
     // Create an updated elementwise Op without leading/trailing unit dim
     Operation *elementwiseOp =
         rewriter.create(loc, op->getName().getIdentifier(), newOperands,
@@ -1599,7 +1605,7 @@ struct BreakDownVectorReduction final : OpRewritePattern<vector::ReductionOp> {
 
   LogicalResult matchAndRewrite(vector::ReductionOp op,
                                 PatternRewriter &rewriter) const override {
-    VectorType type = op.getSourceVectorType();
+    FixedVectorType type = cast<FixedVectorType>(op.getSourceVectorType());
     if (type.isScalable() || op.isMasked())
       return failure();
     assert(type.getRank() == 1 && "Expected a 1-d vector");

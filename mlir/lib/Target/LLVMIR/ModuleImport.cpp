@@ -684,7 +684,7 @@ static Type getVectorTypeForAttr(Type type, ArrayRef<int64_t> arrayShape = {}) {
 
   SmallVector<int64_t> shape(arrayShape.begin(), arrayShape.end());
   shape.push_back(numElements.getKnownMinValue());
-  return VectorType::get(shape, elementType);
+  return FixedVectorType::get(shape, elementType);
 }
 
 Type ModuleImport::getBuiltinTypeForAttr(Type type) {

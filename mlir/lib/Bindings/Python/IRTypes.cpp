@@ -452,13 +452,13 @@ private:
   }
 };
 
-/// Vector Type subclass - VectorType.
+/// Vector Type subclass - FixedVectorType.
 class PyVectorType : public PyConcreteType<PyVectorType, PyShapedType> {
 public:
   static constexpr IsAFunctionTy isaFunction = mlirTypeIsAVector;
   static constexpr GetTypeIDFunctionTy getTypeIdFunction =
       mlirVectorTypeGetTypeID;
-  static constexpr const char *pyClassName = "VectorType";
+  static constexpr const char *pyClassName = "FixedVectorType";
   using PyConcreteType::PyConcreteType;
 
   static void bindDerived(ClassTy &c) {

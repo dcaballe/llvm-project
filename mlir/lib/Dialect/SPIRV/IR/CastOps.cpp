@@ -36,7 +36,7 @@ static LogicalResult verifyCastOp(Operation *op,
   using TypePair = std::pair<Type, Type>;
   auto [operandElemTy, resultElemTy] =
       TypeSwitch<Type, TypePair>(operandType)
-          .Case<VectorType, spirv::CooperativeMatrixType,
+          .Case<FixedVectorType, spirv::CooperativeMatrixType,
                 spirv::JointMatrixINTELType>(
               [resultType](auto concreteOperandTy) -> TypePair {
                 if (auto concreteResultTy =
@@ -279,10 +279,10 @@ LogicalResult INTELConvertBF16ToFOp::verify() {
   auto resultType = getResult().getType();
   // ODS checks that vector result type and vector operand type have the same
   // shape.
-  if (auto vectorType = llvm::dyn_cast<VectorType>(operandType)) {
+  if (auto vectorType = llvm::dyn_cast<FixedVectorType>(operandType)) {
     unsigned operandNumElements = vectorType.getNumElements();
     unsigned resultNumElements =
-        llvm::cast<VectorType>(resultType).getNumElements();
+        llvm::cast<FixedVectorType>(resultType).getNumElements();
     if (operandNumElements != resultNumElements) {
       return emitOpError(
           "operand and result must have same number of elements");
@@ -300,10 +300,10 @@ LogicalResult INTELConvertFToBF16Op::verify() {
   auto resultType = getResult().getType();
   // ODS checks that vector result type and vector operand type have the same
   // shape.
-  if (auto vectorType = llvm::dyn_cast<VectorType>(operandType)) {
+  if (auto vectorType = llvm::dyn_cast<FixedVectorType>(operandType)) {
     unsigned operandNumElements = vectorType.getNumElements();
     unsigned resultNumElements =
-        llvm::cast<VectorType>(resultType).getNumElements();
+        llvm::cast<FixedVectorType>(resultType).getNumElements();
     if (operandNumElements != resultNumElements) {
       return emitOpError(
           "operand and result must have same number of elements");

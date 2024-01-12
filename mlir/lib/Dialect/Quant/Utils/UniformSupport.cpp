@@ -19,7 +19,7 @@ static bool isQuantizablePrimitiveType(Type inputType) {
 
 ExpressedToQuantizedConverter
 ExpressedToQuantizedConverter::forInputType(Type inputType) {
-  if (isa<TensorType, VectorType>(inputType)) {
+  if (isa<TensorType, FixedVectorType>(inputType)) {
     Type elementType = cast<ShapedType>(inputType).getElementType();
     if (!isQuantizablePrimitiveType(elementType))
       return ExpressedToQuantizedConverter{inputType, nullptr};
@@ -38,8 +38,8 @@ Type ExpressedToQuantizedConverter::convert(QuantizedType elementalType) const {
     return RankedTensorType::get(tensorType.getShape(), elementalType);
   if (dyn_cast<UnrankedTensorType>(inputType))
     return UnrankedTensorType::get(elementalType);
-  if (auto vectorType = dyn_cast<VectorType>(inputType))
-    return VectorType::get(vectorType.getShape(), elementalType);
+  if (auto vectorType = dyn_cast<FixedVectorType>(inputType))
+    return FixedVectorType::get(vectorType.getShape(), elementalType);
 
   // If the expressed types match, just use the new elemental type.
   if (elementalType.getExpressedType() == expressedType)

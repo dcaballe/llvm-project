@@ -297,27 +297,37 @@ private:
 };
 
 //===----------------------------------------------------------------------===//
-// VectorType
+// VectorBaseType
 //===----------------------------------------------------------------------===//
 
 /// This is a builder type that keeps local references to arguments. Arguments
 /// that are passed into the builder must outlive the builder.
-class VectorType::Builder {
+class VectorBaseType::Builder {
 public:
-  /// Build from another VectorType.
-  explicit Builder(VectorType other)
+  /// Build from another FixedVectorType.
+  explicit Builder(VectorBaseType other)
       : elementType(other.getElementType()), shape(other.getShape()),
-        scalableDims(other.getScalableDims()) {}
+        scalableBases(other.getScalableBases()) {}
 
   /// Build from scratch.
   Builder(ArrayRef<int64_t> shape, Type elementType,
-          ArrayRef<bool> scalableDims = {})
-      : elementType(elementType), shape(shape), scalableDims(scalableDims) {}
+          ArrayRef<int64_t> scalableBases)
+      : elementType(elementType), shape(shape), scalableBases(scalableBases) {}
+
+  Builder(ArrayRef<int64_t> shape, Type elementType)
+      : elementType(elementType), shape(shape), scalableBases(shape.size(), 0) {
+  }
 
   Builder &setShape(ArrayRef<int64_t> newShape,
-                    ArrayRef<bool> newIsScalableDim = {}) {
+                    ArrayRef<int64_t> newScalableBases) {
     shape = newShape;
-    scalableDims = newIsScalableDim;
+    scalableBases = llvm::to_vector(newScalableBases);
+    return *this;
+  }
+
+  Builder &setShape(ArrayRef<int64_t> newShape) {
+    shape = newShape;
+    scalableBases = SmallVector<int64_t>(newShape.size(), 0);
     return *this;
   }
 
@@ -330,8 +340,8 @@ public:
   Builder &dropDim(unsigned pos) {
     assert(pos < shape.size() && "overflow");
     shape.erase(pos);
-    if (!scalableDims.empty())
-      scalableDims.erase(pos);
+    if (!scalableBases.empty())
+      scalableBases.erase(&scalableBases[pos]);
     return *this;
   }
 
@@ -342,14 +352,14 @@ public:
     return *this;
   }
 
-  operator VectorType() {
-    return VectorType::get(shape, elementType, scalableDims);
+  operator VectorBaseType() {
+    return VectorBaseType::get(shape, elementType, scalableBases);
   }
 
 private:
   Type elementType;
   CopyOnWriteArrayRef<int64_t> shape;
-  CopyOnWriteArrayRef<bool> scalableDims;
+  SmallVector<int64_t> scalableBases;
 };
 
 /// Given an `originalShape` and a `reducedShape` assumed to be a subset of
@@ -393,8 +403,8 @@ inline bool BaseMemRefType::classof(Type type) {
 
 inline bool BaseMemRefType::isValidElementType(Type type) {
   return type.isIntOrIndexOrFloat() ||
-         llvm::isa<ComplexType, MemRefType, VectorType, UnrankedMemRefType>(
-             type) ||
+         llvm::isa<ComplexType, MemRefType, FixedVectorType,
+                   UnrankedMemRefType>(type) ||
          llvm::isa<MemRefElementTypeInterface>(type);
 }
 

@@ -155,7 +155,7 @@ public:
     auto srcRank = multiReductionOp.getSourceVectorType().getRank();
     auto srcShape = multiReductionOp.getSourceVectorType().getShape();
     auto srcScalableDims =
-        multiReductionOp.getSourceVectorType().getScalableDims();
+        multiReductionOp.getSourceVectorType().getScalableBases();
     auto loc = multiReductionOp.getLoc();
 
     // If rank less than 2, nothing to do.
@@ -245,14 +245,14 @@ public:
     Value newVectorMask;
     if (maskableOp.isMasked()) {
       Value vectorMask = maskableOp.getMaskingOp().getMask();
-      auto maskCastedType = VectorType::get(
+      auto maskCastedType = FixedVectorType::get(
           vectorShape,
-          llvm::cast<VectorType>(vectorMask.getType()).getElementType());
+          llvm::cast<FixedVectorType>(vectorMask.getType()).getElementType());
       newVectorMask =
           rewriter.create<vector::ShapeCastOp>(loc, maskCastedType, vectorMask);
     }
 
-    auto castedType = VectorType::get(
+    auto castedType = VectorBaseType::get(
         vectorShape, multiReductionOp.getSourceVectorType().getElementType(),
         scalableDims);
     Value cast = rewriter.create<vector::ShapeCastOp>(
@@ -260,7 +260,7 @@ public:
 
     Value acc = multiReductionOp.getAcc();
     if (flattenedParallelDim) {
-      auto accType = VectorType::get(
+      auto accType = FixedVectorType::get(
           {flattenedParallelDim},
           multiReductionOp.getSourceVectorType().getElementType(),
           /*scalableDims=*/{isParallelDimScalable});
@@ -281,7 +281,7 @@ public:
     }
 
     // 8. Creates shape cast for the output n-D -> 2-D.
-    VectorType outputCastedType = VectorType::get(
+    auto outputCastedType = VectorBaseType::get(
         parallelShapes, multiReductionOp.getSourceVectorType().getElementType(),
         parallelScalableDims);
     rewriter.replaceOpWithNewOp<vector::ShapeCastOp>(
@@ -427,11 +427,11 @@ struct OneDimMultiReductionToTwoDim
     auto loc = multiReductionOp.getLoc();
     auto srcVectorType = multiReductionOp.getSourceVectorType();
     auto srcShape = srcVectorType.getShape();
-    auto castedType = VectorType::get(ArrayRef<int64_t>{1, srcShape.back()},
-                                      srcVectorType.getElementType());
-    auto accType =
-        VectorType::get(ArrayRef<int64_t>{1}, srcVectorType.getElementType());
-    assert(!llvm::isa<VectorType>(multiReductionOp.getDestType()) &&
+    auto castedType = FixedVectorType::get(
+        ArrayRef<int64_t>{1, srcShape.back()}, srcVectorType.getElementType());
+    auto accType = FixedVectorType::get(ArrayRef<int64_t>{1},
+                                        srcVectorType.getElementType());
+    assert(!llvm::isa<FixedVectorType>(multiReductionOp.getDestType()) &&
            "multi_reduction with a single dimension expects a scalar result");
 
     // If the unique dim is reduced and we insert a parallel in front, we need a
@@ -447,8 +447,8 @@ struct OneDimMultiReductionToTwoDim
     if (maskableOp.isMasked()) {
       auto maskType = llvm::cast<ShapedType>(mask.getType());
       auto castMaskType =
-          VectorType::get(ArrayRef<int64_t>{1, maskType.getShape().back()},
-                          maskType.getElementType());
+          FixedVectorType::get(ArrayRef<int64_t>{1, maskType.getShape().back()},
+                               maskType.getElementType());
       castMask = rewriter.create<vector::BroadcastOp>(loc, castMaskType, mask);
     }
 

@@ -293,7 +293,7 @@ void arith::AddIOp::getCanonicalizationPatterns(RewritePatternSet &patterns,
 
 std::optional<SmallVector<int64_t, 4>>
 arith::AddUIExtendedOp::getShapeForUnroll() {
-  if (auto vt = llvm::dyn_cast<VectorType>(getType(0)))
+  if (auto vt = llvm::dyn_cast<FixedVectorType>(getType(0)))
     return llvm::to_vector<4>(vt.getShape());
   return std::nullopt;
 }
@@ -408,7 +408,7 @@ void arith::MulIOp::getCanonicalizationPatterns(RewritePatternSet &patterns,
 
 std::optional<SmallVector<int64_t, 4>>
 arith::MulSIExtendedOp::getShapeForUnroll() {
-  if (auto vt = llvm::dyn_cast<VectorType>(getType(0)))
+  if (auto vt = llvm::dyn_cast<FixedVectorType>(getType(0)))
     return llvm::to_vector<4>(vt.getShape());
   return std::nullopt;
 }
@@ -456,7 +456,7 @@ void arith::MulSIExtendedOp::getCanonicalizationPatterns(
 
 std::optional<SmallVector<int64_t, 4>>
 arith::MulUIExtendedOp::getShapeForUnroll() {
-  if (auto vt = llvm::dyn_cast<VectorType>(getType(0)))
+  if (auto vt = llvm::dyn_cast<FixedVectorType>(getType(0)))
     return llvm::to_vector<4>(vt.getShape());
   return std::nullopt;
 }
@@ -1180,7 +1180,7 @@ static Type getUnderlyingType(Type type, type_list<ShapedTypes...>,
 /// Get allowed underlying types for vectors and tensors.
 template <typename... ElementTypes>
 static Type getTypeIfLike(Type type) {
-  return getUnderlyingType(type, type_list<VectorType, TensorType>(),
+  return getUnderlyingType(type, type_list<FixedVectorType, TensorType>(),
                            type_list<ElementTypes...>());
 }
 
@@ -1188,7 +1188,7 @@ static Type getTypeIfLike(Type type) {
 template <typename... ElementTypes>
 static Type getTypeIfLikeOrMemRef(Type type) {
   return getUnderlyingType(type,
-                           type_list<VectorType, TensorType, MemRefType>(),
+                           type_list<FixedVectorType, TensorType, MemRefType>(),
                            type_list<ElementTypes...>());
 }
 
@@ -1710,7 +1710,7 @@ static std::optional<int64_t> getIntegerWidth(Type t) {
   if (auto intType = llvm::dyn_cast<IntegerType>(t)) {
     return intType.getWidth();
   }
-  if (auto vectorIntType = llvm::dyn_cast<VectorType>(t)) {
+  if (auto vectorIntType = llvm::dyn_cast<FixedVectorType>(t)) {
     return llvm::cast<IntegerType>(vectorIntType.getElementType()).getWidth();
   }
   return std::nullopt;
@@ -2335,7 +2335,7 @@ LogicalResult arith::SelectOp::verify() {
   // If the result type is a vector or tensor, the type can be a mask with the
   // same elements.
   Type resultType = getType();
-  if (!llvm::isa<TensorType, VectorType>(resultType))
+  if (!llvm::isa<TensorType, FixedVectorType>(resultType))
     return emitOpError() << "expected condition to be a signless i1, but got "
                          << conditionType;
   Type shapedConditionType = getI1SameShape(resultType);

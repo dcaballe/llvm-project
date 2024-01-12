@@ -115,10 +115,11 @@ Type QuantizedType::castFromStorageType(Type candidateType) {
     // i.e. tensor<i8> -> tensor<!quant<"uniform[i8:f32]{1.0}">>
     return UnrankedTensorType::get(getStorageType());
   }
-  if (llvm::isa<VectorType>(candidateType)) {
+  if (llvm::isa<FixedVectorType>(candidateType)) {
     // i.e. tensor<4xi8> -> tensor<4x!quant<"uniform[i8:f32]{1.0}">>
-    return VectorType::get(llvm::cast<VectorType>(candidateType).getShape(),
-                           getStorageType());
+    return FixedVectorType::get(
+        llvm::cast<FixedVectorType>(candidateType).getShape(),
+        getStorageType());
   }
 
   return nullptr;
@@ -143,8 +144,8 @@ Type QuantizedType::castToStorageType(Type quantizedType) {
     if (llvm::isa<UnrankedTensorType>(quantizedType)) {
       return UnrankedTensorType::get(storageType);
     }
-    if (llvm::isa<VectorType>(quantizedType)) {
-      return VectorType::get(sType.getShape(), storageType);
+    if (llvm::isa<FixedVectorType>(quantizedType)) {
+      return FixedVectorType::get(sType.getShape(), storageType);
     }
   }
 
@@ -170,9 +171,9 @@ Type QuantizedType::castFromExpressedType(Type candidateType) {
       // i.e. tensor<xf32> -> tensor<x!quant<"uniform[i8:f32]{1.0}">>
       return UnrankedTensorType::get(*this);
     }
-    if (llvm::isa<VectorType>(candidateType)) {
+    if (llvm::isa<FixedVectorType>(candidateType)) {
       // i.e. tensor<4xf32> -> tensor<4x!quant<"uniform[i8:f32]{1.0}">>
-      return VectorType::get(candidateShapedType.getShape(), *this);
+      return FixedVectorType::get(candidateShapedType.getShape(), *this);
     }
   }
 
@@ -198,8 +199,8 @@ Type QuantizedType::castToExpressedType(Type quantizedType) {
     if (llvm::isa<UnrankedTensorType>(quantizedType)) {
       return UnrankedTensorType::get(expressedType);
     }
-    if (llvm::isa<VectorType>(quantizedType)) {
-      return VectorType::get(sType.getShape(), expressedType);
+    if (llvm::isa<FixedVectorType>(quantizedType)) {
+      return FixedVectorType::get(sType.getShape(), expressedType);
     }
   }
 

@@ -48,7 +48,7 @@ def testConstantOp():
 @constructAndPrintInModule
 def testVectorConstantOp():
     int_type = IntegerType.get_signless(32)
-    vec_type = VectorType.get([2, 2], int_type)
+    vec_type = FixedVectorType.get([2, 2], int_type)
     c1 = arith.ConstantOp(
         vec_type, DenseElementsAttr.get_splat(vec_type, IntegerAttr.get(int_type, 42))
     )

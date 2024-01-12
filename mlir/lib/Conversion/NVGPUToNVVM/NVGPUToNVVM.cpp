@@ -201,7 +201,8 @@ static SmallVector<Value> unpackOperandVector(ImplicitLocOpBuilder &b,
     // For some element types (i32, f32, f64), we need to unpack the inner
     // vector/array type as well because the intrinsic expects individual
     // scalars to be provided.
-    VectorType innerArrayTy = dyn_cast<VectorType>(arrayTy.getElementType());
+    FixedVectorType innerArrayTy =
+        dyn_cast<FixedVectorType>(arrayTy.getElementType());
     if (innerArrayTy && (innerArrayTy.getElementType() == i32Ty ||
                          innerArrayTy.getElementType() == f64Ty ||
                          innerArrayTy.getElementType() == f32Ty)) {
@@ -263,7 +264,7 @@ struct MmaLdMatrixOpToNVVM : public ConvertOpToLLVMPattern<nvgpu::LdMatrixOp> {
     // of shape (NumRegisters, VectorRegister) where VectorRegister is the
     // vector type of the result and always 32 bits long. We bitcast the result
     // of the NVVM::LdMatrix to this vector type.
-    auto vectorResultType = dyn_cast<VectorType>(op->getResultTypes()[0]);
+    auto vectorResultType = dyn_cast<FixedVectorType>(op->getResultTypes()[0]);
     if (!vectorResultType) {
       return failure();
     }
@@ -335,9 +336,9 @@ struct MmaSyncOptoNVVM : public ConvertOpToLLVMPattern<nvgpu::MmaSyncOp> {
     ImplicitLocOpBuilder b(op.getLoc(), rewriter);
     // Get the shapes of the MMAMatrix type being used. The shapes will
     // choose which intrinsic this op will be lowered to.
-    VectorType aType = op.getMatrixA().getType();
-    VectorType bType = op.getMatrixA().getType();
-    VectorType cType = op.getMatrixC().getType();
+    FixedVectorType aType = op.getMatrixA().getType();
+    FixedVectorType bType = op.getMatrixA().getType();
+    FixedVectorType cType = op.getMatrixC().getType();
 
     std::array<int64_t, 3> gemmShape = op.getMmaShapeAsArray();
 
@@ -588,9 +589,9 @@ struct NVGPUMmaSparseSyncLowering
     ImplicitLocOpBuilder b(op.getLoc(), rewriter);
     // Get the shapes of the MMAMatrix type being used. The shapes will
     // choose which intrinsic this op will be lowered to.
-    VectorType aType = op.getMatrixA().getType();
-    VectorType bType = op.getMatrixB().getType();
-    VectorType cType = op.getMatrixC().getType();
+    FixedVectorType aType = op.getMatrixA().getType();
+    FixedVectorType bType = op.getMatrixB().getType();
+    FixedVectorType cType = op.getMatrixC().getType();
 
     FailureOr<NVVM::MMATypes> ptxTypeA = getNvvmMmaType(aType);
     if (failed(ptxTypeA))
@@ -631,7 +632,7 @@ struct NVGPUMmaSparseSyncLowering
     if (sparseMetadata.getType() !=
         LLVM::getFixedVectorType(rewriter.getI16Type(), 2))
       return op->emitOpError() << "Expected metadata type to be LLVM "
-                                  "VectorType of 2 i16 elements";
+                                  "FixedVectorType of 2 i16 elements";
     sparseMetadata =
         b.create<LLVM::BitcastOp>(rewriter.getI32Type(), sparseMetadata);
 

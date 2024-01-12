@@ -25,7 +25,7 @@ class OpBuilder;
 class Operation;
 class ShapedType;
 class Value;
-class VectorType;
+class FixedVectorType;
 class VectorTransferOpInterface;
 
 namespace affine {
@@ -49,7 +49,7 @@ FailureOr<std::pair<int, int>> isTranspose2DSlice(vector::TransposeOp op);
 /// a contiguous slice of `memrefType`, the trailing dims of the latter have
 /// to be contiguous - this is checked by looking at the corresponding strides.
 ///
-/// There might be some restriction on the leading dim of `VectorType`:
+/// There might be some restriction on the leading dim of `FixedVectorType`:
 ///
 /// Case 1. If all the trailing dims of `vectorType` match the trailing dims
 ///         of `memrefType` then the leading dim of `vectorType` can be
@@ -73,7 +73,7 @@ FailureOr<std::pair<int, int>> isTranspose2DSlice(vector::TransposeOp op);
 ///          vector<1x1x2x2xi32> from memref<5x4x3x2xi32>
 ///        Ex. 2.4. non-contiguous slice, 2 != 3 and the leading dims != <1x1>
 ///         vector<2x1x2x2xi32> from memref<5x4x3x2xi32>)
-bool isContiguousSlice(MemRefType memrefType, VectorType vectorType);
+bool isContiguousSlice(MemRefType memrefType, FixedVectorType vectorType);
 
 } // namespace vector
 
@@ -161,7 +161,7 @@ namespace matcher {
 /// TODO: this could all be much simpler if we added a bit that a vector type to
 /// mark that a vector is a strict super-vector but it still does not warrant
 /// adding even 1 extra bit in the IR for now.
-bool operatesOnSuperVectorsOf(Operation &op, VectorType subVectorType);
+bool operatesOnSuperVectorsOf(Operation &op, VectorBaseType subVectorType);
 
 } // namespace matcher
 } // namespace mlir

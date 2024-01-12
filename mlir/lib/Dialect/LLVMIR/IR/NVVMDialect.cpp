@@ -577,7 +577,7 @@ std::pair<mlir::Type, unsigned> NVVM::inferMMAType(NVVM::MMATypes type,
   unsigned numberElements = 0;
   Type elementType;
   OpBuilder builder(context);
-  Type f16x2 = VectorType::get(2, builder.getF16Type());
+  Type f16x2 = FixedVectorType::get(2, builder.getF16Type());
   if (type == NVVM::MMATypes::f16) {
     elementType = f16x2;
     if (frag == NVVM::MMAFrag::a || frag == NVVM::MMAFrag::b)

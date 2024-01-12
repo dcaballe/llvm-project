@@ -60,7 +60,7 @@ struct FlattenGather : OpRewritePattern<vector::GatherOp> {
 
   LogicalResult matchAndRewrite(vector::GatherOp op,
                                 PatternRewriter &rewriter) const override {
-    VectorType resultTy = op.getType();
+    FixedVectorType resultTy = op.getType();
     if (resultTy.getRank() < 2)
       return rewriter.notifyMatchFailure(op, "already flat");
 
@@ -72,8 +72,8 @@ struct FlattenGather : OpRewritePattern<vector::GatherOp> {
     Value result = rewriter.create<arith::ConstantOp>(
         loc, resultTy, rewriter.getZeroAttr(resultTy));
 
-    Type subTy = VectorType::get(resultTy.getShape().drop_front(),
-                                 resultTy.getElementType());
+    Type subTy = FixedVectorType::get(resultTy.getShape().drop_front(),
+                                      resultTy.getElementType());
 
     for (int64_t i = 0, e = resultTy.getShape().front(); i < e; ++i) {
       int64_t thisIdx[1] = {i};
@@ -159,7 +159,7 @@ struct RemoveStrideFromGatherSource : OpRewritePattern<vector::GatherOp> {
     // 2. Generate new gather indices that will model the
     // strided access.
     IntegerAttr stride = rewriter.getIndexAttr(srcTrailingDim);
-    VectorType vType = op.getIndexVec().getType();
+    FixedVectorType vType = op.getIndexVec().getType();
     Value mulCst = rewriter.create<arith::ConstantOp>(
         op.getLoc(), vType, DenseElementsAttr::get(vType, stride));
 
@@ -185,14 +185,14 @@ struct Gather1DToConditionalLoads : OpRewritePattern<vector::GatherOp> {
 
   LogicalResult matchAndRewrite(vector::GatherOp op,
                                 PatternRewriter &rewriter) const override {
-    VectorType resultTy = op.getType();
+    FixedVectorType resultTy = op.getType();
     if (resultTy.getRank() != 1)
       return rewriter.notifyMatchFailure(op, "unsupported rank");
 
     Location loc = op.getLoc();
     Type elemTy = resultTy.getElementType();
     // Vector type with a single element. Used to generate `vector.loads`.
-    VectorType elemVecTy = VectorType::get({1}, elemTy);
+    FixedVectorType elemVecTy = FixedVectorType::get({1}, elemTy);
 
     Value condMask = op.getMask();
     Value base = op.getBase();

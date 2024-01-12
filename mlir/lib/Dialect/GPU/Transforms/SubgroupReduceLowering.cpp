@@ -51,7 +51,7 @@ struct BreakDownSubgroupReduce final : OpRewritePattern<gpu::SubgroupReduceOp> {
 
   LogicalResult matchAndRewrite(gpu::SubgroupReduceOp op,
                                 PatternRewriter &rewriter) const override {
-    auto vecTy = dyn_cast<VectorType>(op.getType());
+    auto vecTy = dyn_cast<FixedVectorType>(op.getType());
     if (!vecTy || vecTy.getNumElements() < 2)
       return rewriter.notifyMatchFailure(op, "not a multi-element reduction");
 
@@ -128,7 +128,7 @@ struct ScalarizeSingleElementReduce final
 
   LogicalResult matchAndRewrite(gpu::SubgroupReduceOp op,
                                 PatternRewriter &rewriter) const override {
-    auto vecTy = dyn_cast<VectorType>(op.getType());
+    auto vecTy = dyn_cast<FixedVectorType>(op.getType());
     if (!vecTy || vecTy.getNumElements() != 1)
       return rewriter.notifyMatchFailure(op, "not a single-element reduction");
 
@@ -238,7 +238,7 @@ struct VectorSubgroupReduceToShuffles final
 
   LogicalResult matchAndRewrite(gpu::SubgroupReduceOp op,
                                 PatternRewriter &rewriter) const override {
-    auto vecTy = dyn_cast<VectorType>(op.getType());
+    auto vecTy = dyn_cast<FixedVectorType>(op.getType());
     if (!vecTy)
       return rewriter.notifyMatchFailure(op, "value type is not a vector");
 
@@ -261,7 +261,7 @@ struct VectorSubgroupReduceToShuffles final
 
     // If the reduced type is smaller than the native shuffle size, extend it,
     // perform the shuffles, and extract at the end.
-    auto extendedVecTy = VectorType::get(
+    auto extendedVecTy = FixedVectorType::get(
         static_cast<int64_t>(elementsPerShuffle), vecTy.getElementType());
     Value extendedInput = op.getValue();
     if (vecBitwidth < shuffleBitwidth) {
@@ -272,7 +272,7 @@ struct VectorSubgroupReduceToShuffles final
     }
 
     auto shuffleIntType = rewriter.getIntegerType(shuffleBitwidth);
-    auto shuffleVecType = VectorType::get(1, shuffleIntType);
+    auto shuffleVecType = FixedVectorType::get(1, shuffleIntType);
 
     auto packFn = [loc, &rewriter, shuffleVecType](Value unpackedVal) -> Value {
       auto asIntVec =

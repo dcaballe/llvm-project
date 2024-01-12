@@ -42,7 +42,9 @@ struct MmaSyncF32ToTF32Pattern : public OpRewritePattern<nvgpu::MmaSyncOp> {
     Location location = op->getLoc();
 
     if (op->hasAttr(op.getTf32EnabledAttrName()) ||
-        !cast<VectorType>(op.getMatrixA().getType()).getElementType().isF32())
+        !cast<FixedVectorType>(op.getMatrixA().getType())
+             .getElementType()
+             .isF32())
       return failure();
 
     if (precision == MmaSyncF32Lowering::Unkown)

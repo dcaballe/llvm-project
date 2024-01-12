@@ -97,7 +97,7 @@ deduceCanonicalResource(ArrayRef<spirv::SPIRVType> types) {
   for (const auto &indexedTypes : llvm::enumerate(types)) {
     spirv::SPIRVType type = indexedTypes.value();
     assert(type.isScalarOrVector());
-    if (auto vectorType = dyn_cast<VectorType>(type)) {
+    if (auto vectorType = dyn_cast<FixedVectorType>(type)) {
       if (vectorType.getNumElements() % 2 != 0)
         return std::nullopt; // Odd-sized vector has special layout
                              // requirements.
@@ -370,7 +370,7 @@ struct ConvertAccessChain : public ConvertAliasResource<spirv::AccessChainOp> {
 
     Location loc = acOp.getLoc();
 
-    if (srcElemType.isIntOrFloat() && isa<VectorType>(dstElemType)) {
+    if (srcElemType.isIntOrFloat() && isa<FixedVectorType>(dstElemType)) {
       // The source indices are for a buffer with scalar element types. Rewrite
       // them into a buffer with vector element types. We need to scale the last
       // index for the vector as a whole, then add one level of index for inside
@@ -398,7 +398,8 @@ struct ConvertAccessChain : public ConvertAliasResource<spirv::AccessChainOp> {
     }
 
     if ((srcElemType.isIntOrFloat() && dstElemType.isIntOrFloat()) ||
-        (isa<VectorType>(srcElemType) && isa<VectorType>(dstElemType))) {
+        (isa<FixedVectorType>(srcElemType) &&
+         isa<FixedVectorType>(dstElemType))) {
       // The source indices are for a buffer with larger bitwidth scalar/vector
       // element types. Rewrite them into a buffer with smaller bitwidth element
       // types. We only need to scale the last index.
@@ -454,7 +455,8 @@ struct ConvertLoad : public ConvertAliasResource<spirv::LoadOp> {
     }
 
     if ((srcElemType.isIntOrFloat() && dstElemType.isIntOrFloat()) ||
-        (isa<VectorType>(srcElemType) && isa<VectorType>(dstElemType))) {
+        (isa<FixedVectorType>(srcElemType) &&
+         isa<FixedVectorType>(dstElemType))) {
       // The source and destination have scalar types of different bitwidths, or
       // vector types of different component counts. For such cases, we load
       // multiple smaller bitwidth values and construct a larger bitwidth one.
@@ -495,13 +497,13 @@ struct ConvertLoad : public ConvertAliasResource<spirv::LoadOp> {
       // type.
 
       Type vectorType = srcElemType;
-      if (!isa<VectorType>(srcElemType))
-        vectorType = VectorType::get({ratio}, dstElemType);
+      if (!isa<FixedVectorType>(srcElemType))
+        vectorType = FixedVectorType::get({ratio}, dstElemType);
 
       // If both the source and destination are vector types, we need to make
       // sure the scalar type is the same for composite construction later.
-      if (auto srcElemVecType = dyn_cast<VectorType>(srcElemType))
-        if (auto dstElemVecType = dyn_cast<VectorType>(dstElemType)) {
+      if (auto srcElemVecType = dyn_cast<FixedVectorType>(srcElemType))
+        if (auto dstElemVecType = dyn_cast<FixedVectorType>(dstElemType)) {
           if (srcElemVecType.getElementType() !=
               dstElemVecType.getElementType()) {
             int64_t count =
@@ -511,7 +513,7 @@ struct ConvertLoad : public ConvertAliasResource<spirv::LoadOp> {
             // SPIR-V.
             Type castType = srcElemVecType.getElementType();
             if (count > 1)
-              castType = VectorType::get({count}, castType);
+              castType = FixedVectorType::get({count}, castType);
 
             for (Value &c : components)
               c = rewriter.create<spirv::BitcastOp>(loc, castType, c);
@@ -520,7 +522,7 @@ struct ConvertLoad : public ConvertAliasResource<spirv::LoadOp> {
       Value vectorValue = rewriter.create<spirv::CompositeConstructOp>(
           loc, vectorType, components);
 
-      if (!isa<VectorType>(srcElemType))
+      if (!isa<FixedVectorType>(srcElemType))
         vectorValue =
             rewriter.create<spirv::BitcastOp>(loc, srcElemType, vectorValue);
       rewriter.replaceOp(loadOp, vectorValue);

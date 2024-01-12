@@ -132,7 +132,7 @@ static bool isAllocationSupported(Operation *allocOp, MemRefType type) {
     return false;
 
   Type elementType = type.getElementType();
-  if (auto vecType = dyn_cast<VectorType>(elementType))
+  if (auto vecType = dyn_cast<FixedVectorType>(elementType))
     elementType = vecType.getElementType();
   return elementType.isIntOrFloat();
 }

@@ -42,7 +42,7 @@ using namespace mlir::vector;
 // Returns vector shape if the type is a vector. Returns an empty shape if it is
 // not a vector.
 static ArrayRef<int64_t> vectorShape(Type type) {
-  auto vectorType = dyn_cast<VectorType>(type);
+  auto vectorType = dyn_cast<FixedVectorType>(type);
   return vectorType ? vectorType.getShape() : ArrayRef<int64_t>();
 }
 
@@ -56,14 +56,14 @@ static ArrayRef<int64_t> vectorShape(Value value) {
 
 // Broadcasts scalar type into vector type (iff shape is non-scalar).
 static Type broadcast(Type type, ArrayRef<int64_t> shape) {
-  assert(!isa<VectorType>(type) && "must be scalar type");
-  return !shape.empty() ? VectorType::get(shape, type) : type;
+  assert(!isa<FixedVectorType>(type) && "must be scalar type");
+  return !shape.empty() ? FixedVectorType::get(shape, type) : type;
 }
 
 // Broadcasts scalar value into vector (iff shape is non-scalar).
 static Value broadcast(ImplicitLocOpBuilder &builder, Value value,
                        ArrayRef<int64_t> shape) {
-  assert(!isa<VectorType>(value.getType()) && "must be scalar value");
+  assert(!isa<FixedVectorType>(value.getType()) && "must be scalar value");
   auto type = broadcast(value.getType(), shape);
   return !shape.empty() ? builder.create<BroadcastOp>(type, value) : value;
 }
@@ -94,7 +94,7 @@ handleMultidimensionalVectors(ImplicitLocOpBuilder &builder,
   assert(!operands.empty() && "operands must be not empty");
   assert(vectorWidth > 0 && "vector width must be larger than 0");
 
-  VectorType inputType = cast<VectorType>(operands[0].getType());
+  FixedVectorType inputType = cast<FixedVectorType>(operands[0].getType());
   ArrayRef<int64_t> inputShape = inputType.getShape();
 
   // If input shape matches target vector width, we can just call the
@@ -120,8 +120,8 @@ handleMultidimensionalVectors(ImplicitLocOpBuilder &builder,
 
     for (unsigned i = 0; i < operands.size(); ++i) {
       auto operand = operands[i];
-      auto eltType = cast<VectorType>(operand.getType()).getElementType();
-      auto expandedType = VectorType::get(expandedShape, eltType);
+      auto eltType = cast<FixedVectorType>(operand.getType()).getElementType();
+      auto expandedType = FixedVectorType::get(expandedShape, eltType);
       expandedOperands[i] =
           builder.create<vector::ShapeCastOp>(expandedType, operand);
     }
@@ -147,8 +147,9 @@ handleMultidimensionalVectors(ImplicitLocOpBuilder &builder,
   }
 
   // Stitch results together into one large vector.
-  Type resultEltType = cast<VectorType>(results[0].getType()).getElementType();
-  Type resultExpandedType = VectorType::get(expandedShape, resultEltType);
+  Type resultEltType =
+      cast<FixedVectorType>(results[0].getType()).getElementType();
+  Type resultExpandedType = FixedVectorType::get(expandedShape, resultEltType);
   Value result = builder.create<arith::ConstantOp>(
       resultExpandedType, builder.getZeroAttr(resultExpandedType));
 
@@ -158,7 +159,7 @@ handleMultidimensionalVectors(ImplicitLocOpBuilder &builder,
 
   // Reshape back to the original vector shape.
   return builder.create<vector::ShapeCastOp>(
-      VectorType::get(inputShape, resultEltType), result);
+      FixedVectorType::get(inputShape, resultEltType), result);
 }
 
 //----------------------------------------------------------------------------//

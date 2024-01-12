@@ -4305,7 +4305,7 @@ LogicalResult AffineYieldOp::verify() {
 //===----------------------------------------------------------------------===//
 
 void AffineVectorLoadOp::build(OpBuilder &builder, OperationState &result,
-                               VectorType resultType, AffineMap map,
+                               FixedVectorType resultType, AffineMap map,
                                ValueRange operands) {
   assert(operands.size() == 1 + map.getNumInputs() && "inconsistent operands");
   result.addOperands(operands);
@@ -4315,7 +4315,7 @@ void AffineVectorLoadOp::build(OpBuilder &builder, OperationState &result,
 }
 
 void AffineVectorLoadOp::build(OpBuilder &builder, OperationState &result,
-                               VectorType resultType, Value memref,
+                               FixedVectorType resultType, Value memref,
                                AffineMap map, ValueRange mapOperands) {
   assert(map.getNumInputs() == mapOperands.size() && "inconsistent index info");
   result.addOperands(memref);
@@ -4325,7 +4325,7 @@ void AffineVectorLoadOp::build(OpBuilder &builder, OperationState &result,
 }
 
 void AffineVectorLoadOp::build(OpBuilder &builder, OperationState &result,
-                               VectorType resultType, Value memref,
+                               FixedVectorType resultType, Value memref,
                                ValueRange indices) {
   auto memrefType = llvm::cast<MemRefType>(memref.getType());
   int64_t rank = memrefType.getRank();
@@ -4347,7 +4347,7 @@ ParseResult AffineVectorLoadOp::parse(OpAsmParser &parser,
   auto indexTy = builder.getIndexType();
 
   MemRefType memrefType;
-  VectorType resultType;
+  FixedVectorType resultType;
   OpAsmParser::UnresolvedOperand memrefInfo;
   AffineMapAttr mapAttr;
   SmallVector<OpAsmParser::UnresolvedOperand, 1> mapOperands;
@@ -4377,7 +4377,7 @@ void AffineVectorLoadOp::print(OpAsmPrinter &p) {
 
 /// Verify common invariants of affine.vector_load and affine.vector_store.
 static LogicalResult verifyVectorMemoryOp(Operation *op, MemRefType memrefType,
-                                          VectorType vectorType) {
+                                          FixedVectorType vectorType) {
   // Check that memref and vector element types match.
   if (memrefType.getElementType() != vectorType.getElementType())
     return op->emitOpError(
@@ -4436,7 +4436,7 @@ ParseResult AffineVectorStoreOp::parse(OpAsmParser &parser,
   auto indexTy = parser.getBuilder().getIndexType();
 
   MemRefType memrefType;
-  VectorType resultType;
+  FixedVectorType resultType;
   OpAsmParser::UnresolvedOperand storeValueInfo;
   OpAsmParser::UnresolvedOperand memrefInfo;
   AffineMapAttr mapAttr;

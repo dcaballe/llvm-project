@@ -35,7 +35,7 @@ static scf::ForOp createLoopOverTileSlices(PatternRewriter &rewriter,
   OpBuilder::InsertionGuard g(rewriter);
   auto step = rewriter.create<arith::ConstantIndexOp>(loc, 1);
   auto minTileSlices = rewriter.create<arith::ConstantIndexOp>(
-      loc, llvm::cast<VectorType>(initTile.getType()).getDimSize(0));
+      loc, llvm::cast<FixedVectorType>(initTile.getType()).getDimSize(0));
   auto vscale =
       rewriter.create<vector::VectorScaleOp>(loc, rewriter.getIndexType());
   auto lowerBound = rewriter.create<arith::ConstantIndexOp>(loc, 0);
@@ -201,7 +201,8 @@ struct VectorLoadToArmSMELowering : public OpRewritePattern<vector::LoadOp> {
       return failure();
 
     rewriter.replaceOpWithNewOp<arm_sme::TileLoadOp>(
-        load, load.getVectorType(), load.getBase(), load.getIndices());
+        load, cast<ScalableVectorType>(load.getVectorType()), load.getBase(),
+        load.getIndices());
 
     return success();
   }
@@ -229,7 +230,7 @@ struct ConstantOpToArmSMELowering : public OpRewritePattern<arith::ConstantOp> {
 
   LogicalResult matchAndRewrite(arith::ConstantOp constantOp,
                                 PatternRewriter &rewriter) const final {
-    auto tileType = dyn_cast<VectorType>(constantOp.getType());
+    auto tileType = dyn_cast<FixedVectorType>(constantOp.getType());
     if (!tileType || !arm_sme::isValidSMETileVectorType(tileType))
       return failure();
 
@@ -252,7 +253,7 @@ struct ConstantOpToArmSMELowering : public OpRewritePattern<arith::ConstantOp> {
     // To fill a tile with a constant, we create a 1-D splat of the constant,
     // then move that into each tile slice (the largest unit we can set at once,
     // outside of operations like the outerproduct).
-    VectorType tileSliceType = VectorType::Builder(tileType).dropDim(0);
+    VectorBaseType tileSliceType = VectorBaseType::Builder(tileType).dropDim(0);
     auto denseAttr1D = DenseElementsAttr::get(
         tileSliceType, denseAttr.getSplatValue<Attribute>());
     auto constantOp1D = rewriter.create<arith::ConstantOp>(loc, denseAttr1D);
@@ -305,13 +306,14 @@ struct BroadcastOpToArmSMELowering
     auto loc = broadcastOp.getLoc();
 
     auto srcType = broadcastOp.getSourceType();
-    auto srcVectorType = dyn_cast<VectorType>(srcType);
+    auto srcVectorType = dyn_cast<FixedVectorType>(srcType);
 
     Value broadcastOp1D;
     if (srcType.isIntOrFloat() ||
         (srcVectorType && (srcVectorType.getRank() == 0))) {
       // Broadcast scalar or 0-d vector to 1-d vector.
-      VectorType tileSliceType = VectorType::Builder(tileType).dropDim(0);
+      VectorBaseType tileSliceType =
+          VectorBaseType::Builder(tileType).dropDim(0);
       broadcastOp1D = rewriter.create<vector::BroadcastOp>(
           loc, tileSliceType, broadcastOp.getSource());
     } else if (srcVectorType && (srcVectorType.getRank() == 1))
@@ -375,7 +377,7 @@ struct SplatOpToArmSMELowering : public OpRewritePattern<vector::SplatOp> {
     (void)srcType;
 
     // First, broadcast the scalar to a 1-d vector.
-    VectorType tileSliceType = VectorType::Builder(tileType).dropDim(0);
+    VectorBaseType tileSliceType = VectorBaseType::Builder(tileType).dropDim(0);
     Value broadcastOp1D = rewriter.create<vector::BroadcastOp>(
         loc, tileSliceType, splatOp.getInput());
 
@@ -425,9 +427,10 @@ struct TransposeOpToArmSMELowering
 
   LogicalResult matchAndRewrite(vector::TransposeOp transposeOp,
                                 PatternRewriter &rewriter) const final {
-    auto tileType = transposeOp.getResultVectorType();
-    if (!tileType || !arm_sme::isValidSMETileVectorType(tileType))
+    auto transposeType = transposeOp.getResultVectorType();
+    if (!transposeType || !arm_sme::isValidSMETileVectorType(transposeType))
       return failure();
+    auto tileType = cast<ScalableVectorType>(transposeType);
 
     // Bail unless this is a true 2-D matrix transpose.
     ArrayRef<int64_t> permutation = transposeOp.getPermutation();
@@ -509,7 +512,7 @@ struct VectorOuterProductToArmSMELowering
 
     // We don't yet support lowering AXPY operations to SME. These could be
     // lowered by masking out all but the first element of the LHS.
-    if (!isa<VectorType>(outerProductOp.getOperandTypeRHS()))
+    if (!isa<FixedVectorType>(outerProductOp.getOperandTypeRHS()))
       return rewriter.notifyMatchFailure(outerProductOp,
                                          "AXPY operations not supported");
 
@@ -557,7 +560,8 @@ struct VectorOuterProductToArmSMELowering
     Value lhsMaskDim = createMaskOp.getOperand(0);
     Value rhsMaskDim = createMaskOp.getOperand(1);
 
-    VectorType operandMaskType = VectorType::Builder(maskType).dropDim(0);
+    VectorBaseType operandMaskType =
+        VectorBaseType::Builder(maskType).dropDim(0);
     Value lhsMask =
         rewriter.create<vector::CreateMaskOp>(loc, operandMaskType, lhsMaskDim);
     Value rhsMask =
@@ -585,7 +589,7 @@ struct VectorExtractToArmSMELowering
 
   LogicalResult matchAndRewrite(vector::ExtractOp extractOp,
                                 PatternRewriter &rewriter) const override {
-    VectorType sourceType = extractOp.getSourceVectorType();
+    VectorBaseType sourceType = extractOp.getSourceVectorType();
     if (!arm_sme::isValidSMETileVectorType(sourceType))
       return failure();
 
@@ -642,7 +646,7 @@ struct VectorInsertToArmSMELowering
 
   LogicalResult matchAndRewrite(vector::InsertOp insertOp,
                                 PatternRewriter &rewriter) const override {
-    VectorType resultType = insertOp.getResult().getType();
+    FixedVectorType resultType = insertOp.getResult().getType();
 
     if (!arm_sme::isValidSMETileVectorType(resultType))
       return failure();
@@ -706,7 +710,8 @@ struct VectorPrintToArmSMELowering : public OpRewritePattern<vector::PrintOp> {
     if (!printOp.getSource())
       return failure();
 
-    VectorType vectorType = dyn_cast<VectorType>(printOp.getPrintType());
+    FixedVectorType vectorType =
+        dyn_cast<FixedVectorType>(printOp.getPrintType());
     if (!vectorType || !arm_sme::isValidSMETileVectorType(vectorType))
       return failure();
 

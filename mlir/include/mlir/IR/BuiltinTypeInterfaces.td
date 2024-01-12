@@ -188,4 +188,72 @@ def ShapedTypeInterface : TypeInterface<"ShapedType"> {
   }];
 }
 
+//===----------------------------------------------------------------------===//
+// VectorBaseType
+//===----------------------------------------------------------------------===//
+
+def VectorBaseTypeInterface : TypeInterface<"VectorBaseType", [ShapedTypeInterface]> {
+  let cppNamespace = "::mlir";
+  let description = [{
+  }];
+
+  let methods = [
+    InterfaceMethod<[{
+      Returns true if the vector contains scalable dimensions.
+    }],
+    "bool", "isScalable">,
+
+    InterfaceMethod<[{
+      Returns true if the vector dimension is scalable.
+    }],
+    "bool", "isScalableDim", (ins "unsigned":$dim)>,
+
+    InterfaceMethod<[{
+      TODO
+    }],
+    "llvm::OwningArrayRef<int64_t>", "getScalableBases">,
+
+    InterfaceMethod<
+      /*desc=*/[{ TODO }],
+      /*retTy=*/"unsigned",
+      /*methodName=*/"getNumScalableDims",
+      /*args=*/(ins),
+      /*methodBody=*/"",
+      /*defaultBody=*/[{
+        return llvm::count_if($_type.getScalableBases(),
+          [](int64_t scalableBase) {
+              return scalableBase > 0;
+          });
+      }]>
+  ];
+
+  let extraClassDeclaration = [{
+    /// This is a builder type that keeps local references to arguments.
+    /// Arguments that are passed into the builder must outlive the builder.
+    class Builder;
+
+    static VectorBaseType get(ArrayRef<int64_t> shape, Type elementType,
+                              ArrayRef<int64_t> scalableBases);
+    static VectorBaseType getChecked(
+      ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError,
+      ArrayRef<int64_t> shape, Type elementType,
+      ArrayRef<int64_t> scalableBases);
+
+    static VectorBaseType get(ArrayRef<int64_t> shape, Type elementType,
+                              ArrayRef<bool> scalableDims);
+    static VectorBaseType getChecked(
+      ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError,
+      ArrayRef<int64_t> shape, Type elementType,
+      ArrayRef<bool> scalableDims);
+
+    // TODO.
+    VectorBaseType scaleElementBitwidth(unsigned scale);
+
+    /// Returns true if the given type can be used as an element of a vector
+    /// type. In particular, vectors can consist of integer, index, or float
+    /// primitives.
+    static bool isValidElementType(Type t);
+  }];
+}
+
 #endif // MLIR_IR_BUILTINTYPEINTERFACES_TD_

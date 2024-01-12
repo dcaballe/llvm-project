@@ -115,25 +115,26 @@ struct ScanToArithOps : public OpRewritePattern<vector::ScanOp> {
   LogicalResult matchAndRewrite(vector::ScanOp scanOp,
                                 PatternRewriter &rewriter) const override {
     auto loc = scanOp.getLoc();
-    VectorType destType = scanOp.getDestType();
+    FixedVectorType destType = scanOp.getDestType();
     ArrayRef<int64_t> destShape = destType.getShape();
     auto elType = destType.getElementType();
     bool isInt = elType.isIntOrIndex();
     if (!isValidKind(isInt, scanOp.getKind()))
       return failure();
 
-    VectorType resType = VectorType::get(destShape, elType);
+    FixedVectorType resType = FixedVectorType::get(destShape, elType);
     Value result = rewriter.create<arith::ConstantOp>(
         loc, resType, rewriter.getZeroAttr(resType));
     int64_t reductionDim = scanOp.getReductionDim();
     bool inclusive = scanOp.getInclusive();
     int64_t destRank = destType.getRank();
-    VectorType initialValueType = scanOp.getInitialValueType();
+    FixedVectorType initialValueType = scanOp.getInitialValueType();
     int64_t initialValueRank = initialValueType.getRank();
 
     SmallVector<int64_t> reductionShape(destShape.begin(), destShape.end());
     reductionShape[reductionDim] = 1;
-    VectorType reductionType = VectorType::get(reductionShape, elType);
+    FixedVectorType reductionType =
+        FixedVectorType::get(reductionShape, elType);
     SmallVector<int64_t> offsets(destRank, 0);
     SmallVector<int64_t> strides(destRank, 1);
     SmallVector<int64_t> sizes(destShape.begin(), destShape.end());

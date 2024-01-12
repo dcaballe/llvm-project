@@ -84,7 +84,7 @@ static AffineMap adjustMap(AffineMap map, int64_t index,
 
 // Helper method to possibly drop a dimension in a load.
 // TODO
-static Value reshapeLoad(Location loc, Value val, VectorType type,
+static Value reshapeLoad(Location loc, Value val, VectorBaseType type,
                          int64_t index, int64_t pos,
                          PatternRewriter &rewriter) {
   if (index == -1)
@@ -95,8 +95,8 @@ static Value reshapeLoad(Location loc, Value val, VectorType type,
     return rewriter.create<vector::ExtractOp>(loc, val, pos);
 
   // Unroll leading dimensions.
-  VectorType vType = VectorType::Builder(type).dropDim(0);
-  VectorType resType = VectorType::Builder(type).dropDim(index);
+  VectorBaseType vType = VectorBaseType::Builder(type).dropDim(0);
+  VectorBaseType resType = VectorBaseType::Builder(type).dropDim(index);
   Value result = rewriter.create<arith::ConstantOp>(
       loc, resType, rewriter.getZeroAttr(resType));
   for (int64_t d = 0, e = resType.getDimSize(0); d < e; d++) {
@@ -110,7 +110,7 @@ static Value reshapeLoad(Location loc, Value val, VectorType type,
 // Helper method to possibly drop a dimension in a store.
 // TODO
 static Value reshapeStore(Location loc, Value val, Value result,
-                          VectorType type, int64_t index, int64_t pos,
+                          VectorBaseType type, int64_t index, int64_t pos,
                           PatternRewriter &rewriter) {
   // Unmodified?
   if (index == -1)
@@ -120,7 +120,7 @@ static Value reshapeStore(Location loc, Value val, Value result,
     return rewriter.create<vector::InsertOp>(loc, val, result, pos);
 
   // Unroll leading dimensions.
-  VectorType vType = VectorType::Builder(type).dropDim(0);
+  VectorBaseType vType = VectorBaseType::Builder(type).dropDim(0);
   for (int64_t d = 0, e = type.getDimSize(0); d < e; d++) {
     Value ext = rewriter.create<vector::ExtractOp>(loc, result, d);
     Value ins = rewriter.create<vector::ExtractOp>(loc, val, d);
@@ -153,7 +153,8 @@ createContractArithOp(Location loc, Value x, Value y, Value acc,
       // Only valid for integer types.
       return std::nullopt;
     // Special case for fused multiply-add.
-    if (acc && isa<VectorType>(acc.getType()) && kind == CombiningKind::ADD) {
+    if (acc && isa<VectorBaseType>(acc.getType()) &&
+        kind == CombiningKind::ADD) {
       Value fma = rewriter.create<vector::FMAOp>(loc, x, y, acc);
       if (mask)
         // The fma op doesn't need explicit masking. However, fma ops used in
@@ -412,7 +413,7 @@ struct UnrolledOuterProductGenerator
 
   Value promote(Value v, Type dstElementType) {
     Type elementType = v.getType();
-    auto vecType = dyn_cast<VectorType>(elementType);
+    auto vecType = dyn_cast<VectorBaseType>(elementType);
     if (vecType)
       elementType = vecType.getElementType();
     if (elementType == dstElementType)
@@ -426,10 +427,10 @@ struct UnrolledOuterProductGenerator
   }
 
   FailureOr<Value> outerProd(Value lhs, Value rhs, Value res,
-                             VectorType lhsType, int reductionDim,
+                             VectorBaseType lhsType, int reductionDim,
                              std::optional<Value> maybeMask = std::nullopt) {
     // Unrolling a scalable dimension would be incorrect - bail out.
-    if (lhsType.getScalableDims()[reductionDim])
+    if (lhsType.getScalableBases()[reductionDim])
       return failure();
 
     int reductionSize = lhsType.getDimSize(reductionDim);
@@ -440,7 +441,7 @@ struct UnrolledOuterProductGenerator
     if (mask && !maybeMask.has_value())
       return failure();
 
-    Type resElementType = cast<VectorType>(res.getType()).getElementType();
+    Type resElementType = cast<VectorBaseType>(res.getType()).getElementType();
     for (int64_t k = 0; k < reductionSize; ++k) {
       Value extractA = rewriter.create<vector::ExtractOp>(loc, lhs, k);
       Value extractB = rewriter.create<vector::ExtractOp>(loc, rhs, k);
@@ -563,7 +564,7 @@ struct UnrolledOuterProductGenerator
 private:
   vector::CombiningKind kind;
   Value lhs, rhs, res, mask;
-  VectorType lhsType;
+  VectorBaseType lhsType;
 };
 
 /// Progressively lower a `vector.contract %a, %b, %c` with row-major matmul
@@ -704,7 +705,7 @@ ContractionOpToDotLowering::matchAndRewrite(vector::ContractionOp op,
     return failure();
   }
 
-  VectorType dstType = cast<VectorType>(op.getResultType());
+  FixedVectorType dstType = cast<FixedVectorType>(op.getResultType());
   assert(dstType.getRank() >= 1 && dstType.getRank() <= 2 &&
          "Expected dst type of rank 1 or 2");
 
@@ -809,7 +810,7 @@ struct ContractOpToElementwise
       } else {
         // If the parallel dimension doesn't exist we will have to broadcast it.
         lhsDims.push_back(
-            cast<VectorType>(contractOp.getResultType()).getDimSize(i));
+            cast<FixedVectorType>(contractOp.getResultType()).getDimSize(i));
         lhsTranspose.push_back(lhsDims.size() - 1);
       }
       std::optional<unsigned> rhsDim =
@@ -819,7 +820,7 @@ struct ContractOpToElementwise
       } else {
         // If the parallel dimension doesn't exist we will have to broadcast it.
         rhsDims.push_back(
-            cast<VectorType>(contractOp.getResultType()).getDimSize(i));
+            cast<FixedVectorType>(contractOp.getResultType()).getDimSize(i));
         rhsTranspose.push_back(rhsDims.size() - 1);
       }
     }
@@ -828,14 +829,14 @@ struct ContractOpToElementwise
     Location loc = contractOp.getLoc();
     if (!lhsDims.empty()) {
       lhsDims.append(lhsShape.begin(), lhsShape.end());
-      auto expandedType =
-          VectorType::get(lhsDims, contractOp.getLhsType().getElementType());
+      auto expandedType = FixedVectorType::get(
+          lhsDims, contractOp.getLhsType().getElementType());
       newLhs = rewriter.create<vector::BroadcastOp>(loc, expandedType, newLhs);
     }
     if (!rhsDims.empty()) {
       rhsDims.append(rhsShape.begin(), rhsShape.end());
-      auto expandedType =
-          VectorType::get(rhsDims, contractOp.getRhsType().getElementType());
+      auto expandedType = FixedVectorType::get(
+          rhsDims, contractOp.getRhsType().getElementType());
       newRhs = rewriter.create<vector::BroadcastOp>(loc, expandedType, newRhs);
     }
     bool isInt = contractOp.getLhsType().getElementType().isIntOrIndex();
@@ -942,7 +943,7 @@ ContractionOpLowering::matchAndRewrite(vector::ContractionOp op,
   }
 
   // Find first free dimension in LHS, and lower when found.
-  VectorType lhsType = op.getLhsType();
+  VectorBaseType lhsType = op.getLhsType();
   for (int64_t lhsIndex = 0, e = lhsType.getRank(); lhsIndex < e; ++lhsIndex) {
     if (lhsContractingDimSet.count(lhsIndex) == 0) {
       auto newOp = lowerParallel(rewriter, op, lhsIndex, /*rhsIndex=*/-1, mask);
@@ -954,7 +955,7 @@ ContractionOpLowering::matchAndRewrite(vector::ContractionOp op,
   }
 
   // Find first free dimension in RHS, and lower when found.
-  VectorType rhsType = op.getRhsType();
+  VectorBaseType rhsType = op.getRhsType();
   for (int64_t rhsIndex = 0, e = rhsType.getRank(); rhsIndex < e; ++rhsIndex) {
     if (rhsContractingDimSet.count(rhsIndex) == 0) {
       auto newOp = lowerParallel(rewriter, op, /*lhsIndex=*/-1, rhsIndex, mask);
@@ -985,9 +986,9 @@ FailureOr<Value> ContractionOpLowering::lowerParallel(PatternRewriter &rewriter,
                                                       int64_t lhsIndex,
                                                       int64_t rhsIndex,
                                                       Value mask) const {
-  VectorType lhsType = op.getLhsType();
-  VectorType rhsType = op.getRhsType();
-  VectorType resType = cast<VectorType>(op.getResultType());
+  VectorBaseType lhsType = op.getLhsType();
+  VectorBaseType rhsType = op.getRhsType();
+  VectorBaseType resType = cast<VectorBaseType>(op.getResultType());
   // Find the iterator type index and result index.
   SmallVector<AffineMap> iMap = op.getIndexingMapsArray();
   int64_t iterIndex = -1;
@@ -999,7 +1000,7 @@ FailureOr<Value> ContractionOpLowering::lowerParallel(PatternRewriter &rewriter,
         diag << "expected lhsIndex=" << lhsIndex << " and rhsIndex=" << rhsIndex
              << " to map to the same dimension";
       });
-    if (lhsType.getScalableDims()[lhsIndex])
+    if (lhsType.getScalableBases()[lhsIndex])
       return rewriter.notifyMatchFailure(op, [&](Diagnostic &diag) {
         diag << "Unrolling scalable dimension (lhsIndex=" << lhsIndex
              << ") is not supported yet";
@@ -1007,7 +1008,7 @@ FailureOr<Value> ContractionOpLowering::lowerParallel(PatternRewriter &rewriter,
     dimSize = lhsType.getDimSize(lhsIndex);
   } else if (rhsIndex >= 0) {
     iterIndex = iMap[1].getDimPosition(rhsIndex);
-    if (rhsType.getScalableDims()[rhsIndex])
+    if (rhsType.getScalableBases()[rhsIndex])
       return rewriter.notifyMatchFailure(op, [&](Diagnostic &diag) {
         diag << "Unrolling scalable dimension (rhsIndex=" << rhsIndex
              << ") is not supported yet";
@@ -1053,7 +1054,7 @@ FailureOr<Value> ContractionOpLowering::lowerParallel(PatternRewriter &rewriter,
 
     Value lowMask;
     if (mask)
-      lowMask = reshapeLoad(loc, mask, cast<VectorType>(mask.getType()),
+      lowMask = reshapeLoad(loc, mask, cast<VectorBaseType>(mask.getType()),
                             iterIndex, d, rewriter);
 
     Operation *lowContract = rewriter.create<vector::ContractionOp>(
@@ -1069,12 +1070,12 @@ FailureOr<Value> ContractionOpLowering::lowerParallel(PatternRewriter &rewriter,
 FailureOr<Value> ContractionOpLowering::lowerReduction(
     PatternRewriter &rewriter, vector::ContractionOp op, Value mask) const {
   auto loc = op.getLoc();
-  VectorType lhsType = op.getLhsType();
-  VectorType rhsType = op.getRhsType();
+  VectorBaseType lhsType = op.getLhsType();
+  VectorBaseType rhsType = op.getRhsType();
   Type resType = op.getResultType();
-  if (isa<VectorType>(resType))
-    return rewriter.notifyMatchFailure(op,
-                                       "did not expect a VectorType result");
+  if (isa<VectorBaseType>(resType))
+    return rewriter.notifyMatchFailure(
+        op, "did not expect a VectorBaseType result");
   bool isInt = isa<IntegerType>(resType);
   // Use iterator index 0.
   int64_t iterIndex = 0;
@@ -1129,7 +1130,7 @@ FailureOr<Value> ContractionOpLowering::lowerReduction(
     auto rhs = reshapeLoad(loc, op.getRhs(), rhsType, rhsIndex, d, rewriter);
     Value newMask;
     if (mask)
-      newMask = reshapeLoad(loc, mask, cast<VectorType>(mask.getType()),
+      newMask = reshapeLoad(loc, mask, cast<VectorBaseType>(mask.getType()),
                             iterIndex, d, rewriter);
 
     Operation *newContract = rewriter.create<vector::ContractionOp>(
@@ -1158,14 +1159,14 @@ public:
 
   LogicalResult matchAndRewrite(vector::OuterProductOp op,
                                 PatternRewriter &rewriter) const override {
-    VectorType resType = op.getResultVectorType();
-    if ((resType.getShape().size() >= 2) && resType.allDimsScalable())
+    VectorBaseType resType = op.getResultVectorType();
+    if (resType.getShape().size() >= 2 && resType.getNumScalableDims() == 2)
       return failure();
 
     auto loc = op.getLoc();
 
-    VectorType lhsType = op.getOperandVectorTypeLHS();
-    VectorType rhsType = dyn_cast<VectorType>(op.getOperandTypeRHS());
+    VectorBaseType lhsType = op.getOperandVectorTypeLHS();
+    auto rhsType = dyn_cast<VectorBaseType>(op.getOperandTypeRHS());
     Type eltType = resType.getElementType();
     bool isInt = isa<IntegerType, IndexType>(eltType);
     Value acc = op.getAcc();
@@ -1261,7 +1262,7 @@ ContractionOpToMatmulOpLowering::matchAndRewrite(vector::ContractionOp op,
     return failure();
 
   Type dstElementType = op.getType();
-  if (auto vecType = dyn_cast<VectorType>(dstElementType))
+  if (auto vecType = dyn_cast<FixedVectorType>(dstElementType))
     dstElementType = vecType.getElementType();
   if (elementType != dstElementType)
     return failure();
@@ -1289,26 +1290,26 @@ ContractionOpToMatmulOpLowering::matchAndRewrite(vector::ContractionOp op,
     return failure();
 
   // At this point lhs and rhs are in row-major.
-  VectorType lhsType = cast<VectorType>(lhs.getType());
-  VectorType rhsType = cast<VectorType>(rhs.getType());
+  FixedVectorType lhsType = cast<FixedVectorType>(lhs.getType());
+  FixedVectorType rhsType = cast<FixedVectorType>(rhs.getType());
   int64_t lhsRows = lhsType.getDimSize(0);
   int64_t lhsColumns = lhsType.getDimSize(1);
   int64_t rhsColumns = rhsType.getDimSize(1);
 
   Type flattenedLHSType =
-      VectorType::get(lhsType.getNumElements(), lhsType.getElementType());
+      FixedVectorType::get(lhsType.getNumElements(), lhsType.getElementType());
   lhs = rew.create<vector::ShapeCastOp>(loc, flattenedLHSType, lhs);
 
   Type flattenedRHSType =
-      VectorType::get(rhsType.getNumElements(), rhsType.getElementType());
+      FixedVectorType::get(rhsType.getNumElements(), rhsType.getElementType());
   rhs = rew.create<vector::ShapeCastOp>(loc, flattenedRHSType, rhs);
 
   Value mul = rew.create<vector::MatmulOp>(loc, lhs, rhs, lhsRows, lhsColumns,
                                            rhsColumns);
   mul = rew.create<vector::ShapeCastOp>(
       loc,
-      VectorType::get({lhsRows, rhsColumns},
-                      getElementTypeOrSelf(op.getAcc().getType())),
+      FixedVectorType::get({lhsRows, rhsColumns},
+                           getElementTypeOrSelf(op.getAcc().getType())),
       mul);
 
   // ACC must be C(m, n) or C(n, m).

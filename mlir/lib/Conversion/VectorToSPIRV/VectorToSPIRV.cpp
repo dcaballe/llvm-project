@@ -63,7 +63,7 @@ static int getNumBits(Type type) {
   // TODO: This does not take into account any memory layout or widening
   // constraints. E.g., a vector<3xi57> may report to occupy 3x57=171 bit, even
   // though in practice it will likely be stored as in a 4xi64 vector register.
-  if (auto vectorType = dyn_cast<VectorType>(type))
+  if (auto vectorType = dyn_cast<FixedVectorType>(type))
     return vectorType.getNumElements() * vectorType.getElementTypeBitWidth();
   return type.getIntOrFloatBitWidth();
 }
@@ -237,7 +237,7 @@ struct VectorInsertOpConvert final
   LogicalResult
   matchAndRewrite(vector::InsertOp insertOp, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    if (isa<VectorType>(insertOp.getSourceType()))
+    if (isa<FixedVectorType>(insertOp.getSourceType()))
       return rewriter.notifyMatchFailure(insertOp, "unsupported vector source");
     if (!getTypeConverter()->convertType(insertOp.getDestVectorType()))
       return rewriter.notifyMatchFailure(insertOp,
@@ -337,9 +337,10 @@ struct VectorInsertStridedSliceOpConvert final
       return success();
     }
 
-    uint64_t totalSize = cast<VectorType>(dstVector.getType()).getNumElements();
+    uint64_t totalSize =
+        cast<FixedVectorType>(dstVector.getType()).getNumElements();
     uint64_t insertSize =
-        cast<VectorType>(srcVector.getType()).getNumElements();
+        cast<FixedVectorType>(srcVector.getType()).getNumElements();
 
     SmallVector<int32_t, 2> indices(totalSize);
     std::iota(indices.begin(), indices.end(), 0);
@@ -356,7 +357,7 @@ struct VectorInsertStridedSliceOpConvert final
 
 static SmallVector<Value> extractAllElements(
     vector::ReductionOp reduceOp, vector::ReductionOp::Adaptor adaptor,
-    VectorType srcVectorType, ConversionPatternRewriter &rewriter) {
+    FixedVectorType srcVectorType, ConversionPatternRewriter &rewriter) {
   int numElements = static_cast<int>(srcVectorType.getDimSize(0));
   SmallVector<Value> values;
   values.reserve(numElements + (adaptor.getAcc() ? 1 : 0));
@@ -385,7 +386,7 @@ FailureOr<ReductionRewriteInfo> static getReductionInfo(
   if (!resultType)
     return failure();
 
-  auto srcVectorType = dyn_cast<VectorType>(adaptor.getVector().getType());
+  auto srcVectorType = dyn_cast<FixedVectorType>(adaptor.getVector().getType());
   if (!srcVectorType || srcVectorType.getRank() != 1)
     return rewriter.notifyMatchFailure(op, "not a 1-D vector source");
 
@@ -505,7 +506,7 @@ public:
     if (isa<spirv::ScalarType>(dstType)) {
       rewriter.replaceOp(op, adaptor.getInput());
     } else {
-      auto dstVecType = cast<VectorType>(dstType);
+      auto dstVecType = cast<FixedVectorType>(dstType);
       SmallVector<Value, 4> source(dstVecType.getNumElements(),
                                    adaptor.getInput());
       rewriter.replaceOpWithNewOp<spirv::CompositeConstructOp>(op, dstType,
@@ -549,7 +550,7 @@ struct VectorShuffleOpConvert final
     // vector.
     auto getElementAtIdx = [&rewriter, loc = shuffleOp.getLoc()](
                                Value scalarOrVec, int32_t idx) -> Value {
-      if (auto vecTy = dyn_cast<VectorType>(scalarOrVec.getType()))
+      if (auto vecTy = dyn_cast<FixedVectorType>(scalarOrVec.getType()))
         return rewriter.create<spirv::CompositeExtractOp>(loc, scalarOrVec,
                                                           idx);
 
@@ -664,7 +665,7 @@ struct VectorReductionToIntDotProd final
     if (!llvm::is_contained({32, 64}, resultBitwidth))
       return rewriter.notifyMatchFailure(op, "unsupported integer bitwidth");
 
-    VectorType inVecTy = op.getSourceVectorType();
+    VectorBaseType inVecTy = op.getSourceVectorType();
     if (!llvm::is_contained({4, 3}, inVecTy.getNumElements()) ||
         inVecTy.getShape().size() != 1 || inVecTy.isScalable())
       return rewriter.notifyMatchFailure(op, "unsupported vector shape");
@@ -702,7 +703,7 @@ private:
     if (!lhs)
       return failure();
     Value lhsIn = lhs.getIn();
-    auto lhsInType = cast<VectorType>(lhsIn.getType());
+    auto lhsInType = cast<FixedVectorType>(lhsIn.getType());
     if (!lhsInType.getElementType().isInteger(8))
       return failure();
 
@@ -710,13 +711,13 @@ private:
     if (!rhs)
       return failure();
     Value rhsIn = rhs.getIn();
-    auto rhsInType = cast<VectorType>(rhsIn.getType());
+    auto rhsInType = cast<FixedVectorType>(rhsIn.getType());
     if (!rhsInType.getElementType().isInteger(8))
       return failure();
 
     if (op.getSourceVectorType().getNumElements() == 3) {
       IntegerType i8Type = rewriter.getI8Type();
-      auto v4i8Type = VectorType::get({4}, i8Type);
+      auto v4i8Type = FixedVectorType::get({4}, i8Type);
       Location loc = op.getLoc();
       Value zero = spirv::ConstantOp::getZero(i8Type, loc, rewriter);
       lhsIn = rewriter.create<spirv::CompositeConstructOp>(
@@ -759,7 +760,7 @@ struct VectorReductionToFPDotProd final
     Value vec = adaptor.getVector();
     Value acc = adaptor.getAcc();
 
-    auto vectorType = dyn_cast<VectorType>(vec.getType());
+    auto vectorType = dyn_cast<FixedVectorType>(vec.getType());
     if (!vectorType) {
       assert(isa<FloatType>(vec.getType()) &&
              "Expected the vector to be scalarized");

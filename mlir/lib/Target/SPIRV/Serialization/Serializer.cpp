@@ -459,7 +459,7 @@ LogicalResult Serializer::prepareBasicType(
     return success();
   }
 
-  if (auto vectorType = dyn_cast<VectorType>(type)) {
+  if (auto vectorType = dyn_cast<FixedVectorType>(type)) {
     uint32_t elementTypeID = 0;
     if (failed(processTypeImpl(loc, vectorType.getElementType(), elementTypeID,
                                serializationCtx))) {
