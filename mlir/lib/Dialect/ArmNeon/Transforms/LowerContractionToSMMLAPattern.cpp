@@ -175,8 +175,8 @@ public:
       if (isVecmat) {
         auto expandForSMMLA = [&](Value tiledOperand,
                                   VectorType expandedTypeType) {
-          auto emptyOperand = rewriter.create<arith::ConstantOp>(
-              loc, expandedTypeType, rewriter.getZeroAttr(expandedTypeType));
+          auto emptyOperand =
+              rewriter.create<LLVM::UndefOp>(loc, expandedTypeType);
           SmallVector<int64_t> offsets(
               cast<ShapedType>(emptyOperand.getType()).getRank(), 0);
           SmallVector<int64_t> strides(
