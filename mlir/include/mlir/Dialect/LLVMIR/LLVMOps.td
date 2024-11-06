@@ -830,7 +830,7 @@ def LLVM_InsertValueOp : LLVM_Op<
 //===----------------------------------------------------------------------===//
 
 def LLVM_ShuffleVectorOp : LLVM_Op<"shufflevector",
-    [Pure, AllTypesMatch<["v1", "v2"]>]> {
+    [Pure, AllTypesMatch<["v1", "v2"]>, AllTypeIDsMatch<["res", "v1", "v2"]>]> {
   let summary = "Construct a permutation of two vectors.";
 
   let arguments = (ins LLVM_AnyVector:$v1, LLVM_AnyVector:$v2,

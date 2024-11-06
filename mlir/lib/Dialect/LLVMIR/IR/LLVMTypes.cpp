@@ -924,12 +924,25 @@ bool mlir::LLVM::isScalableVectorType(Type vectorType) {
 }
 
 Type mlir::LLVM::getVectorType(Type elementType, unsigned numElements,
-                               bool isScalable) {
-  bool useLLVM = LLVMFixedVectorType::isValidElementType(elementType);
-  bool useBuiltIn = VectorType::isValidElementType(elementType);
-  (void)useBuiltIn;
-  assert((useLLVM ^ useBuiltIn) && "expected LLVM-compatible fixed-vector type "
-                                   "to be either builtin or LLVM dialect type");
+                               bool isScalable,
+                               std::optional<Type> preferredVectorType) {
+  assert((!preferredVectorType || isa<VectorType>(*preferredVectorType) ||
+          isa<LLVMFixedVectorType>(*preferredVectorType) ||
+          isa<LLVMScalableVectorType>(*preferredVectorType)) &&
+         "expected 'preferredVectorType' to be either an LLVM vector or a "
+         "build-in vector type");
+  bool validLLVM = LLVMFixedVectorType::isValidElementType(elementType);
+  bool validBuiltIn = VectorType::isValidElementType(elementType);
+  (void)validBuiltIn;
+  assert((validLLVM ^ validBuiltIn) &&
+         "expected LLVM-compatible fixed-vector type "
+         "to be either builtin or LLVM dialect type");
+
+  // Default to LLVM vector types if 'preferredVectorType' is not provided.
+  bool preferredLLVMType = !preferredVectorType ||
+                           isa<LLVMFixedVectorType>(*preferredVectorType) ||
+                           isa<LLVMScalableVectorType>(*preferredVectorType);
+  bool useLLVM = validLLVM && (preferredLLVMType || !validBuiltIn);
   if (useLLVM) {
     if (isScalable)
       return LLVMScalableVectorType::get(elementType, numElements);

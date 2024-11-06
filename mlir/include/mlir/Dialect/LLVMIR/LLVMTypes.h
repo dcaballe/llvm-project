@@ -261,10 +261,19 @@ llvm::ElementCount getVectorNumElements(Type type);
 /// Returns whether a vector type is scalable or not.
 bool isScalableVectorType(Type vectorType);
 
-/// Creates an LLVM dialect-compatible vector type with the given element type
-/// and length.
+/// Creates an LLVM dialect-compatible vector type with the given element type,
+/// length and scalability. `preferredVectorType` can optionally be used to
+/// indicate whether an LLVM vector or an built-in vector is preferred as the
+/// result. If `preferredVectorType` is a built-in `VectorType`, returns a
+/// built-in `VectorType` if the resulting vector can be represented using
+/// `VectorType`. Otherwise, return an LLVM type. If `preferredVectorType` is an
+/// LLVM vector type (i.e., `LLVMFixedVectorType` or `LLVMScalableVectorType`)
+/// or it's not provided, returns an LLVM vector type if the resulting vector
+/// can be represented using an LLVM vector type. Otherwise, returns a built-in
+/// `VectorType`.
 Type getVectorType(Type elementType, unsigned numElements,
-                   bool isScalable = false);
+                   bool isScalable = false,
+                   std::optional<Type> preferredVectorType = std::nullopt);
 
 /// Creates an LLVM dialect-compatible vector type with the given element type
 /// and length.

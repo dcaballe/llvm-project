@@ -2445,9 +2445,10 @@ void ShuffleVectorOp::build(OpBuilder &builder, OperationState &state, Value v1,
                             Value v2, DenseI32ArrayAttr mask,
                             ArrayRef<NamedAttribute> attrs) {
   auto containerType = v1.getType();
-  auto vType = LLVM::getVectorType(LLVM::getVectorElementType(containerType),
-                                   mask.size(),
-                                   LLVM::isScalableVectorType(containerType));
+  auto vType = LLVM::getVectorType(
+      LLVM::getVectorElementType(containerType), mask.size(),
+      LLVM::isScalableVectorType(containerType),
+      /*preferredVectorType=*/containerType);
   build(builder, state, vType, v1, v2, mask);
   state.addAttributes(attrs);
 }
