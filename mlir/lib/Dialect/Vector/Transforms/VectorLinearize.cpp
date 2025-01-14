@@ -359,7 +359,7 @@ struct LinearizeVectorExtract final
 
     // Compute linearized offset.
     int64_t linearizedOffset = 0;
-    llvm::ArrayRef<int64_t> offsets = extractOp.getStaticPosition();
+    auto offsets = extractOp.getStaticPositionAsIntegers();
     for (auto [i, off] : llvm::enumerate(offsets)) {
       size /= shape[i];
       linearizedOffset += offsets[i] * size;
@@ -431,7 +431,7 @@ struct LinearizeVectorInsert final
 
     // compute linearized offset
     int64_t linearizedOffset = 0;
-    auto offsetsNd = insertOp.getStaticPosition();
+    auto offsetsNd = insertOp.getStaticPositionAsIntegers();
     for (auto [dim, offset] : llvm::enumerate(offsetsNd)) {
       dstSizeForOffsets /= dstShape[dim];
       linearizedOffset += offset * dstSizeForOffsets;

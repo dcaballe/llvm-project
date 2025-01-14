@@ -973,6 +973,17 @@ public:
   DenseElementsAttr mapValues(Type newElementType,
                               function_ref<APInt(const APInt &)> mapping) const;
 
+  // TODO: Improve.
+  template <typename T>
+  void getAsIntegers(SmallVectorImpl<T> &values, bool isSigned = true) const {
+    assert(getElementType().isIntOrIndex() &&
+           "element type must be an integer or index");
+    llvm::transform(
+        getValues<APInt>(), std::back_inserter(values), [&](APInt apInt) {
+          return isSigned ? apInt.getSExtValue() : apInt.getZExtValue();
+        });
+  }
+
   /// Iterator access to the integer element values.
   iterator begin() const { return raw_int_begin(); }
   iterator end() const { return raw_int_end(); }

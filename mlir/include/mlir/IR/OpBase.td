@@ -578,11 +578,28 @@ class OptionalTypesMatchWith<string summary, string lhsArg, string rhsArg,
      "!get" # snakeCaseToCamelCase<lhsArg>.ret # "()"
      # " || !get" # snakeCaseToCamelCase<rhsArg>.ret # "() || " # comparator>;
 
+// A type constraint that compares the equality of an optional argument type and
+// a reference type.
+class OptionalTypeMatchesRefTypeWith<string summary, string arg, string refType,
+                                     string transform>
+    : PredOpTrait<summary, CPred<"!get" # snakeCaseToCamelCase<arg>.ret # "() ||"
+                                # !subst("$_self", "$" # arg # ".getType()", transform)
+                                # " == " # refType>>;
+
 // Special variant of `TypesMatchWith` that provides a comparator suitable for
-// ranged arguments.
+// two ranged arguments.
 class RangedTypesMatchWith<string summary, string lhsArg, string rhsArg,
                            string transform>
   : TypesMatchWith<summary, lhsArg, rhsArg, transform, "llvm::equal">;
+
+// A type constraint that compares for equality all the types in a ranged type
+// with a single reference type.
+class AllTypesInRangedTypeMatchRefType<string summary, string rangedArg,
+                                       string refType>
+  : PredOpTrait<summary, CPred<
+      "std::for_each($" # rangedArg # ".getType().begin(), "
+                  # "$" # rangedArg # ".getType().end(), "
+                  # "[&](Type rangeType) { return rangeType == $" # refType #"; })">>;
 
 // Type Constraint operand `idx`'s Element type is `type`.
 class TCopVTEtIs<int idx, Type type> : And<[

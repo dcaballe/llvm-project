@@ -101,6 +101,10 @@ public:
 /// of the corresponding value in `values`. The type for integer elements is
 /// `i64` by default and never printed.
 ///
+/// If `sameElementType` is provided, `sameElementType` type is assumed for all
+/// values and integers and printed once at the end of the list.
+/// `sameElementType` must match the type of each value.
+///
 /// Integer indices can also be scalable, denoted with square brackets (e.g.,
 /// "[2, [4], 8]"). For each value in `integers`, the corresponding `bool` in
 /// `scalables` encodes whether it's a scalable index. If `scalables` is empty
@@ -120,6 +124,9 @@ public:
 ///     prints:
 ///       `[%arg0, 7, 42, %arg42]`
 ///
+///   * TODO: Using `sameElementType:
+///       `[0, %arg2, 3, %arg42, 2 : i8]`
+///
 ///   * Input: `integers = [2, 4, 8]`,
 ///            `values = []` and
 ///            `scalables = [false, true, false]`
@@ -138,6 +145,10 @@ inline void printDynamicIndexList(
   return printDynamicIndexList(printer, op, values, integers, /*scalables=*/{},
                                valueTypes, delimiter);
 }
+void printSameTypeDynamicIndexList(
+    OpAsmPrinter &printer, Operation *op, OperandRange values,
+    DenseIntElementsAttr integers, TypeRange valueTypes,
+    AsmParser::Delimiter delimiter = AsmParser::Delimiter::Square);
 
 /// Parser hooks for custom directive in assemblyFormat.
 ///
@@ -164,6 +175,8 @@ inline void printDynamicIndexList(
 ///       2. `values` is filled with "[%arg0, %arg1]".
 ///       3. `scalables` is filled with `[false, true, false]`.
 ///
+///   * TODO SameType
+///
 ///   * After parsing `[2, [4], 8]`:
 ///       1. `result` is filled with `[2, 4, 8]`
 ///       2. `values` is empty.
@@ -184,6 +197,11 @@ inline ParseResult parseDynamicIndexList(
   return parseDynamicIndexList(parser, values, integers, scalables, valueTypes,
                                delimiter);
 }
+ParseResult parseSameTypeDynamicIndexList(
+    OpAsmParser &parser,
+    SmallVectorImpl<OpAsmParser::UnresolvedOperand> &values,
+    DenseIntElementsAttr &integers, SmallVectorImpl<Type> &valueTypes,
+    AsmParser::Delimiter delimiter = AsmParser::Delimiter::Square);
 
 /// Verify that a the `values` has as many elements as the number of entries in
 /// `attr` for which `isDynamic` evaluates to true.

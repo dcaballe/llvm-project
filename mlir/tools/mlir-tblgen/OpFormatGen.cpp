@@ -2749,6 +2749,11 @@ private:
   void handleAllTypesMatchConstraint(
       ArrayRef<StringRef> values,
       StringMap<TypeResolutionInstance> &variableTyResolver);
+
+//  void handleAllTypesInRangeMatchRefType(
+//      ArrayRef<StringRef> values,
+//      StringMap<TypeResolutionInstance> &variableTyResolver);
+
   /// Check for inferable type resolution given all operands, and or results,
   /// have the same type. If 'includeResults' is true, the results also have the
   /// same type as all of the operands.
@@ -2823,6 +2828,10 @@ LogicalResult OpFormatParser::verify(SMLoc loc,
       handleSameTypesConstraint(variableTyResolver, /*includeResults=*/true);
     } else if (def.isSubClassOf("TypesMatchWith")) {
       handleTypesMatchConstraint(variableTyResolver, def);
+//    } else if (def.getName() == "AllTypesInRangeMatchRefType") {
+//      handleAllTypesInRangeMatchRefType(def.getValueAsString("rangedArg"),
+//                                        def.getValueAsString("refType"));
+//    }
     } else if (!op.allResultTypesKnown()) {
       // This doesn't check the name directly to handle
       //    DeclareOpInterfaceMethods<InferTypeOpInterface>
@@ -3227,6 +3236,32 @@ void OpFormatParser::handleAllTypesMatchConstraint(
       variableTyResolver[values[j]] = {arg, std::nullopt};
   }
 }
+
+//void OpFormatParser::handleAllTypesInRangeMatchRefType(
+//    StringRef rangedValue, StringRef refTypeAttr,
+//    StringMap<TypeResolutionInstance> &variableTyResolver) {
+//
+//  ConstArgument resolvedArg = findSeenArg(refTypeAttr);
+//  if (!resolvedArg)
+//    return;
+//
+//  variableTyResolver[rangedValue] =
+//
+//
+//
+//  for (unsigned i = 0, e = values.size(); i != e; ++i) {
+//    // Check to see if this value matches a resolved operand or result type.
+//    ConstArgument arg = findSeenArg(values[i]);
+//    if (!arg)
+//      continue;
+//
+//    // Mark this value as the type resolver for the other variables.
+//    for (unsigned j = 0; j != i; ++j)
+//      variableTyResolver[values[j]] = {arg, std::nullopt};
+//    for (unsigned j = i + 1; j != e; ++j)
+//      variableTyResolver[values[j]] = {arg, std::nullopt};
+//  }
+//}
 
 void OpFormatParser::handleSameTypesConstraint(
     StringMap<TypeResolutionInstance> &variableTyResolver,

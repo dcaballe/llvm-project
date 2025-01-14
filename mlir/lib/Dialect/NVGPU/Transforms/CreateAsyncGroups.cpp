@@ -73,8 +73,7 @@ static FailureOr<TransferMask> getMaskOp(Operation *loadOp) {
           transferRead.getMask().getDefiningOp<vector::ExtractOp>())
     if (auto maskOp =
             extractOp.getVector().getDefiningOp<vector::CreateMaskOp>())
-      return TransferMask{maskOp,
-                          SmallVector<int64_t>(extractOp.getStaticPosition())};
+      return TransferMask{maskOp, extractOp.getStaticPositionAsIntegers()};
 
   // All other cases: not supported.
   return failure();

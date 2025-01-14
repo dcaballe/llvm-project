@@ -146,6 +146,8 @@ bool isEqualConstantIntOrValueArray(ArrayRef<OpFoldResult> ofrs1,
 /// dynamicValues.
 SmallVector<OpFoldResult> getMixedValues(ArrayRef<int64_t> staticValues,
                                          ValueRange dynamicValues, Builder &b);
+SmallVector<OpFoldResult> getMixedValues(DenseIntElementsAttr staticValues,
+                                         ValueRange dynamicValues, Builder &b);
 
 /// Decompose a vector of mixed static or dynamic values into the
 /// corresponding pair of arrays. This is the inverse function of

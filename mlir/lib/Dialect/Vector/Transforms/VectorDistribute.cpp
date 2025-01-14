@@ -1224,7 +1224,7 @@ struct WarpOpExtractScalar : public WarpDistributionPattern {
       return success();
     }
 
-    int64_t staticPos = extractOp.getStaticPosition()[0];
+    int64_t staticPos = extractOp.getStaticPositionAsIntegers()[0];
     OpFoldResult pos = ShapedType::isDynamic(staticPos)
                            ? (newWarpOp->getResult(newRetIndices[1]))
                            : OpFoldResult(rewriter.getIndexAttr(staticPos));
@@ -1318,7 +1318,7 @@ struct WarpOpInsertScalar : public WarpDistributionPattern {
 
     OpFoldResult pos;
     if (vecType.getRank() != 0) {
-      int64_t staticPos = insertOp.getStaticPosition()[0];
+      int64_t staticPos = insertOp.getStaticPositionAsIntegers()[0];
       pos = ShapedType::isDynamic(staticPos)
                 ? (newWarpOp->getResult(newRetIndices[2]))
                 : OpFoldResult(rewriter.getIndexAttr(staticPos));

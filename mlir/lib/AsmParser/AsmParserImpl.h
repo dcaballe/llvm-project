@@ -553,6 +553,14 @@ public:
                    !(result = parser.parseType()));
   }
 
+  /// Parse a optional colon followed by a type.
+  ParseResult parseOptionalColonType(Type &result) override {
+    if (!parser.consumeIf(Token::colon))
+      return success();
+
+    return failure(!(result = parser.parseType()));
+  }
+
   /// Parse a colon followed by a type list, which must have at least one type.
   ParseResult parseColonTypeList(SmallVectorImpl<Type> &result) override {
     if (parser.parseToken(Token::colon, "expected ':'"))

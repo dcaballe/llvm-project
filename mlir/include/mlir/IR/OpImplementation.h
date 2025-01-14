@@ -1311,6 +1311,9 @@ public:
     return success();
   }
 
+  /// Parse a optional colon followed by a type.
+  virtual ParseResult parseOptionalColonType(Type &result) = 0;
+
   /// Parse a colon followed by a type list, which must have at least one type.
   virtual ParseResult parseColonTypeList(SmallVectorImpl<Type> &result) = 0;
 

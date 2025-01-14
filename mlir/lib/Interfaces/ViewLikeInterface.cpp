@@ -110,11 +110,24 @@ static char getRightDelimiter(AsmParser::Delimiter delimiter) {
   }
 }
 
-void mlir::printDynamicIndexList(OpAsmPrinter &printer, Operation *op,
-                                 OperandRange values,
-                                 ArrayRef<int64_t> integers,
-                                 ArrayRef<bool> scalables, TypeRange valueTypes,
-                                 AsmParser::Delimiter delimiter) {
+enum class ListTypeMode {
+  // No type is parsed/printed either for values or integers.
+  NoType,
+  // The type of each value is parsed/printed next to its name. No type is
+  // parsed/printed for integers.
+  PerElement,
+  // The type for all the values and integers is parsed/printed once at the end
+  // of the list.
+  SameType
+};
+
+static void printDynamicIndexListImpl(OpAsmPrinter &printer, Operation *op,
+                                      OperandRange values,
+                                      ArrayRef<int64_t> integers,
+                                      ArrayRef<bool> scalables,
+                                      ListTypeMode typePrintMode,
+                                      AsmParser::Delimiter delimiter,
+                                      Type sameElementType = Type()) {
   char leftDelimiter = getLeftDelimiter(delimiter);
   char rightDelimiter = getRightDelimiter(delimiter);
   printer << leftDelimiter;
@@ -130,8 +143,8 @@ void mlir::printDynamicIndexList(OpAsmPrinter &printer, Operation *op,
       printer << "[";
     if (ShapedType::isDynamic(integer)) {
       printer << values[dynamicValIdx];
-      if (!valueTypes.empty())
-        printer << " : " << valueTypes[dynamicValIdx];
+      if (typePrintMode == ListTypeMode::PerElement)
+        printer << " : " << values[dynamicValIdx].getType();
       ++dynamicValIdx;
     } else {
       printer << integer;
@@ -142,7 +155,128 @@ void mlir::printDynamicIndexList(OpAsmPrinter &printer, Operation *op,
     scalableIndexIdx++;
   });
 
+  // Print the common type for all the list elements.
+  if (typePrintMode == ListTypeMode::SameType) {
+    assert(sameElementType && "expected a valid type");
+
+    if (!values.empty() || !sameElementType.isInteger(64))
+      printer << " : " << sameElementType;
+  }
+
   printer << rightDelimiter;
+}
+
+void mlir::printDynamicIndexList(OpAsmPrinter &printer, Operation *op,
+                                 OperandRange values,
+                                 ArrayRef<int64_t> integers,
+                                 ArrayRef<bool> scalables,
+                                 TypeRange valueTypes,
+                                 AsmParser::Delimiter delimiter) {
+  assert((valueTypes.empty() || values.size() == valueTypes.size()) &&
+         "The number of values and value types mismatch");
+  assert((valueTypes.empty() || llvm::equal(values.getTypes(), valueTypes)) &&
+         "The type of values and value types mismatch");
+  ListTypeMode typePrintMode =
+      valueTypes.empty() ? ListTypeMode::NoType : ListTypeMode::PerElement;
+
+  printDynamicIndexListImpl(printer, op, values, integers, scalables,
+                            typePrintMode, delimiter);
+}
+
+void mlir::printSameTypeDynamicIndexList(OpAsmPrinter &printer, Operation *op,
+                                         OperandRange values,
+                                         DenseIntElementsAttr integers,
+                                         TypeRange valueTypes,
+                                         AsmParser::Delimiter delimiter) {
+  bool hasElements = !values.empty() || !integers.empty();
+  ListTypeMode typePrintMode =
+      hasElements ? ListTypeMode::SameType : ListTypeMode::NoType;
+
+  Type sameElementType;
+  if (hasElements) {
+    sameElementType =
+        values.empty() ? integers.getElementType() : values.front().getType();
+
+    assert(integers.getElementType() == sameElementType &&
+           "Expected the same type for integers and values");
+    assert(llvm::all_of(llvm::zip_equal(values.getTypes(), valueTypes),
+                        [&](auto zipIt) {
+                          return std::get<0>(zipIt) == sameElementType &&
+                                 std::get<1>(zipIt) == sameElementType;
+                        }) &&
+           "Expected the same type for all the values and value types");
+  }
+
+  SmallVector<int64_t> integerElements;
+  integers.getAsIntegers(integerElements);
+  printDynamicIndexListImpl(printer, op, values, integerElements,
+                            /*scalables=*/{}, typePrintMode, delimiter,
+                            sameElementType);
+}
+
+static ParseResult parseDynamicIndexListImpl(
+    OpAsmParser &parser,
+    SmallVectorImpl<OpAsmParser::UnresolvedOperand> &values,
+    SmallVectorImpl<int64_t> &integers, DenseBoolArrayAttr *scalables,
+    ListTypeMode typeParseMode,
+    SmallVectorImpl<Type> *elementTypes, AsmParser::Delimiter delimiter) {
+
+  assert((typeParseMode == ListTypeMode::NoType || elementTypes) &&
+         "Expected value types in per-element and same-type mode");
+
+  SmallVector<bool, 4> scalableVals;
+  auto parseIntegerOrValue = [&]() {
+    OpAsmParser::UnresolvedOperand operand;
+    auto res = parser.parseOptionalOperand(operand);
+
+    // Handle values.
+    if (res.has_value() && succeeded(res.value())) {
+      values.push_back(operand);
+      integers.push_back(ShapedType::kDynamic);
+      if (typeParseMode == ListTypeMode::PerElement &&
+          parser.parseColonType(elementTypes->emplace_back()))
+        return failure();
+    } else {
+      // Handle integers.
+      // When encountering `[`, assume that this is a scalable index.
+      if (scalables)
+        scalableVals.push_back(parser.parseOptionalLSquare().succeeded());
+
+      int64_t integer;
+      if (failed(parser.parseInteger(integer)))
+        return failure();
+      integers.push_back(integer);
+
+      // If this is assumed to be a scalable index, verify that there's a
+      // closing
+      // `]`.
+      if (scalables && scalableVals.back() &&
+          parser.parseOptionalRSquare().failed())
+        return failure();
+    }
+
+    if (typeParseMode == ListTypeMode::SameType) {
+      Type sameType;
+      // Type is optional for integers. If a value is present, the type is
+      // mandatory.
+      if (parser.parseOptionalColonType(sameType) && !values.empty())
+        return failure();
+
+      if (sameType)
+        elementTypes->push_back(sameType);
+    }
+
+    return success();
+  };
+
+  if (parser.parseCommaSeparatedList(delimiter, parseIntegerOrValue,
+                                     " in dynamic index list"))
+    return parser.emitError(parser.getNameLoc())
+           << "expected SSA value or integer";
+
+  if (scalables)
+    *scalables = parser.getBuilder().getDenseBoolArrayAttr(scalableVals);
+  return success();
 }
 
 ParseResult mlir::parseDynamicIndexList(
@@ -151,39 +285,47 @@ ParseResult mlir::parseDynamicIndexList(
     DenseI64ArrayAttr &integers, DenseBoolArrayAttr &scalables,
     SmallVectorImpl<Type> *valueTypes, AsmParser::Delimiter delimiter) {
 
-  SmallVector<int64_t, 4> integerVals;
-  SmallVector<bool, 4> scalableVals;
-  auto parseIntegerOrValue = [&]() {
-    OpAsmParser::UnresolvedOperand operand;
-    auto res = parser.parseOptionalOperand(operand);
+  ListTypeMode typeParseMode =
+      valueTypes ? ListTypeMode::PerElement : ListTypeMode::NoType;
+  SmallVector<int64_t> integerElements;
+  if (failed(parseDynamicIndexListImpl(parser, values, integerElements,
+                                       &scalables, typeParseMode, valueTypes,
+                                       delimiter)))
+    return failure();
 
-    // When encountering `[`, assume that this is a scalable index.
-    scalableVals.push_back(parser.parseOptionalLSquare().succeeded());
+  integers = parser.getBuilder().getDenseI64ArrayAttr(integerElements);
+  return success();
+}
 
-    if (res.has_value() && succeeded(res.value())) {
-      values.push_back(operand);
-      integerVals.push_back(ShapedType::kDynamic);
-      if (valueTypes && parser.parseColonType(valueTypes->emplace_back()))
-        return failure();
-    } else {
-      int64_t integer;
-      if (failed(parser.parseInteger(integer)))
-        return failure();
-      integerVals.push_back(integer);
-    }
+ParseResult mlir::parseSameTypeDynamicIndexList(
+    OpAsmParser &parser,
+    SmallVectorImpl<OpAsmParser::UnresolvedOperand> &values,
+    DenseIntElementsAttr &integers, SmallVectorImpl<Type> &valueTypes,
+    AsmParser::Delimiter delimiter) {
 
-    // If this is assumed to be a scalable index, verify that there's a closing
-    // `]`.
-    if (scalableVals.back() && parser.parseOptionalRSquare().failed())
-      return failure();
-    return success();
-  };
-  if (parser.parseCommaSeparatedList(delimiter, parseIntegerOrValue,
-                                     " in dynamic index list"))
-    return parser.emitError(parser.getNameLoc())
-           << "expected SSA value or integer";
-  integers = parser.getBuilder().getDenseI64ArrayAttr(integerVals);
-  scalables = parser.getBuilder().getDenseBoolArrayAttr(scalableVals);
+  SmallVector<int64_t> integerElements;
+  SmallVector<Type> elementTypes;
+  if (failed(parseDynamicIndexListImpl(parser, values, integerElements,
+                                       /*scalables=*/nullptr,
+                                       ListTypeMode::SameType, &elementTypes,
+                                       delimiter)))
+    return failure();
+
+  // If only integer elements are present but no type, default to i64.
+  if (values.empty() && !integerElements.empty() && elementTypes.empty())
+    elementTypes.push_back(parser.getBuilder().getI64Type());
+
+  bool hasElements = !values.empty() || !integerElements.empty();
+  if (hasElements) {
+    assert(elementTypes.size() == 1 && "Expected a single type");
+    integers = DenseIntElementsAttr::get(
+        VectorType::get(integerElements.size(), elementTypes[0]),
+        integerElements);
+  }
+
+  if (!values.empty())
+    valueTypes.assign(values.size(), elementTypes[0]);
+
   return success();
 }
 

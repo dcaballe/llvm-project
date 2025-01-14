@@ -1240,6 +1240,36 @@ func.func @extract_scalar_from_vec_1d_f32(%arg0: vector<16xf32>) -> f32 {
 
 // -----
 
+func.func @extract_i32_index(%arg0: vector<16xf32>, %arg1: i32) -> f32 {
+  %0 = vector.extract %arg0[%arg1 : i32]: f32 from vector<16xf32>
+  return %0 : f32
+}
+// CHECK-LABEL: @extract_i32_index
+//       CHECK:   llvm.extractelement {{.*}}[{{.*}} : i32] : vector<16xf32>
+//       CHECK:   return {{.*}} : f32
+
+// -----
+
+func.func @extract_i8_index(%arg0: vector<16xf32>, %arg1: i8) -> f32 {
+  %0 = vector.extract %arg0[%arg1 : i8]: f32 from vector<16xf32>
+  return %0 : f32
+}
+// CHECK-LABEL: @extract_i8_index
+//       CHECK:   llvm.extractelement {{.*}}[{{.*}} : i8] : vector<16xf32>
+//       CHECK:   return {{.*}} : f32
+
+// -----
+
+func.func @extract_i1_index(%arg0: vector<16xf32>, %arg1: i1) -> f32 {
+  %0 = vector.extract %arg0[%arg1 : i1]: f32 from vector<16xf32>
+  return %0 : f32
+}
+// CHECK-LABEL: @extract_i1_index
+//       CHECK:   llvm.extractelement {{.*}}[{{.*}} : i1] : vector<16xf32>
+//       CHECK:   return {{.*}} : f32
+
+// -----
+
 func.func @extract_scalar_from_vec_1d_f32_scalable(%arg0: vector<[16]xf32>) -> f32 {
   %0 = vector.extract %arg0[15]: f32 from vector<[16]xf32>
   return %0 : f32
@@ -1370,7 +1400,7 @@ func.func @extract_scalar_from_vec_3d_f32_scalable(%arg0: vector<4x3x[16]xf32>) 
 // -----
 
 func.func @extract_scalar_from_vec_1d_f32_dynamic_idx(%arg0: vector<16xf32>, %arg1: index) -> f32 {
-  %0 = vector.extract %arg0[%arg1]: f32 from vector<16xf32>
+  %0 = vector.extract %arg0[%arg1 : index] : f32 from vector<16xf32>
   return %0 : f32
 }
 // CHECK-LABEL: @extract_scalar_from_vec_1d_f32_dynamic_idx
@@ -1381,7 +1411,7 @@ func.func @extract_scalar_from_vec_1d_f32_dynamic_idx(%arg0: vector<16xf32>, %ar
 // -----
 
 func.func @extract_scalar_from_vec_1d_f32_dynamic_idx_scalable(%arg0: vector<[16]xf32>, %arg1: index) -> f32 {
-  %0 = vector.extract %arg0[%arg1]: f32 from vector<[16]xf32>
+  %0 = vector.extract %arg0[%arg1 : index] : f32 from vector<[16]xf32>
   return %0 : f32
 }
 // CHECK-LABEL: @extract_scalar_from_vec_1d_f32_dynamic_idx_scalable
@@ -1392,7 +1422,7 @@ func.func @extract_scalar_from_vec_1d_f32_dynamic_idx_scalable(%arg0: vector<[16
 // -----
 
 func.func @extract_scalar_from_vec_2d_f32_inner_dynamic_idx(%arg0: vector<1x16xf32>, %arg1: index) -> f32 {
-  %0 = vector.extract %arg0[0, %arg1]: f32 from vector<1x16xf32>
+  %0 = vector.extract %arg0[0, %arg1 : index]: f32 from vector<1x16xf32>
   return %0 : f32
 }
 
@@ -1404,7 +1434,7 @@ func.func @extract_scalar_from_vec_2d_f32_inner_dynamic_idx(%arg0: vector<1x16xf
 //       CHECK:   llvm.extractelement
 
 func.func @extract_scalar_from_vec_2d_f32_inner_dynamic_idx_scalable(%arg0: vector<1x[16]xf32>, %arg1: index) -> f32 {
-  %0 = vector.extract %arg0[0, %arg1]: f32 from vector<1x[16]xf32>
+  %0 = vector.extract %arg0[0, %arg1 : index]: f32 from vector<1x[16]xf32>
   return %0 : f32
 }
 
@@ -1545,6 +1575,36 @@ func.func @insert_scalar_into_vec_1d_f32(%arg0: f32, %arg1: vector<4xf32>) -> ve
 
 // -----
 
+func.func @insert_i32_index(%arg0: f32, %arg1: vector<4xf32>, %arg2: i32) -> vector<4xf32> {
+  %0 = vector.insert %arg0, %arg1[%arg2 : i32] : f32 into vector<4xf32>
+  return %0 : vector<4xf32>
+}
+// CHECK-LABEL: @insert_i32_index
+//       CHECK:   llvm.insertelement {{.*}}, {{.*}}[{{.*}} : i32] : vector<4xf32>
+//       CHECK:   return {{.*}} : vector<4xf32>
+
+// -----
+
+func.func @insert_i8_index(%arg0: f32, %arg1: vector<4xf32>, %arg2: i8) -> vector<4xf32> {
+  %0 = vector.insert %arg0, %arg1[%arg2 : i8] : f32 into vector<4xf32>
+  return %0 : vector<4xf32>
+}
+// CHECK-LABEL: @insert_i8_index
+//       CHECK:   llvm.insertelement {{.*}}, {{.*}}[{{.*}} : i8] : vector<4xf32>
+//       CHECK:   return {{.*}} : vector<4xf32>
+
+// -----
+
+func.func @insert_i1_index(%arg0: f32, %arg1: vector<4xf32>, %arg2: i1) -> vector<4xf32> {
+  %0 = vector.insert %arg0, %arg1[%arg2 : i1] : f32 into vector<4xf32>
+  return %0 : vector<4xf32>
+}
+// CHECK-LABEL: @insert_i1_index
+//       CHECK:   llvm.insertelement {{.*}}, {{.*}}[{{.*}} : i1] : vector<4xf32>
+//       CHECK:   return {{.*}} : vector<4xf32>
+
+// -----
+
 func.func @insert_scalar_into_vec_1d_f32_scalable(%arg0: f32, %arg1: vector<[4]xf32>) -> vector<[4]xf32> {
   %0 = vector.insert %arg0, %arg1[3] : f32 into vector<[4]xf32>
   return %0 : vector<[4]xf32>
@@ -1656,7 +1716,7 @@ func.func @insert_scalar_into_vec_3d_f32_scalable(%arg0: f32, %arg1: vector<4x8x
 
 func.func @insert_scalar_into_vec_1d_f32_dynamic_idx(%arg0: vector<16xf32>, %arg1: f32, %arg2: index)
                                       -> vector<16xf32> {
-  %0 = vector.insert %arg1, %arg0[%arg2]: f32 into vector<16xf32>
+  %0 = vector.insert %arg1, %arg0[%arg2 : index] : f32 into vector<16xf32>
   return %0 : vector<16xf32>
 }
 
@@ -1669,7 +1729,7 @@ func.func @insert_scalar_into_vec_1d_f32_dynamic_idx(%arg0: vector<16xf32>, %arg
 
 func.func @insert_scalar_into_vec_1d_f32_dynamic_idx_scalable(%arg0: vector<[16]xf32>, %arg1: f32, %arg2: index)
                                       -> vector<[16]xf32> {
-  %0 = vector.insert %arg1, %arg0[%arg2]: f32 into vector<[16]xf32>
+  %0 = vector.insert %arg1, %arg0[%arg2 : index] : f32 into vector<[16]xf32>
   return %0 : vector<[16]xf32>
 }
 
@@ -1682,7 +1742,7 @@ func.func @insert_scalar_into_vec_1d_f32_dynamic_idx_scalable(%arg0: vector<[16]
 
 func.func @insert_scalar_into_vec_2d_f32_dynamic_idx(%arg0: vector<1x16xf32>, %arg1: f32, %idx: index)
                                         -> vector<1x16xf32> {
-  %0 = vector.insert %arg1, %arg0[0, %idx]: f32 into vector<1x16xf32>
+  %0 = vector.insert %arg1, %arg0[0, %idx : index] : f32 into vector<1x16xf32>
   return %0 : vector<1x16xf32>
 }
 
@@ -1695,7 +1755,7 @@ func.func @insert_scalar_into_vec_2d_f32_dynamic_idx(%arg0: vector<1x16xf32>, %a
 
 func.func @insert_scalar_into_vec_2d_f32_dynamic_idx_scalable(%arg0: vector<1x[16]xf32>, %arg1: f32, %idx: index)
                                         -> vector<1x[16]xf32> {
-  %0 = vector.insert %arg1, %arg0[0, %idx]: f32 into vector<1x[16]xf32>
+  %0 = vector.insert %arg1, %arg0[0, %idx : index] : f32 into vector<1x[16]xf32>
   return %0 : vector<1x[16]xf32>
 }
 
