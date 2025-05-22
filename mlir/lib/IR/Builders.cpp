@@ -14,6 +14,7 @@
 #include "mlir/IR/IRMapping.h"
 #include "mlir/IR/IntegerSet.h"
 #include "mlir/IR/Matchers.h"
+#include "mlir/IR/OpDefinition.h"
 #include "mlir/IR/SymbolTable.h"
 #include "llvm/ADT/SmallVectorExtras.h"
 #include "llvm/Support/raw_ostream.h"
@@ -534,6 +535,29 @@ OpBuilder::tryFold(Operation *op, SmallVectorImpl<Value> &results,
     *materializedConstants = std::move(generatedConstants);
 
   return success();
+}
+
+Operation *OpBuilder::lookupOrInsertIntoCache(Operation *op) {
+  if (!op)
+    return nullptr;
+
+  if (!op->hasTrait<OpTrait::ConstantLike>())
+    return nullptr;
+
+  Block *block = op->getBlock();
+  if (!block) {
+    llvm::errs()
+        << "OpBuilder::lookupOrInsertIntoCache: looking up op without block\n";
+    return nullptr;
+  }
+
+  ScopedConstant key = {block, op};
+  Operation *&cachedOp = constantCache[key];
+  if (cachedOp)
+    return cachedOp;
+
+  cachedOp = op;
+  return nullptr;
 }
 
 /// Helper function that sends block insertion notifications for every block

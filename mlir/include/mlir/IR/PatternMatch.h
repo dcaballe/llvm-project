@@ -706,12 +706,14 @@ public:
 protected:
   /// Initialize the builder.
   explicit RewriterBase(MLIRContext *ctx,
-                        OpBuilder::Listener *listener = nullptr)
-      : OpBuilder(ctx, listener) {}
+                        OpBuilder::Listener *listener = nullptr,
+                        bool enableListener = false)
+      : OpBuilder(ctx, listener, enableListener) {}
   explicit RewriterBase(const OpBuilder &otherBuilder)
       : OpBuilder(otherBuilder) {}
-  explicit RewriterBase(Operation *op, OpBuilder::Listener *listener = nullptr)
-      : OpBuilder(op, listener) {}
+  explicit RewriterBase(Operation *op, OpBuilder::Listener *listener = nullptr,
+                        bool enableListener = false)
+      : OpBuilder(op, listener, enableListener) {}
   virtual ~RewriterBase();
 
 private:
