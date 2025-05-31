@@ -141,10 +141,11 @@ protected:
     invalidateFingerPrint(block->getParentOp());
   }
 
-  void notifyOperationInserted(Operation *op,
-                               OpBuilder::InsertPoint previous) override {
+  Operation *notifyOperationInserted(Operation *op,
+                                     OpBuilder::InsertPoint previous) override {
     RewriterBase::ForwardingListener::notifyOperationInserted(op, previous);
     invalidateFingerPrint(op->getParentOp());
+    return replacement;
   }
 
   void notifyOperationModified(Operation *op) override {
@@ -338,8 +339,8 @@ protected:
   /// Notify the driver that the specified operation was inserted. Update the
   /// worklist as needed: The operation is enqueued depending on scope and
   /// strict mode.
-  void notifyOperationInserted(Operation *op,
-                               OpBuilder::InsertPoint previous) override;
+  Operation *notifyOperationInserted(Operation *op,
+                                     OpBuilder::InsertPoint previous) override;
 
   /// Notify the driver that the specified operation was removed. Update the
   /// worklist as needed: The operation and its children are removed from the
@@ -669,7 +670,7 @@ void GreedyPatternRewriteDriver::notifyBlockErased(Block *block) {
     listener->notifyBlockErased(block);
 }
 
-void GreedyPatternRewriteDriver::notifyOperationInserted(
+Operation *GreedyPatternRewriteDriver::notifyOperationInserted(
     Operation *op, OpBuilder::InsertPoint previous) {
   LLVM_DEBUG({
     logger.startLine() << "** Insert  : '" << op->getName() << "'(" << op
@@ -680,6 +681,7 @@ void GreedyPatternRewriteDriver::notifyOperationInserted(
   if (config.getStrictness() == GreedyRewriteStrictness::ExistingAndNewOps)
     strictModeFilteredOps.insert(op);
   addToWorklist(op);
+  return nullptr;
 }
 
 void GreedyPatternRewriteDriver::notifyOperationModified(Operation *op) {

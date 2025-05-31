@@ -219,10 +219,11 @@ protected:
     toBufferOps.erase(op);
   }
 
-  void notifyOperationInserted(Operation *op, InsertPoint previous) override {
+  Operation *notifyOperationInserted(Operation *op,
+                                     InsertPoint previous) override {
     // We only care about newly created ops.
     if (previous.isSet())
-      return;
+      return nullptr;
 
     erasedOps.erase(op);
 
@@ -236,24 +237,25 @@ protected:
     // Keep track of to_buffer ops.
     if (isa<ToBufferOp>(op)) {
       toBufferOps.insert(op);
-      return;
+      return nullptr;
     }
 
     // Skip to_tensor ops.
     if (isa<ToTensorOp>(op))
-      return;
+      return nullptr;
 
     // Skip non-tensor ops.
     if (!hasTensorSemantics(op))
-      return;
+      return nullptr;
 
     // Skip ops that are not allowed to be bufferized.
     auto const &options = analysisState.getOptions();
     if (!options.isOpAllowed(op))
-      return;
+      return nullptr;
 
     // Add op to worklist.
     worklist.push_back(op);
+    return nullptr;
   }
 
 private:

@@ -15,9 +15,10 @@ using namespace mlir;
 namespace {
 
 struct DumpNotifications : public OpBuilder::Listener {
-  void notifyOperationInserted(Operation *op,
-                               OpBuilder::InsertPoint previous) override {
+  Operation *notifyOperationInserted(Operation *op,
+                                     OpBuilder::InsertPoint previous) override {
     llvm::outs() << "notifyOperationInserted: " << op->getName() << "\n";
+    return nullptr;
   }
 };
 

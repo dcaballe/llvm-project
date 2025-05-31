@@ -10,10 +10,9 @@
 #define MLIR_IR_BUILDERS_H
 
 #include "mlir/IR/OpDefinition.h"
-#include "llvm/ADT/ScopedHashTable.h"
-#include "llvm/Support/Allocator.h"
+#include "llvm/ADT/DenseMapInfo.h"
 #include "llvm/Support/Compiler.h"
-#include "llvm/Support/RecyclingAllocator.h"
+#include "llvm/Support/Debug.h"
 #include <optional>
 
 namespace mlir {
@@ -210,34 +209,28 @@ public:
   struct Listener;
 
   /// Create a builder with the given context.
-  explicit OpBuilder(MLIRContext *ctx, Listener *listener = nullptr,
-                     bool enableConstantCache = false)
-      : Builder(ctx), listener(listener),
-        enableConstantCache(enableConstantCache) {}
+  explicit OpBuilder(MLIRContext *ctx, Listener *listener = nullptr)
+      : Builder(ctx), listener(listener) {}
 
   /// Create a builder and set the insertion point to the start of the region.
-  explicit OpBuilder(Region *region, Listener *listener = nullptr,
-                     bool enableConstantCache = false)
-      : OpBuilder(region->getContext(), listener, enableConstantCache) {
+  explicit OpBuilder(Region *region, Listener *listener = nullptr)
+      : OpBuilder(region->getContext(), listener) {
     if (!region->empty())
       setInsertionPointToStart(&region->front());
   }
-  explicit OpBuilder(Region &region, Listener *listener = nullptr,
-                     bool enableConstantCache = false)
-      : OpBuilder(&region, listener, enableConstantCache) {}
+  explicit OpBuilder(Region &region, Listener *listener = nullptr)
+      : OpBuilder(&region, listener) {}
 
   /// Create a builder and set insertion point to the given operation, which
   /// will cause subsequent insertions to go right before it.
-  explicit OpBuilder(Operation *op, Listener *listener = nullptr,
-                     bool enableConstantCache = false)
-      : OpBuilder(op->getContext(), listener, enableConstantCache) {
+  explicit OpBuilder(Operation *op, Listener *listener = nullptr)
+      : OpBuilder(op->getContext(), listener) {
     setInsertionPoint(op);
   }
 
   OpBuilder(Block *block, Block::iterator insertPoint,
-            Listener *listener = nullptr, bool enableConstantCache = false)
-      : OpBuilder(block->getParent()->getContext(), listener,
-                  enableConstantCache) {
+            Listener *listener = nullptr)
+      : OpBuilder(block->getParent()->getContext(), listener) {
     setInsertionPoint(block, insertPoint);
   }
 
@@ -301,7 +294,15 @@ public:
     ///   is empty.
     ///
     /// Note: Creating an (unlinked) op does not trigger this notification.
-    virtual void notifyOperationInserted(Operation *op, InsertPoint previous) {}
+    ///
+    /// Returns an optional replacement for the op suggested by the listener, or
+    /// nullptr otherwise. The caller is free to ignore the replacement or
+    /// replace the original op with it.
+    virtual Operation *notifyOperationInserted(Operation *op,
+                                               InsertPoint previous) {
+      llvm::dbgs() << "BaseClass::notifyOperationInserted!" << "\n";
+      return nullptr;
+    }
 
     /// Notify the listener that the specified block was inserted.
     ///
@@ -514,15 +515,6 @@ public:
                          getCheckRegisteredInfo<OpTy>(location.getContext()));
     OpTy::build(*this, state, std::forward<Args>(args)...);
     Operation *op = create(state);
-
-    if (enableConstantCache) {
-      Operation *cachedOp = lookupOrInsertIntoCache(op);
-      if (cachedOp) {
-        op->erase();
-        op = cachedOp;
-      }
-    }
-
     auto result = dyn_cast<OpTy>(op);
     assert(result && "builder didn't return the right type");
     return result;
@@ -540,6 +532,11 @@ public:
                          getCheckRegisteredInfo<OpTy>(location.getContext()));
     OpTy::build(*this, state, std::forward<Args>(args)...);
     Operation *op = Operation::create(state);
+
+    if (op->hasTrait<OpTrait::ConstantLike>()) {
+      llvm::dbgs() << "creating or folding: " << OpTy::getOperationName() << "\n";
+    }
+
     if (block)
       block->getOperations().insert(insertPoint, op);
 
@@ -547,42 +544,36 @@ public:
     if (succeeded(tryFold(op, results)) && !results.empty()) {
       // Erase the operation, if the fold removed the need for this operation.
       // Note: The fold already populated the results in this case.
+
+      llvm::dbgs() << "tryFold succeeded for: " << OpTy::getOperationName() << "\n";
       op->erase();
-
-      if (enableConstantCache) {
-        for (Value &result : results) {
-          if (Operation *definingOp = result.getDefiningOp()) {
-            Operation *cachedOp = lookupOrInsertIntoCache(definingOp);
-            if (cachedOp) {
-              // We can't erase folded ops as they haven't been created by this
-              // `create` method.
-              auto definingOpResults = definingOp->getResults();
-              // TODO: There has to be a better way to do this!
-              int resultIdx =
-                  std::distance(definingOpResults.begin(),
-                                llvm::find(definingOpResults, result));
-              result = cachedOp->getResult(resultIdx);
-            }
-          }
-        }
-      }
-
       return;
     }
 
+    llvm::dbgs() << "tryFold failed for: " << OpTy::getOperationName() << "\n";
+    llvm::dbgs() << "Block: " << block << "\n";
+    llvm::dbgs() << "Listener: " << listener << "\n";
+
+
     // No-fold case.
-    if (enableConstantCache) {
-      Operation *cachedOp = lookupOrInsertIntoCache(op);
-      if (cachedOp) {
+    if (block && listener) {
+
+      // Replace the op with the listener's replacement, if any.
+      Operation *replacement =
+          listener->notifyOperationInserted(op, /*previous=*/{});
+
+      llvm::dbgs() << "Replacement: " << replacement << "\n";
+
+      if (replacement) {
+        llvm::dbgs() << "Replacing op " << op->getName() << " with "
+                     << replacement->getName() << "\n";
         op->erase();
-        op = cachedOp;
+        op = replacement;
       }
     }
 
     ResultRange opResults = op->getResults();
     results.assign(opResults.begin(), opResults.end());
-    if (block && listener)
-      listener->notifyOperationInserted(op, /*previous=*/{});
   }
 
   /// Overload to create or fold a single result operation.
@@ -659,122 +650,54 @@ private:
   /// The insertion point within the block that this builder is inserting
   /// before.
   Block::iterator insertPoint;
+};
 
-  // Diego: In my original PoC, the cache held constants per region isolated
-  // from above. Each time a constant was created, the algorithm attempted to
-  // find the first parent region isolated from above and insert it in its entry
-  // block (or retrieve an existing one). This approach had a few challenges and
-  // the traversal to find the isolated-from-above region was not very
-  // efficient. but it worked for my initial experiments. In this scenario, the
-  // cache looked like this:
-  //
-  //  // The cache key is a pair with the operation isolated from above that
-  //  // contains the scope where the constants are defined.
-  //  using ScopedAttribute = std::pair<Region *, TypedAttr>;
-  //
-  //  // Map from scoped attribute with the constant information to its constant
-  //  // operation within the scope.
-  //  llvm::DenseMap<ScopedAttribute, arith::ConstantOp> constantMap;
-  //
-  //  where the cache key is a pair with the isolated-from-above region and the
-  //  constant attribute.
-  //
-  // River suggested that the CSE implementation could be useful here. CSE uses
-  // a ScopedMap, which is essentially a stack of DenseMaps where each level of
-  // the stack represents a scope. Scopes can be created arbitrarily as they are
-  // not tied to any IR structure (ie., Block *, Region *). This is how the
-  // cache looks:
-  //
-  //    using AllocatorTy = llvm::RecyclingAllocator<
-  //      llvm::BumpPtrAllocator,
-  //      llvm::ScopedHashTableVal<Operation *, Operation *>>;
-  //    using ScopedMapTy = llvm::ScopedHashTable<Operation *, Operation *,
-  //                                              SimpleOperationInfo,
-  //                                              AllocatorTy>;
-  //
-  // Jacques also mentioned that perhaps we could go beyond caching only
-  // constants and so some kind of in-place CSE within the builder.
-  //
-  // These are the main differences I found when looking at the CSE
-  // implementation vs introducing a cache into the builder:
-  //
-  //   1. CSE follows a very specific traversal based on the dominator tree.
-  //      This implies that every def in a predecessor node dominates all
-  //      the uses in the successor. This assumption simplifies the caching
-  //      problem but unfortunately is something that doesn't hold for the
-  //      op builder. A builder can be used in an arbitrary traversal and the
-  //      insertion point can be moved back and forth, which may lead to
-  //      retrieving an operation from the cache that has been defined after the
-  //      current insertion point.
-  //   2. CSE performs a single traversal so scopes can be destroyed once their
-  //      traversal is completed. Unfortunately, an op builder can be reused
-  //      across multiple traversals of the IR so scopes would need to be kept
-  //      around and tied to an IR component (e.g., Block *, Region *, Operation
-  //      *) so that they can be retrieved later.
-  //   3. CSE does not create new ops or move ops/blocks/regions around. The
-  //      builder should provide an API to allow users to update or at least
-  //      invalidate (part of) the cache.
-  //   4. Builder implementation should be lightweight, esp. regarding
-  //      correctness checks (e.g., interaction with side-effecting ops), if
-  //      any. That might make the caching mechanism "best effort" rather than
-  //      optimal.
-  //
-  //  With these considerations in mind, here are some potential caching
-  //  use-cases or "modes" that might be of interest, each with their unique set
-  //  of challenges:
-  //
-  //       |     Cached ops                     |   Caching Scope              |
-  //    -------------------------------------------------------------------------
-  //    1. |  None                              |  None                        |
-  //    2. |  ConstantLikeInterface             |  Block                       |
-  //    3. |  ConstantLikeInterface             |  Hierarchical/structured CFG |
-  //    4. |  Any sub-expression (in-place CSE) |  Hierarchical/structured CFG |
-  //    5. |  ConstantLikeInterface             |  Arbitrary CFG               |
-  //    6. |  Any sub-expression (in-place CSE) |  Arbitrary CFG               |
-  //
-  //
-  // The current PoC is exploring mode #2 (ConstantLikeInterface, per block
-  // caching scope) to start with something simple. I spent some time thinking
-  // about how to handle the scope differences between CSE and this problem and
-  // also how to enable partial cache invalidations. With this in mind, I
-  // decided to include the Block where the operation is inserted into as part
-  // of the cache key. This should allow us to invalidate the operations
-  // inserted into a specific block. You can see the implementation below this
-  // comment. Perhaps a more efficient alternative, esp. for block-level
-  // invalidation, would be having a nested hash table like this:
-  //
-  //   DenseMap<Block *, DenseMap<Operation *, Operation *>>
-  //
-  //
-  // Challenges & Open Questions:
-  //
-  //   * Arbitrary insertion point changes within the block may lead to users
-  //     being defined before their definitions. For example:
-  //       1. Create a constant within the block
-  //       2. Move the insertion point to the beginning of the block
-  //       3. Retrieve the previous constant
-  //       4. Create a new op at the beginning of the block using that constant.
-  //
-  //       - Should we provide an API to move such a constant to the beginning
-  //         of the block? Should we do it automatically somehow?
-  //
-  //   * Should we always insert constants to be cached at the beginning of the
-  //     block? Is it acceptable to move a ConstantLikeInterface op across
-  //     side-effecting ops?
-  //
+/// Listener that implements a per-block constant cache for ConstantLike ops.
+class ConstantCacheListener : public OpBuilder::Listener {
+public:
+  using OpBuilder::Listener::Listener;
 
+  ConstantCacheListener() = delete;
+
+
+  /// Notify the listener that an operation was inserted. If the operation is
+  /// ConstantLike, check the cache for an equivalent op in the same block.
+  /// If found, erase the new op and replace its uses with the cached one.
+  Operation *notifyOperationInserted(Operation *op,
+                                     OpBuilder::InsertPoint previous) override;
+
+  /// Invalidate the cache entry for a constant op in a given block. The
+  /// operation may already reside in a different block. `oldBlock` is used for
+  /// the purpose of invalidation.
+  void invalidate(Operation *op, Block *oldBlock);
+
+  /// Clear the whole cache.
+  void clear();
+
+private:
   using ScopedConstant = std::pair<Block *, Operation *>;
-
   struct ScopedConstantInfo : public llvm::DenseMapInfo<ScopedConstant> {
+    static inline ScopedConstant getEmptyKey() {
+      return std::make_pair(llvm::DenseMapInfo<Block *>::getEmptyKey(),
+                            llvm::DenseMapInfo<Operation *>::getEmptyKey());
+    }
+
+    static inline ScopedConstant getTombstoneKey() {
+      return std::make_pair(llvm::DenseMapInfo<Block *>::getTombstoneKey(),
+                            llvm::DenseMapInfo<Operation *>::getTombstoneKey());
+    }
+
     static unsigned getHashValue(const ScopedConstant &scopedConstant) {
       unsigned blockHash =
           llvm::DenseMapInfo<Block *>::getHashValue(scopedConstant.first);
       unsigned opHash = OperationEquivalence::computeHash(
           scopedConstant.second,
           /*hashOperands=*/OperationEquivalence::directHashValue,
+          // TODO: We need a "directHashType" for result types? Ignoring them
+          // for now.
           /*hashResults=*/OperationEquivalence::ignoreHashValue,
           OperationEquivalence::IgnoreLocations);
-      return blockHash ^ opHash;
+      return llvm::detail::combineHashValue(blockHash, opHash);
     }
 
     static bool isEqual(const ScopedConstant &lhsC,
@@ -791,13 +714,11 @@ private:
     }
   };
 
+  // TODO: Consider nested hash (e.g., map<Block*, map<Operation *, Operation*>>
+  // for efficient full block invalidation?
   using ScopedMapTy =
       llvm::DenseMap<ScopedConstant, Operation *, ScopedConstantInfo>;
-
   ScopedMapTy constantCache;
-  bool enableConstantCache;
-
-  Operation *lookupOrInsertIntoCache(Operation *op);
 };
 
 } // namespace mlir

@@ -603,12 +603,15 @@ public:
   LLVM_DUMP_METHOD void dumpFunc();
 
   /// FirOpBuilder hook for creating new operation.
-  void notifyOperationInserted(mlir::Operation *op,
-                               mlir::OpBuilder::InsertPoint previous) override {
+  Operation *
+  notifyOperationInserted(mlir::Operation *op,
+                          mlir::OpBuilder::InsertPoint previous) override {
     // We only care about newly created operations.
     if (previous.isSet())
-      return;
+      return nullptr;
+
     setCommonAttributes(op);
+    return nullptr;
   }
 
   /// Construct a data layout on demand and return it

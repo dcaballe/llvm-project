@@ -1396,8 +1396,8 @@ public:
   LogicalResult insertAndApplyPatterns(ArrayRef<Operation *> newOps);
 
   /// Add to the new operation worklist if it is an extract_slice.
-  void notifyOperationInserted(Operation *op,
-                               OpBuilder::InsertPoint previous) override;
+  Operation *notifyOperationInserted(Operation *op,
+                                     OpBuilder::InsertPoint previous) override;
 
   /// Shared helper for operation removal from the worklist.
   void removeOp(Operation *op);
@@ -1439,12 +1439,13 @@ SliceTrackingListener::insertAndApplyPatterns(ArrayRef<Operation *> ops) {
           GreedyRewriteStrictness::ExistingAndNewOps));
 }
 
-void SliceTrackingListener::notifyOperationInserted(
+Operation *SliceTrackingListener::notifyOperationInserted(
     Operation *op, OpBuilder::InsertPoint previous) {
   auto slice = dyn_cast<tensor::ExtractSliceOp>(op);
   if (!slice)
-    return;
+    return nullptr;
   worklist.push_back(slice);
+  return nullptr;
 }
 
 // Scan the worklist for the given op and remove it if present. The

@@ -423,8 +423,8 @@ struct DumpNotifications : public RewriterBase::Listener {
       llvm::outs() << "was linked\n";
     }
   }
-  void notifyOperationInserted(Operation *op,
-                               OpBuilder::InsertPoint previous) override {
+  Operation *notifyOperationInserted(Operation *op,
+                                     OpBuilder::InsertPoint previous) override {
     llvm::outs() << "notifyOperationInserted: " << op->getName();
     if (!previous.isSet()) {
       llvm::outs() << ", was unlinked\n";
@@ -438,6 +438,7 @@ struct DumpNotifications : public RewriterBase::Listener {
                      << "\n";
       }
     }
+    return nullptr;
   }
   void notifyBlockErased(Block *block) override {
     llvm::outs() << "notifyBlockErased\n";

@@ -1412,7 +1412,7 @@ void transform::ErrorCheckingTrackingListener::notifyMatchFailure(
 
 transform::TransformRewriter::TransformRewriter(
     MLIRContext *ctx, ErrorCheckingTrackingListener *listener)
-    : RewriterBase(ctx, nullptr, /*enableConstantCache=*/true), listener(listener) {
+    : RewriterBase(ctx), listener(listener) {
   setListener(listener);
 }
 

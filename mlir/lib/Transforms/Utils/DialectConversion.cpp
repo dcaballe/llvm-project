@@ -949,8 +949,8 @@ struct ConversionPatternRewriterImpl : public RewriterBase::Listener {
   //===--------------------------------------------------------------------===//
 
   //// Notifies that an op was inserted.
-  void notifyOperationInserted(Operation *op,
-                               OpBuilder::InsertPoint previous) override;
+  Operation *notifyOperationInserted(Operation *op,
+                                     OpBuilder::InsertPoint previous) override;
 
   /// Notifies that an op is about to be replaced with the given values.
   void notifyOpReplaced(Operation *op,
@@ -1518,8 +1518,14 @@ Value ConversionPatternRewriterImpl::findOrBuildReplacementValue(
 // Rewriter Notification Hooks
 //===----------------------------------------------------------------------===//
 
-void ConversionPatternRewriterImpl::notifyOperationInserted(
+Operation *ConversionPatternRewriterImpl::notifyOperationInserted(
     Operation *op, OpBuilder::InsertPoint previous) {
+
+  Operation *replOp =
+      ConstantCacheListener::notifyOperationInserted(op, previous);
+  if (replOp)
+    op = replOp;
+
   LLVM_DEBUG({
     logger.startLine() << "** Insert  : '" << op->getName() << "'(" << op
                        << ")\n";
@@ -1530,12 +1536,13 @@ void ConversionPatternRewriterImpl::notifyOperationInserted(
   if (!previous.isSet()) {
     // This is a newly created op.
     appendRewrite<CreateOperationRewrite>(op);
-    return;
+    return replOp;
   }
   Operation *prevOp = previous.getPoint() == previous.getBlock()->end()
                           ? nullptr
                           : &*previous.getPoint();
   appendRewrite<MoveOperationRewrite>(op, previous.getBlock(), prevOp);
+  return replOp;
 }
 
 void ConversionPatternRewriterImpl::notifyOpReplaced(

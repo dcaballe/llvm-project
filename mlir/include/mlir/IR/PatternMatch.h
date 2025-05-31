@@ -357,16 +357,23 @@ public:
 /// IR transformation utilities.
 class RewriterBase : public OpBuilder {
 public:
-  struct Listener : public OpBuilder::Listener {
+  struct Listener : public ConstantCacheListener {
     Listener()
-        : OpBuilder::Listener(ListenerBase::Kind::RewriterBaseListener) {}
+        : ConstantCacheListener(ListenerBase::Kind::RewriterBaseListener) {}
 
     /// Notify the listener that the specified block is about to be erased.
     /// At this point, the block has zero uses.
-    virtual void notifyBlockErased(Block *block) {}
+    virtual void notifyBlockErased(Block *block) {
+      // TODO: Implement invalidation per block.
+      ConstantCacheListener::clear();
+    }
 
     /// Notify the listener that the specified operation was modified in-place.
-    virtual void notifyOperationModified(Operation *op) {}
+    virtual void notifyOperationModified(Operation *op) {
+      // TODO: If the operation was modified in-place, the op invalidation is
+      // not going to work so we have to invalidate the cache completely.
+      ConstantCacheListener::invalidate(op, op->getBlock());
+    }
 
     /// Notify the listener that all uses of the specified operation's results
     /// are about to be replaced with the results of another operation. This is
@@ -390,7 +397,9 @@ public:
     /// At this point, the operation has zero uses.
     ///
     /// Note: This notification is not triggered when unlinking an operation.
-    virtual void notifyOperationErased(Operation *op) {}
+    virtual void notifyOperationErased(Operation *op) {
+      ConstantCacheListener::invalidate(op, op->getBlock());
+    }
 
     /// Notify the listener that the specified pattern is about to be applied
     /// at the specified root operation.
@@ -424,9 +433,12 @@ public:
           rewriteListener(
               dyn_cast_if_present<RewriterBase::Listener>(listener)) {}
 
-    void notifyOperationInserted(Operation *op, InsertPoint previous) override {
+    Operation *notifyOperationInserted(Operation *op,
+                                       InsertPoint previous) override {
       if (listener)
-        listener->notifyOperationInserted(op, previous);
+        return listener->notifyOperationInserted(op, previous);
+
+      return nullptr;
     }
     void notifyBlockInserted(Block *block, Region *previous,
                              Region::iterator previousIt) override {
@@ -706,14 +718,12 @@ public:
 protected:
   /// Initialize the builder.
   explicit RewriterBase(MLIRContext *ctx,
-                        OpBuilder::Listener *listener = nullptr,
-                        bool enableListener = false)
-      : OpBuilder(ctx, listener, enableListener) {}
+                        OpBuilder::Listener *listener = nullptr)
+      : OpBuilder(ctx, listener) {}
   explicit RewriterBase(const OpBuilder &otherBuilder)
       : OpBuilder(otherBuilder) {}
-  explicit RewriterBase(Operation *op, OpBuilder::Listener *listener = nullptr,
-                        bool enableListener = false)
-      : OpBuilder(op, listener, enableListener) {}
+  explicit RewriterBase(Operation *op, OpBuilder::Listener *listener = nullptr)
+      : OpBuilder(op, listener) {}
   virtual ~RewriterBase();
 
 private:

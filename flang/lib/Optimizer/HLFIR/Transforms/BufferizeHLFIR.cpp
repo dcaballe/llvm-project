@@ -711,10 +711,11 @@ struct HLFIRListener : public mlir::OpBuilder::Listener {
   HLFIRListener(fir::FirOpBuilder &builder,
                 mlir::ConversionPatternRewriter &rewriter)
       : builder{builder}, rewriter{rewriter} {}
-  void notifyOperationInserted(mlir::Operation *op,
-                               mlir::OpBuilder::InsertPoint previous) override {
+  Operation *
+  notifyOperationInserted(mlir::Operation *op,
+                          mlir::OpBuilder::InsertPoint previous) override {
     builder.notifyOperationInserted(op, previous);
-    rewriter.getListener()->notifyOperationInserted(op, previous);
+    return rewriter.getListener()->notifyOperationInserted(op, previous);
   }
   virtual void notifyBlockInserted(mlir::Block *block, mlir::Region *previous,
                                    mlir::Region::iterator previousIt) override {

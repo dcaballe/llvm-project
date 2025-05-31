@@ -12,12 +12,9 @@
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Dialect.h"
 #include "mlir/IR/IRMapping.h"
-#include "mlir/IR/IntegerSet.h"
 #include "mlir/IR/Matchers.h"
-#include "mlir/IR/OpDefinition.h"
-#include "mlir/IR/SymbolTable.h"
 #include "llvm/ADT/SmallVectorExtras.h"
-#include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/Debug.h"
 
 using namespace mlir;
 
@@ -537,29 +534,6 @@ OpBuilder::tryFold(Operation *op, SmallVectorImpl<Value> &results,
   return success();
 }
 
-Operation *OpBuilder::lookupOrInsertIntoCache(Operation *op) {
-  if (!op)
-    return nullptr;
-
-  if (!op->hasTrait<OpTrait::ConstantLike>())
-    return nullptr;
-
-  Block *block = op->getBlock();
-  if (!block) {
-    llvm::errs()
-        << "OpBuilder::lookupOrInsertIntoCache: looking up op without block\n";
-    return nullptr;
-  }
-
-  ScopedConstant key = {block, op};
-  Operation *&cachedOp = constantCache[key];
-  if (cachedOp)
-    return cachedOp;
-
-  cachedOp = op;
-  return nullptr;
-}
-
 /// Helper function that sends block insertion notifications for every block
 /// that is directly nested in the given op.
 static void notifyBlockInsertions(Operation *op,
@@ -625,4 +599,63 @@ void OpBuilder::cloneRegionBefore(Region &region, Region &parent,
 
 void OpBuilder::cloneRegionBefore(Region &region, Block *before) {
   cloneRegionBefore(region, *before->getParent(), before->getIterator());
+}
+
+//===----------------------------------------------------------------------===//
+// ConstantCacheListener
+//===----------------------------------------------------------------------===//
+
+Operation *ConstantCacheListener::notifyOperationInserted(
+    Operation *op, OpBuilder::InsertPoint previous) {
+  if (!op || !op->hasTrait<OpTrait::ConstantLike>()) {
+    return nullptr;
+  }
+
+  // Invalidate old cache entry if the op was moved.
+  // TODO: Do we have to invalidate if the operation was moved within the same
+  // block?
+  if (previous.getBlock())
+    invalidate(op, previous.getBlock());
+
+  Block *block = op->getBlock();
+  if (!block)
+    return nullptr;
+
+  ScopedConstant key = {block, op};
+  auto insertRes = constantCache.insert({key, op});
+  if (!insertRes.second) {
+    llvm::dbgs() << "Found cached constant op: ";
+    insertRes.first->second->dump();
+    llvm::dbgs() << "\n";
+    return insertRes.first->second;
+  }
+
+  llvm::dbgs() << "Inserting new op into cache!\n\n";
+  return nullptr;
+}
+
+void ConstantCacheListener::invalidate(Operation *op, Block *block) {
+  if (!op || !op->hasTrait<OpTrait::ConstantLike>())
+    return;
+
+  llvm::dbgs() << "Trying to invalidate op: ";
+  op->dump();
+
+  // TODO: Should we clear the cache if we can't invalidate the op, (e.g., the
+  // op has been unlinked).
+  assert(block && "expected non-null op and block");
+  ScopedConstant key = {block, op};
+
+  if (!constantCache.contains(key)) {
+    llvm::dbgs() << "Op couldn't be found in cache!\n";
+    return;
+  }
+
+  llvm::dbgs() << "Op found in cache! Erasing it!\n";
+  constantCache.erase(key);
+}
+
+void ConstantCacheListener::clear() {
+  llvm::dbgs() << "Clearing the constant cache\n";
+  constantCache.clear();
 }
