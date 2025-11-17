@@ -80,7 +80,7 @@ LogicalResult OperationFolder::tryToFold(Operation *op, bool *inPlaceUpdate,
     // inserted before this one.
     Block *opBlock = op->getBlock();
     if (&opBlock->front() != op && !isFolderOwnedConstant(op->getPrevNode())) {
-      op->moveBefore(&opBlock->front());
+      rewriter.moveOpBefore(op, &opBlock->front());
       op->setLoc(erasedFoldedLocation);
     }
     return failure();
@@ -117,7 +117,7 @@ bool OperationFolder::insertKnownConstant(Operation *op, Attribute constValue) {
   // check to see if we should rehoist it.
   if (isFolderOwnedConstant(op)) {
     if (&opBlock->front() != op && !isFolderOwnedConstant(op->getPrevNode())) {
-      op->moveBefore(&opBlock->front());
+      rewriter.moveOpBefore(op, &opBlock->front());
       op->setLoc(erasedFoldedLocation);
     }
     return true;
@@ -159,11 +159,11 @@ bool OperationFolder::insertKnownConstant(Operation *op, Attribute constValue) {
   // The location info is erased if the constant is moved to a different block.
   Block *insertBlock = &insertRegion->front();
   if (opBlock != insertBlock) {
-    op->moveBefore(&insertBlock->front());
+    rewriter.moveOpBefore(op, &insertBlock->front());
     op->setLoc(erasedFoldedLocation);
   } else if (&insertBlock->front() != op &&
              !isFolderOwnedConstant(op->getPrevNode())) {
-    op->moveBefore(&insertBlock->front());
+    rewriter.moveOpBefore(op, &insertBlock->front());
   }
 
   folderConstOp = op;
@@ -283,7 +283,7 @@ OperationFolder::processFoldResults(Operation *op,
       // was inserted before the constant within the insertion block.
       Block *opBlock = op->getBlock();
       if (opBlock == constOp->getBlock() && &opBlock->front() != constOp)
-        constOp->moveBefore(&opBlock->front());
+        rewriter.moveOpBefore(constOp, &opBlock->front());
 
       results.push_back(constOp->getResult(0));
       continue;

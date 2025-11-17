@@ -210,36 +210,46 @@ class OpBuilder : public Builder {
 public:
   class InsertPoint;
   struct Listener;
+  class BlockScopedConstantLikeOpCache;
 
   /// Create a builder with the given context.
-  explicit OpBuilder(MLIRContext *ctx, Listener *listener = nullptr)
-      : Builder(ctx), listener(listener) {}
+  /// If `opCache` is null, op caching is disabled.
+  explicit OpBuilder(MLIRContext *ctx, Listener *listener = nullptr,
+                     BlockScopedConstantLikeOpCache *opCache = nullptr)
+      : Builder(ctx), listener(listener), operationCache(opCache) {}
 
   /// Create a builder and set the insertion point to the start of the region.
-  explicit OpBuilder(Region *region, Listener *listener = nullptr)
-      : OpBuilder(region->getContext(), listener) {
+  explicit OpBuilder(Region *region, Listener *listener = nullptr,
+                     BlockScopedConstantLikeOpCache *opCache = nullptr)
+      : OpBuilder(region->getContext(), listener, opCache) {
     if (!region->empty())
       setInsertionPointToStart(&region->front());
   }
-  explicit OpBuilder(Region &region, Listener *listener = nullptr)
-      : OpBuilder(&region, listener) {}
+  explicit OpBuilder(Region &region, Listener *listener = nullptr,
+                     BlockScopedConstantLikeOpCache *opCache = nullptr)
+      : OpBuilder(&region, listener, opCache) {}
 
   /// Create a builder and set insertion point to the given operation, which
   /// will cause subsequent insertions to go right before it.
-  explicit OpBuilder(Operation *op, Listener *listener = nullptr)
-      : OpBuilder(op->getContext(), listener) {
+  explicit OpBuilder(Operation *op, Listener *listener = nullptr,
+                     BlockScopedConstantLikeOpCache *opCache = nullptr)
+      : OpBuilder(op->getContext(), listener, opCache) {
     setInsertionPoint(op);
   }
 
   OpBuilder(Block *block, Block::iterator insertPoint,
-            Listener *listener = nullptr)
-      : OpBuilder(block->getParent()->getContext(), listener) {
+            Listener *listener = nullptr,
+            BlockScopedConstantLikeOpCache *opCache = nullptr)
+      : OpBuilder(block->getParent()->getContext(), listener, opCache) {
     setInsertionPoint(block, insertPoint);
   }
 
+  virtual ~OpBuilder() = default;
+
   /// Create a builder and set the insertion point to before the first operation
   /// in the block but still inside the block.
-  static OpBuilder atBlockBegin(Block *block, Listener *listener = nullptr) {
+  static OpBuilder atBlockBegin(Block *block,
+                                Listener *listener = nullptr) {
     return OpBuilder(block, block->begin(), listener);
   }
 
@@ -317,9 +327,107 @@ public:
   /// Sets the listener of this builder to the one provided.
   void setListener(Listener *newListener) { listener = newListener; }
 
+  /// Sets the cache used by this builder.
+  void setOperationCache(BlockScopedConstantLikeOpCache *newCache) {
+    operationCache = newCache;
+  }
+
   /// Returns the current listener of this builder, or nullptr if this builder
   /// doesn't have a listener.
   Listener *getListener() const { return listener; }
+
+  //===--------------------------------------------------------------------===//
+  // Operation Cache.
+  //===--------------------------------------------------------------------===//
+
+  // TODO:
+  //   - Doc
+  //   - Generalize interface, provide multiple cache implementations.
+  class BlockScopedConstantLikeOpCache {
+  public:
+    /// Result of a cache lookup operation.
+    struct CacheLookupResult {
+      /// Returned operation, either the input op or the cached op.
+      Operation *op = nullptr;
+      /// Whether the operation was newly inserted into the cache.
+      bool wasInserted = false;
+
+      /// Returns true if an equivalent operation was found in the cache.
+      bool foundInCache() const { return !wasInserted && op; }
+
+      /// Returns true if the operation was newly cached.
+      bool newlyCached() const { return wasInserted; }
+    };
+
+    /// Return true if an operation is a ConstantLike operation and can be
+    /// cached.
+    bool isCacheable(Operation *op) const;
+
+    /// Looks up an operation in the cache or inserts it if not found.
+    /// The caller is responsible for inserting the operation into the IR.
+    CacheLookupResult lookupOrInsertIntoCache(Operation *op, Block *scopeBlock);
+
+    /// Invalidate the operation in the cache, if it exists. If provided, use
+    /// `scopeBlock` to scope the operation within the cache. Otherwise, scope
+    /// the operation with the current block of the operation.
+    void invalidate(Operation *op, Block *scopeBlock = nullptr);
+
+    /// Invalidate all the operations from the block in the cache.
+    void invalidate(Block *block) {
+      for (Operation &op : *block)
+        invalidate(&op, block);
+    }
+
+    /// Invalidate all the operation in the cache.
+    void clear();
+
+  private:
+    /// Key for block-scoped constant op cache.
+    using ScopedCacheOp = std::pair<Block *, Operation *>;
+
+    struct ScopedCacheOpInfo : public llvm::DenseMapInfo<ScopedCacheOp> {
+      static inline ScopedCacheOp getEmptyKey() {
+        return std::make_pair(llvm::DenseMapInfo<Block *>::getEmptyKey(),
+                              llvm::DenseMapInfo<Operation *>::getEmptyKey());
+      }
+      static inline ScopedCacheOp getTombstoneKey() {
+        return std::make_pair(
+            llvm::DenseMapInfo<Block *>::getTombstoneKey(),
+            llvm::DenseMapInfo<Operation *>::getTombstoneKey());
+      }
+      static unsigned getHashValue(const ScopedCacheOp &scopedConstant) {
+        unsigned blockHash =
+            llvm::DenseMapInfo<Block *>::getHashValue(scopedConstant.first);
+        Operation *op = scopedConstant.second;
+        unsigned opHash = OperationEquivalence::computeHash(
+            op,
+            /*hashOperands=*/OperationEquivalence::directHashValue,
+            /*hashResults=*/OperationEquivalence::ignoreHashValue,
+            OperationEquivalence::IgnoreLocations);
+        return llvm::detail::combineHashValue(blockHash, opHash);
+      }
+      static bool isEqual(const ScopedCacheOp &lhsC,
+                          const ScopedCacheOp &rhsC) {
+        if (lhsC == rhsC)
+          return true;
+        if (lhsC == getTombstoneKey() || lhsC == getEmptyKey() ||
+            rhsC == getTombstoneKey() || rhsC == getEmptyKey())
+          return false;
+        return lhsC.first == rhsC.first &&
+               OperationEquivalence::isEquivalentTo(
+                   lhsC.second, rhsC.second,
+                   OperationEquivalence::IgnoreLocations);
+      }
+    };
+
+    // TODO: Consider different data structure for efficient full block
+    // invalidation? (e.g., ~map<Block*, map<Operation *, Operation*>>).
+    using ScopedCacheMapTy =
+        llvm::DenseMap<ScopedCacheOp, Operation *, ScopedCacheOpInfo>;
+
+    /// Block-scoped cache for constant-like ops.
+    ScopedCacheMapTy constantOpCache;
+  };
 
   //===--------------------------------------------------------------------===//
   // Insertion Point Management
@@ -533,13 +641,34 @@ public:
                          getCheckRegisteredInfo<OpTy>(location.getContext()));
     OpTy::build(*this, state, std::forward<Args>(args)...);
     Operation *op = Operation::create(state);
-    if (block)
+
+    if (block) {
+      if (operationCache) {
+        auto cacheResult =
+            operationCache->lookupOrInsertIntoCache(op, block);
+
+        if (cacheResult.foundInCache() &&
+            cacheResult.op->isBeforeInBlock(getInsertionPoint())) {
+          // Equivalent op was found in the cache. Erase the original operation
+          // and return results from the cached operation.
+          op->erase();
+          results.assign(cacheResult.op->getResults().begin(),
+                         cacheResult.op->getResults().end());
+          return;
+        }
+      }
+
       block->getOperations().insert(insertPoint, op);
+    }
 
     // Attempt to fold the operation.
     if (succeeded(tryFold(op, results)) && !results.empty()) {
       // Erase the operation, if the fold removed the need for this operation.
       // Note: The fold already populated the results in this case.
+      // Invalidate from cache before erasing - the op may have been inserted
+      // into the cache above.
+      if (operationCache)
+        operationCache->invalidate(op, block);
       op->erase();
       return;
     }
@@ -614,9 +743,37 @@ public:
                          Region::iterator before);
   void cloneRegionBefore(Region &region, Block *before);
 
+  /// Invalidate the operation from the builder cache.
+  void invalidateFromCache(Operation *op) {
+    if (operationCache)
+      operationCache->invalidate(op);
+  }
+  void invalidateFromCache(Block *block) {
+    if (operationCache)
+      operationCache->invalidate(block);
+  }
+
+  /// Clear the entire operation cache.
+  void clearCache() {
+    if (operationCache)
+      operationCache->clear();
+  }
+
+  /// Returns the operation cache used by this builder.
+  BlockScopedConstantLikeOpCache *getOperationCache() {
+    return operationCache;
+  }
+  const BlockScopedConstantLikeOpCache *getOperationCache() const {
+    return operationCache;
+  }
+
 protected:
   /// The optional listener for events of this builder.
   Listener *listener;
+
+  /// Operation cache used by this builder. If null, op caching is disabled.
+  BlockScopedConstantLikeOpCache *operationCache;
+
 
 private:
   /// The current block this builder is inserting into.
@@ -631,6 +788,8 @@ private:
 /// as OpBuilder.
 class ImplicitLocOpBuilder : public mlir::OpBuilder {
 public:
+  ~ImplicitLocOpBuilder() override = default;
+
   /// OpBuilder has a bunch of convenience constructors - we support them all
   /// with the additional Location.
   template <typename... T>

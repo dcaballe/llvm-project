@@ -619,3 +619,76 @@ void OpBuilder::cloneRegionBefore(Region &region, Region &parent,
 void OpBuilder::cloneRegionBefore(Region &region, Block *before) {
   cloneRegionBefore(region, *before->getParent(), before->getIterator());
 }
+
+//===----------------------------------------------------------------------===//
+// Operation Cache.
+//===----------------------------------------------------------------------===//
+
+bool OpBuilder::BlockScopedConstantLikeOpCache::isCacheable(
+    Operation *op) const {
+  return op && op->hasTrait<OpTrait::ConstantLike>();
+}
+
+OpBuilder::BlockScopedConstantLikeOpCache::CacheLookupResult
+OpBuilder::BlockScopedConstantLikeOpCache::lookupOrInsertIntoCache(
+    Operation *op, Block *scopeBlock) {
+  if (!isCacheable(op))
+    return {nullptr, false};
+
+  // Operation needs to be scoped to its insertion block.
+  if (!scopeBlock) {
+    LDBG() << "[BlockScopedConstantLikeOpCache]: Can't lookup or insert op "
+              "with no scope: "
+           << *op << "\n";
+    return {nullptr, false};
+  }
+
+  // Look up the scoped operation.
+  ScopedCacheOp key = {scopeBlock, op};
+  Operation *&cachedOp = constantOpCache[key];
+
+  if (cachedOp) {
+    assert(cachedOp->getBlock() == scopeBlock &&
+           "cached op was moved to a different block and was not invalidated");
+    assert(OperationEquivalence::isEquivalentTo(
+               cachedOp, op, OperationEquivalence::IgnoreLocations) &&
+           "cached op was modified and was not invalidated");
+
+    LDBG() << "[BlockScopedConstantLikeOpCache]: Op found in cache: "
+           << *cachedOp << "\n";
+    return {cachedOp, false};
+  }
+
+  // No cached operation found. Add to cache; the caller inserts into the block.
+  cachedOp = op;
+  LDBG() << "[BlockScopedConstantLikeOpCache]: Op added to cache: " << *op
+         << "\n";
+
+  return {op, true};
+}
+
+void OpBuilder::BlockScopedConstantLikeOpCache::invalidate(Operation *op,
+                                                           Block *scopeBlock) {
+  if (!isCacheable(op))
+    return;
+
+  // If no scope block is provided, use the current block of the operation.
+  if (!scopeBlock) {
+    scopeBlock = op->getBlock();
+    // If the operation is not scoped to a block, we can't invalidate it.
+    if (!scopeBlock) {
+      LDBG() << "[BlockScopedConstantLikeOpCache]: Can't invalidate op without "
+                "scope: "
+             << *op << "\n";
+      return;
+    }
+  }
+
+  ScopedCacheOp key = {scopeBlock, op};
+  constantOpCache.erase(key);
+}
+
+void OpBuilder::BlockScopedConstantLikeOpCache::clear() {
+  LDBG() << "[BlockScopedConstantLikeOpCache]: Cache cleared\n";
+  constantOpCache.clear();
+}

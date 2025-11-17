@@ -756,15 +756,25 @@ public:
 protected:
   /// Initialize the builder.
   explicit RewriterBase(MLIRContext *ctx,
-                        OpBuilder::Listener *listener = nullptr)
-      : OpBuilder(ctx, listener) {}
+                        OpBuilder::Listener *listener = nullptr,
+                        OpBuilder::BlockScopedConstantLikeOpCache *opCache = nullptr)
+      : OpBuilder(ctx, listener, opCache) {
+    if (!opCache)
+      setOperationCache(&localOperationCache);
+  }
   explicit RewriterBase(const OpBuilder &otherBuilder)
-      : OpBuilder(otherBuilder) {}
+      : OpBuilder(otherBuilder) {
+    if (!getOperationCache())
+      setOperationCache(&localOperationCache);
+  }
   explicit RewriterBase(Operation *op, OpBuilder::Listener *listener = nullptr)
-      : OpBuilder(op, listener) {}
+      : OpBuilder(op, listener) {
+    setOperationCache(&localOperationCache);
+  }
   virtual ~RewriterBase();
 
 private:
+  OpBuilder::BlockScopedConstantLikeOpCache localOperationCache;
   void operator=(const RewriterBase &) = delete;
   RewriterBase(const RewriterBase &) = delete;
 };
@@ -779,8 +789,10 @@ private:
 /// such as a `PatternRewriter`, is not available.
 class IRRewriter : public RewriterBase {
 public:
-  explicit IRRewriter(MLIRContext *ctx, OpBuilder::Listener *listener = nullptr)
-      : RewriterBase(ctx, listener) {}
+  explicit IRRewriter(
+      MLIRContext *ctx, OpBuilder::Listener *listener = nullptr,
+      OpBuilder::BlockScopedConstantLikeOpCache *opCache = nullptr)
+      : RewriterBase(ctx, listener, opCache) {}
   explicit IRRewriter(const OpBuilder &builder) : RewriterBase(builder) {}
   explicit IRRewriter(Operation *op, OpBuilder::Listener *listener = nullptr)
       : RewriterBase(op, listener) {}

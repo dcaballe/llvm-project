@@ -842,7 +842,7 @@ LogicalResult RegionPatternRewriteDriver::simplify(bool *changed) && {
 
     // `OperationFolder` CSE's constant ops (and may move them into parents
     // regions to enable more aggressive CSE'ing).
-    OperationFolder folder(ctx, this);
+    OperationFolder folder(ctx, this, rewriter.getOperationCache());
     auto insertKnownConstant = [&](Operation *op) {
       // Check for existing constants when populating the worklist. This avoids
       // accidentally reversing the constant order during processing.

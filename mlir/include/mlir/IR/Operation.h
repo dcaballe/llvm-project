@@ -318,6 +318,13 @@ public:
   /// take O(N) where N is the number of operations within the parent block.
   bool isBeforeInBlock(Operation *other);
 
+  /// Given a valid block iterator 'other' from the the same parent block,
+  /// return whether the current operation is before 'other' in the operation
+  /// list of the parent block. Note: This function has an average complexity of
+  /// O(1), but worst case may take O(N) where N is the number of operations
+  /// within the parent block.
+  bool isBeforeInBlock(Block::iterator other);
+
   void print(raw_ostream &os, const OpPrintingFlags &flags = {});
   void print(raw_ostream &os, AsmState &state);
   void dump();
