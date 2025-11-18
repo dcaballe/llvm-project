@@ -1103,7 +1103,7 @@ convertConstantOp(RewriterBase &rewriter, arith::ConstantOp op,
   auto splat =
       cast<SplatElementsAttr>(op.getValue()).getSplatValue<TypedAttr>();
   auto scalarConstant =
-      arith::ConstantOp::create(rewriter, op.getLoc(), splat.getType(), splat);
+      rewriter.createOrFold<arith::ConstantOp>(op.getLoc(), splat.getType(), splat);
   const char *fragType = inferFragType(op);
   auto vecType = cast<VectorType>(op.getType());
   gpu::MMAMatrixType type = gpu::MMAMatrixType::get(

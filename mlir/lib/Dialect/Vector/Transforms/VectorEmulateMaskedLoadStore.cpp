@@ -65,7 +65,7 @@ struct VectorMaskedLoadOpConverter final
     Value base = maskedLoadOp.getBase();
     Value iValue = maskedLoadOp.getPassThru();
     auto indices = llvm::to_vector_of<Value>(maskedLoadOp.getIndices());
-    Value one = arith::ConstantOp::create(rewriter, loc, indexType,
+    Value one = rewriter.createOrFold<arith::ConstantOp>(loc, indexType,
                                           IntegerAttr::get(indexType, 1));
     for (int64_t i = 0; i < maskLength; ++i) {
       auto maskBit = vector::ExtractOp::create(rewriter, loc, mask, i);
@@ -135,7 +135,7 @@ struct VectorMaskedStoreOpConverter final
     Value value = maskedStoreOp.getValueToStore();
     bool nontemporal = false;
     auto indices = llvm::to_vector_of<Value>(maskedStoreOp.getIndices());
-    Value one = arith::ConstantOp::create(rewriter, loc, indexType,
+    Value one = rewriter.createOrFold<arith::ConstantOp>(loc, indexType,
                                           IntegerAttr::get(indexType, 1));
     for (int64_t i = 0; i < maskLength; ++i) {
       auto maskBit = vector::ExtractOp::create(rewriter, loc, mask, i);

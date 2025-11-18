@@ -632,7 +632,7 @@ struct LinearizeVectorCreateMask final
     // The result of the comparison is then multiplied with
     // the second operand of create_mask to get the 1D mask.
     auto firstOperand = adaptor.getOperands().front();
-    auto zero = mlir::arith::ConstantIndexOp::create(rewriter, loc, 0);
+    auto zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
     auto isNonZero = rewriter.createOrFold<mlir::arith::CmpIOp>(
         loc, mlir::arith::CmpIPredicate::sgt, firstOperand, zero);
     auto isNonZeroIndex = rewriter.createOrFold<mlir::arith::IndexCastOp>(

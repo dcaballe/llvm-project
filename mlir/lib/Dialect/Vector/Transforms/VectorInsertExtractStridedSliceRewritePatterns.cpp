@@ -301,7 +301,7 @@ public:
       return failure();
 
     // Extract/insert on a lower ranked extract strided slice op.
-    Value zero = arith::ConstantOp::create(rewriter, loc, elemType,
+    Value zero = rewriter.createOrFold<arith::ConstantOp>(loc, elemType,
                                            rewriter.getZeroAttr(elemType));
     Value res = BroadcastOp::create(rewriter, loc, dstType, zero);
     for (int64_t off = offset, e = offset + size * stride, idx = 0; off < e;

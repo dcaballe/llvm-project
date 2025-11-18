@@ -259,7 +259,7 @@ public:
 
       // Insert transposed 1-D vectors into the higher-order dimension of the
       // output vector.
-      Value res = arith::ConstantOp::create(ib, reshInputType,
+      Value res = ib.createOrFold<arith::ConstantOp>(reshInputType,
                                             ib.getZeroAttr(reshInputType));
       for (int64_t i = 0; i < m; ++i)
         res = vector::InsertOp::create(ib, vs[i], res, i);

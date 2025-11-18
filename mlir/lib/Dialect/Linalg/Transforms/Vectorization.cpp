@@ -917,7 +917,7 @@ static Value calculateGatherOffset(RewriterBase &rewriter,
 
   const size_t numIndices = extractOp.getIndices().size();
   for (size_t i = 1; i < numIndices; i++) {
-    Value dimIdx = arith::ConstantIndexOp::create(rewriter, loc, i);
+    Value dimIdx = rewriter.createOrFold<arith::ConstantIndexOp>(loc, i);
 
     auto dimSize = broadcastIfNeeded(
         rewriter,
@@ -1185,7 +1185,7 @@ vectorizeTensorExtract(RewriterBase &rewriter, VectorizationState &state,
   // generic scenarios are to be supported.
   SmallVector<Value> baseIndices(
       extractOp.getIndices().size(),
-      arith::ConstantIndexOp::create(rewriter, loc, 0));
+      rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0));
 
   VectorMemoryAccessKind memAccessKind =
       getTensorExtractMemoryAccessPattern(extractOp, linalgOp, resultType);
@@ -1469,7 +1469,7 @@ vectorizeAsLinalgGeneric(RewriterBase &rewriter, VectorizationState &state,
 
   // 3. Turn all BBArgs into vector.transfer_read / load.
   Location loc = linalgOp.getLoc();
-  Value zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
+  Value zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
   for (OpOperand *opOperand : linalgOp.getOpOperandsMatchingBBargs()) {
     BlockArgument bbarg = linalgOp.getMatchingBlockArgument(opOperand);
     if (linalgOp.isScalar(opOperand)) {
@@ -1718,7 +1718,7 @@ createWriteOrMaskedWrite(OpBuilder &builder, Location loc, Value vecToStore,
           writeIndices.size() == static_cast<size_t>(destRank)) &&
          "Invalid number of write indices!");
   if (writeIndices.empty()) {
-    auto zero = arith::ConstantIndexOp::create(builder, loc, 0);
+    auto zero = builder.createOrFold<arith::ConstantIndexOp>(loc, 0);
     writeIndices.assign(destRank, zero);
   }
 
@@ -2834,7 +2834,7 @@ LogicalResult mlir::linalg::vectorizeCopy(RewriterBase &rewriter,
   auto writeType = VectorType::get(dstType.getShape(), dstElementType);
 
   Location loc = copyOp->getLoc();
-  Value zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
+  Value zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
   SmallVector<Value> indices(srcType.getRank(), zero);
 
   Value readValue = vector::TransferReadOp::create(
@@ -3158,7 +3158,7 @@ vectorizeAsInsertSliceOp(RewriterBase &rewriter, tensor::InsertSliceOp sliceOp,
 
   if (!padValue) {
     auto elemType = sourceType.getElementType();
-    padValue = arith::ConstantOp::create(rewriter, sliceOp.getLoc(), elemType,
+    padValue = rewriter.createOrFold<arith::ConstantOp>(sliceOp.getLoc(), elemType,
                                          rewriter.getZeroAttr(elemType));
   }
 
@@ -3190,7 +3190,7 @@ vectorizeAsInsertSliceOp(RewriterBase &rewriter, tensor::InsertSliceOp sliceOp,
 
   // Create read
   SmallVector<Value> readIndices(
-      vecType.getRank(), arith::ConstantIndexOp::create(rewriter, loc, 0));
+      vecType.getRank(), rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0));
   Value read = mlir::vector::createReadOrMaskedRead(
       rewriter, loc, source, vecType, padValue,
       /*useInBoundsInsteadOfMasking=*/inputVectorSizes.empty());
@@ -3277,7 +3277,7 @@ struct PadOpVectorizationWithInsertSlicePattern
     // Generate TransferReadOp: Read entire source tensor and add high
     // padding.
     SmallVector<Value> readIndices(
-        vecRank, arith::ConstantIndexOp::create(rewriter, padOp.getLoc(), 0));
+        vecRank, rewriter.createOrFold<arith::ConstantIndexOp>(padOp.getLoc(), 0));
     auto read = vector::TransferReadOp::create(rewriter, padOp.getLoc(),
                                                vecType, padOp.getSource(),
                                                readIndices, padValue);
@@ -3710,7 +3710,7 @@ public:
     }
 
     vector::TransferWriteOp write;
-    Value zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
+    Value zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
 
     // w is unrolled (i.e. wSizeStep == 1) iff strideW > 1.
     // When strideW == 1, we can batch the contiguous loads and avoid
@@ -3942,7 +3942,7 @@ public:
     bindShapeDims(resShapedType, nSize, wSize);
 
     vector::TransferWriteOp write;
-    Value zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
+    Value zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
 
     // w is unrolled (i.e. wSizeStep == 1) iff strideW > 1.
     // When strideW == 1, we can batch the contiguous loads and avoid

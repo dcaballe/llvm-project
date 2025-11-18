@@ -20,7 +20,6 @@ func.func private @insert_slice_static_sizes(%source: tensor<?x3x?x1xi32>) -> te
 // CHECK:           %[[INIT:.*]] = tensor.empty() : tensor<5x3xi32>
 // CHECK:           %[[SRC_SLICE:.*]] = tensor.extract_slice %[[SEC]][0, %[[C_2]], 0, 0] [1, 1, 5, 1] [1, 1, 1, 1] : tensor<?x3x?x1xi32> to tensor<5x1xi32>
 // CHECK-DAG:       %[[PAD:.*]] = arith.constant 0 : i32
-// CHECK-DAG:       %[[C_0_1:.*]] = arith.constant 0 : index
 // CHECK-DAG:       %[[C_0:.*]] = arith.constant 0 : index
 // CHECK-DAG:       %[[C_5:.*]] = arith.constant 5 : index
 // CHECK-DAG:       %[[C_1:.*]] = arith.constant 1 : index
@@ -64,17 +63,16 @@ func.func private @insert_slice_dynamic_src_dim(%source: tensor<?x3x?x1xi32>, %s
 // CHECK:           %[[INIT:.*]] = tensor.empty() : tensor<5x3xi32>
 // CHECK:           %[[SRC_SLICE:.*]] = tensor.extract_slice %[[SRC]][0, %[[C_2]], 0, 0] [1, 1, %[[SIZE]], 1] [1, 1, 1, 1] : tensor<?x3x?x1xi32> to tensor<?x1xi32>
 // CHECK-DAG:       %[[PAD:.*]] = arith.constant 0 : i32
-// CHECK-DAG:       %[[C_1:.*]] = arith.constant 1 : index
 // CHECK-DAG:       %[[C_0:.*]] = arith.constant 0 : index
 // CHECK-DAG:       %[[C_0_1:.*]] = arith.constant 0 : index
-// CHECK-DAG:       %[[C_0_2:.*]] = arith.constant 0 : index
-// CHECK-DAG:       %[[D0:.*]] = tensor.dim %[[SRC_SLICE]], %[[C_0_2]] : tensor<?x1xi32>
+// CHECK-DAG:       %[[D0:.*]] = tensor.dim %[[SRC_SLICE]], %[[C_0_1]] : tensor<?x1xi32>
+// CHECK-DAG:       %[[C_1:.*]] = arith.constant 1 : index
 // CHECK:           %[[MASK:.*]] = vector.create_mask %[[D0]], %[[C_1]] : vector<8x1xi1>
-// CHECK:           %[[READ:.*]] = vector.mask %[[MASK]] { vector.transfer_read %[[SRC_SLICE]][%[[C_0_1]], %[[C_0_1]]], %[[PAD]] {{.*}} : tensor<?x1xi32>, vector<8x1xi32> } : vector<8x1xi1> -> vector<8x1xi32>
+// CHECK:           %[[READ:.*]] = vector.mask %[[MASK]] { vector.transfer_read %[[SRC_SLICE]][%[[C_0]], %[[C_0]]], %[[PAD]] {{.*}} : tensor<?x1xi32>, vector<8x1xi32> } : vector<8x1xi1> -> vector<8x1xi32>
 // CHECK:           %[[C_0_2:.*]] = arith.constant 0 : index
-// CHECK:           %[[C_5_2:.*]] = arith.constant 5 : index
+// CHECK:           %[[C_5_1:.*]] = arith.constant 5 : index
 // CHECK:           %[[C_1_1:.*]] = arith.constant 1 : index
-// CHECK:           %[[MASK_WRITE:.*]] = vector.create_mask %[[C_5_2]], %[[C_1_1]] : vector<8x1xi1>
+// CHECK:           %[[MASK_WRITE:.*]] = vector.create_mask %[[C_5_1]], %[[C_1_1]] : vector<8x1xi1>
 // CHECK:           %[[RES:.*]] = vector.mask %[[MASK_WRITE]] { vector.transfer_write %[[READ]], %[[INIT]][%[[C_0_2]], %[[C_2]]]  {in_bounds = [true, true]} : vector<8x1xi32>, tensor<5x3xi32> } : vector<8x1xi1> -> tensor<5x3xi32>
 // CHECK:           return %[[RES]] : tensor<5x3xi32>
 
@@ -111,8 +109,7 @@ func.func private @insert_slice_dynamic_dest_dim(%source: tensor<?x3x?x1xi32>, %
 // CHECK-DAG:       %[[C_1:.*]] = arith.constant 1 : index
 // CHECK-DAG:       %[[MASK:.*]] = vector.create_mask %[[C_5]], %[[C_1]] : vector<8x1xi1>
 // CHECK-DAG:       %[[C_0:.*]] = arith.constant 0 : index
-// CHECK-DAG:       %[[C_0_1:.*]] = arith.constant 0 : index
-// CHECK:           %[[READ:.*]] = vector.mask %[[MASK]] { vector.transfer_read %[[SRC_SLICE]][%[[C_0_1]], %[[C_0_1]]], %[[PAD]] {{.*}} : tensor<5x1xi32>, vector<8x1xi32> } : vector<8x1xi1> -> vector<8x1xi32>
+// CHECK:           %[[READ:.*]] = vector.mask %[[MASK]] { vector.transfer_read %[[SRC_SLICE]][%[[C_0]], %[[C_0]]], %[[PAD]] {{.*}} : tensor<5x1xi32>, vector<8x1xi32> } : vector<8x1xi1> -> vector<8x1xi32>
 
 // CHECK:           %[[C_0_2:.*]] = arith.constant 0 : index
 // CHECK:           %[[C_0_3:.*]] = arith.constant 0 : index
@@ -154,11 +151,10 @@ func.func private @insert_slice_dynamic_source_and_dest_dim(%source: tensor<?x3x
 // CHECK-DAG:       %[[PAD:.*]] = arith.constant 0 : i32
 // CHECK-DAG:       %[[C0_0:.*]] = arith.constant 0 : index
 // CHECK-DAG:       %[[C0_1:.*]] = arith.constant 0 : index
-// CHECK-DAG:       %[[C0_2:.*]] = arith.constant 0 : index
-// CHECK:           %[[D0:.*]] = tensor.dim %[[SRC_SLICE]], %[[C0_2]] : tensor<?x1xi32>
+// CHECK:           %[[D0:.*]] = tensor.dim %[[SRC_SLICE]], %[[C0_1]] : tensor<?x1xi32>
 // CHECK:           %[[C1:.*]] = arith.constant 1 : index
 // CHECK:           %[[MASK:.*]] = vector.create_mask %[[D0]], %[[C1]] : vector<8x1xi1>
-// CHECK:           %[[READ:.*]] = vector.mask %[[MASK]] { vector.transfer_read %[[SRC_SLICE]][%[[C0_1]], %[[C0_1]]], %[[PAD]] {{.*}} : tensor<?x1xi32>, vector<8x1xi32> } : vector<8x1xi1> -> vector<8x1xi32>
+// CHECK:           %[[READ:.*]] = vector.mask %[[MASK]] { vector.transfer_read %[[SRC_SLICE]][%[[C0_0]], %[[C0_0]]], %[[PAD]] {{.*}} : tensor<?x1xi32>, vector<8x1xi32> } : vector<8x1xi1> -> vector<8x1xi32>
 
 // CHECK:           %[[C_0_3:.*]] = arith.constant 0 : index
 // CHECK:           %[[C_0_4:.*]] = arith.constant 0 : index

@@ -351,7 +351,7 @@ Value vector::createReadOrMaskedRead(OpBuilder &builder, Location loc,
           padValue.value().getType() == sourceShapedType.getElementType()) &&
          "expected same pad element type to match source element type");
 
-  auto zero = arith::ConstantIndexOp::create(builder, loc, 0);
+  auto zero = builder.createOrFold<arith::ConstantIndexOp>(loc, 0);
   SmallVector<bool> inBoundsVal(vecToReadRank, true);
 
   if (useInBoundsInsteadOfMasking) {

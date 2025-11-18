@@ -334,8 +334,7 @@ gpu.module @test_distribution {
     //CHECK: [[sgidy:%.+]] = arith.remui [[sgidy_tmp]], [[c2]] : index
     //CHECK: [[c32:%.+]] = arith.constant 32 : index
     //CHECK: [[l_off_y:%.+]] = arith.muli [[sgidy]], [[c32]] : index
-    //CHECK: [[c32_0:%.+]] = arith.constant 32 : index
-    //CHECK: [[l_off_x:%.+]] = arith.muli [[sgidx]], [[c32_0]] : index
+    //CHECK: [[l_off_x:%.+]] = arith.muli [[sgidx]], [[c32]] : index
     //CHECK: [[c64:%.+]] = arith.constant 64 : index
     //CHECK: [[off_y:%.+]] = arith.remui [[l_off_y]], [[c64]] : index
     //CHECK: [[c128:%.+]] = arith.constant 128 : index
@@ -359,8 +358,7 @@ gpu.module @test_distribution {
     //CHECK: [[sgidy:%.+]] = arith.remui [[sgidy_tmp]], [[c2]] : index
     //CHECK: [[c32:%.+]] = arith.constant 32 : index
     //CHECK: [[l_off_y:%.+]] = arith.muli [[sgidy]], [[c32]] : index
-    //CHECK: [[c32_0:%.+]] = arith.constant 32 : index
-    //CHECK: [[l_off_x:%.+]] = arith.muli [[sgidx]], [[c32_0]] : index
+    //CHECK: [[l_off_x:%.+]] = arith.muli [[sgidx]], [[c32]] : index
     //CHECK: [[c64:%.+]] = arith.constant 64 : index
     //CHECK: [[off_y:%.+]] = arith.remui [[l_off_y]], [[c64]] : index
     //CHECK: [[c128:%.+]] = arith.constant 128 : index

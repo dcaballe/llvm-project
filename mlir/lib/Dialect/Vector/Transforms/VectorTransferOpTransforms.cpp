@@ -543,7 +543,7 @@ class TransferReadDropUnitDimsPattern
     LDBG() << "  -> Creating rank-reduced subview and new transfer_read";
     Value reducedShapeSource =
         rankReducingSubviewDroppingUnitDims(rewriter, loc, source);
-    Value c0 = arith::ConstantIndexOp::create(rewriter, loc, 0);
+    Value c0 = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
     SmallVector<Value> zeros(reducedRank, c0);
     auto identityMap = rewriter.getMultiDimIdentityMap(reducedRank);
     SmallVector<bool> inBounds(reducedVectorType.getRank(), true);
@@ -657,7 +657,7 @@ class TransferWriteDropUnitDimsPattern
     LDBG() << "  -> Creating rank-reduced subview and new transfer_write";
     Value reducedShapeSource =
         rankReducingSubviewDroppingUnitDims(rewriter, loc, source);
-    Value c0 = arith::ConstantIndexOp::create(rewriter, loc, 0);
+    Value c0 = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
     SmallVector<Value> zeros(reducedRank, c0);
     auto identityMap = rewriter.getMultiDimIdentityMap(reducedRank);
     SmallVector<bool> inBounds(reducedVectorType.getRank(), true);
@@ -745,7 +745,7 @@ static SmallVector<Value> getCollapsedIndices(RewriterBase &rewriter,
   // one would get the following offset:
   //    %offset = %arg0 * 43
   OpFoldResult collapsedOffset =
-      arith::ConstantIndexOp::create(rewriter, loc, 0).getResult();
+      rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
 
   auto collapsedStrides = computeSuffixProduct(
       ArrayRef<int64_t>(shape.begin() + firstDimToCollapse, shape.end()));

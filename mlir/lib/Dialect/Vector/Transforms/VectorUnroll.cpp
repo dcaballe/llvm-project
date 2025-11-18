@@ -69,7 +69,7 @@ static SmallVector<Value> sliceLoadStoreIndices(PatternRewriter &rewriter,
     if (offset != 0) {
       indices[start + i] = arith::AddIOp::create(
           rewriter, loc, originalIndices[start + i],
-          arith::ConstantIndexOp::create(rewriter, loc, offset));
+          rewriter.createOrFold<arith::ConstantIndexOp>(loc, offset));
     }
   }
   return indices;
@@ -171,7 +171,7 @@ struct UnrollTransferReadPattern
 
     // Prepare the result vector;
     Value result =
-        arith::ConstantOp::create(rewriter, loc, sourceVectorType,
+        rewriter.createOrFold<arith::ConstantOp>(loc, sourceVectorType,
                                   rewriter.getZeroAttr(sourceVectorType));
     auto targetType =
         VectorType::get(*targetShape, sourceVectorType.getElementType());
@@ -356,7 +356,7 @@ struct UnrollContractionPattern
       accCache[dstOffets] = newOp->getResult(0);
     }
     // Assemble back the accumulator into a single vector.
-    Value result = arith::ConstantOp::create(rewriter, loc, dstVecType,
+    Value result = rewriter.createOrFold<arith::ConstantOp>(loc, dstVecType,
                                              rewriter.getZeroAttr(dstVecType));
     for (const auto &it : accCache) {
       SmallVector<int64_t> dstStrides(it.first.size(), 1);
@@ -483,7 +483,7 @@ struct UnrollElementwisePattern : public RewritePattern {
 
     int64_t adjustedTargetShapeRank = adjustedTargetShape.size();
     // Prepare the result vector.
-    Value result = arith::ConstantOp::create(rewriter, loc, dstVecType,
+    Value result = rewriter.createOrFold<arith::ConstantOp>(loc, dstVecType,
                                              rewriter.getZeroAttr(dstVecType));
     SmallVector<int64_t> strides(adjustedTargetShapeRank, 1);
     VectorType unrolledVecType =
@@ -600,7 +600,7 @@ struct UnrollTransposePattern : public OpRewritePattern<vector::TransposeOp> {
 
     // Prepare the result vector;
     Value result =
-        arith::ConstantOp::create(rewriter, loc, originalVectorType,
+        rewriter.createOrFold<arith::ConstantOp>(loc, originalVectorType,
                                   rewriter.getZeroAttr(originalVectorType));
     ArrayRef<int64_t> permutation = transposeOp.getPermutation();
 
@@ -652,7 +652,7 @@ struct UnrollGatherPattern : public OpRewritePattern<vector::GatherOp> {
 
     // Prepare the result vector;
     Value result =
-        arith::ConstantOp::create(rewriter, loc, sourceVectorType,
+        rewriter.createOrFold<arith::ConstantOp>(loc, sourceVectorType,
                                   rewriter.getZeroAttr(sourceVectorType));
     auto targetType =
         VectorType::get(*targetShape, sourceVectorType.getElementType());
@@ -705,7 +705,7 @@ struct UnrollLoadPattern : public OpRewritePattern<vector::LoadOp> {
     ArrayRef<int64_t> originalShape = vecType.getShape();
     SmallVector<int64_t> strides(targetShape->size(), 1);
 
-    Value result = arith::ConstantOp::create(rewriter, loc, vecType,
+    Value result = rewriter.createOrFold<arith::ConstantOp>(loc, vecType,
                                              rewriter.getZeroAttr(vecType));
 
     SmallVector<int64_t> loopOrder =
@@ -789,7 +789,7 @@ struct UnrollBroadcastPattern : public OpRewritePattern<vector::BroadcastOp> {
     VectorType resType = broadcastOp.getResultVectorType();
     VectorType targetType =
         resType.cloneWith(*targetShape, resType.getElementType());
-    Value result = arith::ConstantOp::create(rewriter, loc, resType,
+    Value result = rewriter.createOrFold<arith::ConstantOp>(loc, resType,
                                              rewriter.getZeroAttr(resType));
 
     SmallVector<int64_t> originalShape = *broadcastOp.getShapeForUnroll();
@@ -931,7 +931,7 @@ struct UnrollStepPattern : public OpRewritePattern<vector::StepOp> {
     Location loc = stepOp.getLoc();
     SmallVector<int64_t> strides(1, 1);
 
-    Value result = arith::ConstantOp::create(rewriter, loc, vecType,
+    Value result = rewriter.createOrFold<arith::ConstantOp>(loc, vecType,
                                              rewriter.getZeroAttr(vecType));
 
     auto targetVecType =

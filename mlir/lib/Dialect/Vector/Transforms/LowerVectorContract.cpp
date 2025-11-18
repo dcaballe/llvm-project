@@ -86,7 +86,7 @@ static Value reshapeLoad(Location loc, Value val, VectorType type,
   // Unroll leading dimensions.
   VectorType vType = VectorType::Builder(type).dropDim(0);
   VectorType resType = VectorType::Builder(type).dropDim(index);
-  Value result = arith::ConstantOp::create(rewriter, loc, resType,
+  Value result = rewriter.createOrFold<arith::ConstantOp>(loc, resType,
                                            rewriter.getZeroAttr(resType));
   for (int64_t d = 0, e = resType.getDimSize(0); d < e; d++) {
     Value ext = vector::ExtractOp::create(rewriter, loc, val, d);
@@ -702,7 +702,7 @@ FailureOr<Value> ContractionOpToDotLowering::matchAndRewriteMaskableOp(
   unsigned dstColumns = rank == 1 ? 1 : dstType.getShape()[1];
 
   // ExtractOp does not allow dynamic indexing, we must unroll explicitly.
-  Value res = arith::ConstantOp::create(rewriter, loc, dstType,
+  Value res = rewriter.createOrFold<arith::ConstantOp>(loc, dstType,
                                         rewriter.getZeroAttr(dstType));
   bool isInt = isa<IntegerType>(dstType.getElementType());
   llvm::SmallVector<Value> extractedCols;
@@ -1040,7 +1040,7 @@ FailureOr<Value> ContractionOpLowering::lowerParallel(PatternRewriter &rewriter,
       rewriter.getArrayAttr(adjustIter(op.getIteratorTypes(), iterIndex));
   // Unroll into a series of lower dimensional vector.contract ops.
   Location loc = op.getLoc();
-  Value result = arith::ConstantOp::create(rewriter, loc, resType,
+  Value result = rewriter.createOrFold<arith::ConstantOp>(loc, resType,
                                            rewriter.getZeroAttr(resType));
 
   for (int64_t d = 0; d < dimSize; ++d) {
@@ -1193,7 +1193,7 @@ public:
       return success();
     }
 
-    Value result = arith::ConstantOp::create(rewriter, loc, resType,
+    Value result = rewriter.createOrFold<arith::ConstantOp>(loc, resType,
                                              rewriter.getZeroAttr(resType));
     for (int64_t d = 0, e = resType.getDimSize(0); d < e; ++d) {
       Value x = vector::ExtractOp::create(rewriter, loc, op.getLhs(), d);

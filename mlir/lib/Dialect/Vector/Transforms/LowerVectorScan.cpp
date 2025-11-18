@@ -111,8 +111,8 @@ struct ScanToArithOps : public OpRewritePattern<vector::ScanOp> {
     if (!isValidKind(isInt, scanOp.getKind()))
       return failure();
 
-    VectorType resType = destType;
-    Value result = arith::ConstantOp::create(rewriter, loc, resType,
+VectorType resType = destType;
+    Value result = rewriter.createOrFold<arith::ConstantOp>(loc, resType,
                                              rewriter.getZeroAttr(resType));
     int64_t reductionDim = scanOp.getReductionDim();
     bool inclusive = scanOp.getInclusive();

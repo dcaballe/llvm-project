@@ -61,7 +61,7 @@ public:
       return failure();
 
     auto loc = op.getLoc();
-    Value result = arith::ConstantOp::create(rewriter, loc, resultType,
+    Value result = rewriter.createOrFold<arith::ConstantOp>(loc, resultType,
                                              rewriter.getZeroAttr(resultType));
     for (auto position : *unrollIterator) {
       Value extractLhs =

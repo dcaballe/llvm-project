@@ -960,8 +960,8 @@ static arith::ConstantOp vectorizeConstant(arith::ConstantOp constOp,
          isa<AffineForOp>(parentOp) && "Expected a vectorized for op");
   auto vecForOp = cast<AffineForOp>(parentOp);
   state.builder.setInsertionPointToStart(vecForOp.getBody());
-  auto newConstOp =
-      arith::ConstantOp::create(state.builder, constOp.getLoc(), vecAttr);
+  auto newConstOp = cast<arith::ConstantOp>(
+      state.builder.createOrFold<arith::ConstantOp>(constOp.getLoc(), vecAttr).getDefiningOp());
 
   // Register vector replacement for future uses in the scope.
   state.registerOpVectorReplacement(constOp, newConstOp);
@@ -1009,7 +1009,8 @@ static arith::ConstantOp createInitialVector(arith::AtomicRMWKind reductionKind,
   auto vecTy = getVectorType(scalarTy, state.strategy);
   auto vecAttr = DenseElementsAttr::get(vecTy, valueAttr);
   auto newConstOp =
-      arith::ConstantOp::create(state.builder, oldOperand.getLoc(), vecAttr);
+      cast<arith::ConstantOp>(state.builder.createOrFold<arith::ConstantOp>(
+          oldOperand.getLoc(), vecAttr).getDefiningOp());
 
   return newConstOp;
 }

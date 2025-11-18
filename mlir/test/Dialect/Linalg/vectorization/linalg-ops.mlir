@@ -1158,7 +1158,6 @@ func.func @test_vectorize_unpack(%source: tensor<8x8x32x16xf32>, %dest: tensor<2
     // CHECK: %[[READ0:.*]] = vector.mask %[[MSK0]] { vector.transfer_read %[[SRC]]{{.*}} %[[PAD]] {{.*}} : vector<16x8x32x16xi1> -> vector<16x8x32x16xf32>
     // CHECK: %[[TRANSP0:.*]] = vector.transpose %[[READ0]], [0, 2, 1, 3] : vector<16x8x32x16xf32> to vector<16x32x8x16xf32>
     // CHECK: %[[SHAPC:.*]] = vector.shape_cast %[[TRANSP0]] : vector<16x32x8x16xf32> to vector<512x128xf32>
-    // CHECK: %[[C01:.*]] = arith.constant 0 : index
     // CHECK: %[[C256:.*]] = arith.constant 256 : index
     // CHECK: %[[C128:.*]] = arith.constant 128 : index
     // CHECK: %[[WRITEMSK:.*]] = vector.create_mask %[[C256]], %[[C128]] : vector<512x128xi1>
@@ -1186,7 +1185,6 @@ func.func @test_vectorize_unpack_no_masks(%source: tensor<8x8x32x16xf32>, %dest:
   // CHECK: %[[READ:.*]] = vector.transfer_read %[[SRC]]{{.*}} %[[PAD]] {{.*}} : tensor<8x8x32x16xf32>, vector<8x8x32x16xf32> 
   // CHECK: %[[TRANSP:.*]] = vector.transpose %[[READ]], [0, 2, 1, 3] : vector<8x8x32x16xf32> to vector<8x32x8x16xf32>
   // CHECK: %[[SHAPC:.*]] = vector.shape_cast %[[TRANSP]] : vector<8x32x8x16xf32> to vector<256x128xf32>
-  // CHECK: %[[C00:.*]] = arith.constant 0 : index
   // CHECK: %[[WRIT:.*]] = vector.transfer_write %[[SHAPC]], %[[DEST]]{{.*}}} : vector<256x128xf32>, tensor<256x128xf32> 
   // CHECK: return %[[WRIT]] : tensor<256x128xf32>
    %0 = linalg.unpack %source inner_dims_pos = [0, 1] inner_tiles = [32, 16] into %dest : tensor<8x8x32x16xf32> -> tensor<256x128xf32>
@@ -1211,7 +1209,6 @@ func.func @test_vectorize_unpack_no_masks(%source: tensor<8x8x32x16xf32>, %dest:
   // CHECK: %[[READ:.*]] = vector.transfer_read %[[SRC]]{{.*}} %[[PAD]] {{.*}} : tensor<8x8x32x16xf32>, vector<8x8x32x16xf32> 
   // CHECK: %[[TRANSP:.*]] = vector.transpose %[[READ]], [1, 2, 0, 3] : vector<8x8x32x16xf32> to vector<8x32x8x16xf32>
   // CHECK: %[[SHAPC:.*]] = vector.shape_cast %[[TRANSP]] : vector<8x32x8x16xf32> to vector<256x128xf32>
-  // CHECK: %[[C00:.*]] = arith.constant 0 : index
   // CHECK: %[[WRIT:.*]] = vector.transfer_write %[[SHAPC]], %[[DEST]]{{.*}}} : vector<256x128xf32>, tensor<256x128xf32> 
   // CHECK: return %[[WRIT]] : tensor<256x128xf32>
    %0 = linalg.unpack %source outer_dims_perm = [1, 0] inner_dims_pos = [0, 1] inner_tiles = [32, 16] into %dest : tensor<8x8x32x16xf32> -> tensor<256x128xf32>
@@ -1236,7 +1233,6 @@ func.func @test_vectorize_unpack_no_vector_sizes(%source: tensor<8x8x32x16xf32>,
   // CHECK: %[[READ:.*]] = vector.transfer_read %[[SRC]]{{.*}} %[[PAD]] {{.*}} : tensor<8x8x32x16xf32>, vector<8x8x32x16xf32> 
   // CHECK: %[[TRANSP:.*]] = vector.transpose %[[READ]], [0, 2, 1, 3] : vector<8x8x32x16xf32> to vector<8x32x8x16xf32>
   // CHECK: %[[SHAPC:.*]] = vector.shape_cast %[[TRANSP]] : vector<8x32x8x16xf32> to vector<256x128xf32>
-  // CHECK: %[[C00:.*]] = arith.constant 0 : index
   // CHECK: %[[WRIT:.*]] = vector.transfer_write %[[SHAPC]], %[[DEST]]{{.*}}} : vector<256x128xf32>, tensor<256x128xf32> 
   // CHECK: return %[[WRIT]] : tensor<256x128xf32>
    %0 = linalg.unpack %source inner_dims_pos = [0, 1] inner_tiles = [32, 16] into %dest : tensor<8x8x32x16xf32> -> tensor<256x128xf32>
@@ -1261,7 +1257,6 @@ func.func @test_vectorize_unpack_no_vector_sizes_slice_output(%source: tensor<8x
   //      CHECK: %[[READ:.*]] = vector.transfer_read %[[SRC]]{{.*}} %[[PAD]] {{.*}} : tensor<8x4x16x16xf32>, vector<8x4x16x16xf32>
   //      CHECK: %[[TRANSP:.*]] = vector.transpose %[[READ]], [1, 2, 0, 3] : vector<8x4x16x16xf32> to vector<4x16x8x16xf32>
   //      CHECK: %[[SHAPC:.*]] = vector.shape_cast %[[TRANSP]] : vector<4x16x8x16xf32> to vector<64x128xf32>
-  //      CHECK: %[[C00:.*]] = arith.constant 0 : index
   //      CHECK: %[[WRIT:.*]] = vector.transfer_write %[[SHAPC]], %[[DEST]]
   // CHECK-SAME:  {in_bounds = [true, false]} : vector<64x128xf32>, tensor<64x127xf32>
   //      CHECK: return %[[WRIT]] : tensor<64x127xf32>
@@ -1290,7 +1285,6 @@ func.func @test_vectorize_unpack_no_vector_sizes_permute(%source: tensor<4x7x4xf
   // CHECK: %[[READ:.*]] = vector.transfer_read %[[SRC]]{{.*}} %[[PAD]] {{.*}} : tensor<4x7x4xf32>, vector<4x7x4xf32>
   // CHECK: %[[TRANSP:.*]] = vector.transpose %[[READ]], [1, 0, 2] : vector<4x7x4xf32> to vector<7x4x4xf32>
   // CHECK: %[[SHAPC:.*]] = vector.shape_cast %[[TRANSP]] : vector<7x4x4xf32> to vector<7x16xf32>
-  // CHECK: %[[C00:.*]] = arith.constant 0 : index
   // CHECK: %[[WRIT:.*]] = vector.transfer_write %[[SHAPC]], %[[DEST]]{{.*}}} : vector<7x16xf32>, tensor<7x16xf32> 
   // CHECK: return %[[WRIT]] : tensor<7x16xf32>
  module attributes {transform.with_named_sequence} {
@@ -1327,8 +1321,7 @@ func.func @pack_no_padding(%src: tensor<32x8x16xf32>, %dest: tensor<4x1x32x16x2x
 // CHECK-SAME:    {in_bounds = [true, true, true]} : tensor<32x8x16xf32>, vector<32x8x16xf32>
 //      CHECK: %[[SC:.*]] = vector.shape_cast %[[READ]] : vector<32x8x16xf32> to vector<32x4x2x1x16xf32>
 //      CHECK: %[[TR:.*]] = vector.transpose %[[SC]], [1, 3, 0, 4, 2] : vector<32x4x2x1x16xf32> to vector<4x1x32x16x2xf32>
-//  CHECK-DAG: %[[C0_1:.*]] = arith.constant 0 : index
-//      CHECK: %[[WRITE:.*]] = vector.transfer_write %[[TR]], %[[DEST]][%[[C0_1]], %[[C0_1]], %[[C0_1]], %[[C0_1]], %[[C0_1]]]
+//      CHECK: %[[WRITE:.*]] = vector.transfer_write %[[TR]], %[[DEST]][%[[C0]], %[[C0]], %[[C0]], %[[C0]], %[[C0]]]
 // CHECK-SAME:   {in_bounds = [true, true, true, true, true]} : vector<4x1x32x16x2xf32>, tensor<4x1x32x16x2xf32>
 //      CHECK: return %[[WRITE]] : tensor<4x1x32x16x2xf32>
 
@@ -1370,8 +1363,7 @@ func.func @pack_with_padding(%src: tensor<32x7x15xf32>, %dest: tensor<32x4x1x16x
 // CHECK-SAME: } : vector<32x8x16xi1> -> vector<32x8x16xf32>
 //      CHECK: %[[SC:.*]] = vector.shape_cast %[[READ]] : vector<32x8x16xf32> to vector<32x4x2x1x16xf32>
 //      CHECK: %[[TR:.*]] = vector.transpose %[[SC]], [0, 1, 3, 4, 2] : vector<32x4x2x1x16xf32> to vector<32x4x1x16x2xf32>
-//  CHECK-DAG: %[[C0_1:.*]] = arith.constant 0 : index
-//      CHECK: %[[WRITE:.*]] = vector.transfer_write %[[TR]], %[[DEST]][%[[C0_1]], %[[C0_1]], %[[C0_1]], %[[C0_1]], %[[C0_1]]]
+//      CHECK: %[[WRITE:.*]] = vector.transfer_write %[[TR]], %[[DEST]][%[[C0]], %[[C0]], %[[C0]], %[[C0]], %[[C0]]]
 // CHECK-SAME:   {in_bounds = [true, true, true, true, true]} : vector<32x4x1x16x2xf32>, tensor<32x4x1x16x2xf32>
 //      CHECK: return %[[WRITE]] : tensor<32x4x1x16x2xf32>
 
@@ -1406,8 +1398,7 @@ func.func @pack_with_padding_no_vector_sizes(%src: tensor<32x7x15xf32>, %dest: t
 // CHECK-SAME:   {in_bounds = [true, false, false]} : tensor<32x7x15xf32>, vector<32x8x16xf32>
 //      CHECK: %[[SC:.*]] = vector.shape_cast %[[READ]] : vector<32x8x16xf32> to vector<32x4x2x1x16xf32>
 //      CHECK: %[[TR:.*]] = vector.transpose %[[SC]], [0, 1, 3, 4, 2] : vector<32x4x2x1x16xf32> to vector<32x4x1x16x2xf32>
-//  CHECK-DAG: %[[C0_1:.*]] = arith.constant 0 : index
-//      CHECK: %[[WRITE:.*]] = vector.transfer_write %[[TR]], %[[DEST]][%[[C0_1]], %[[C0_1]], %[[C0_1]], %[[C0_1]], %[[C0_1]]]
+//      CHECK: %[[WRITE:.*]] = vector.transfer_write %[[TR]], %[[DEST]][%[[C0]], %[[C0]], %[[C0]], %[[C0]], %[[C0]]]
 // CHECK-SAME:   {in_bounds = [true, true, true, true, true]} : vector<32x4x1x16x2xf32>, tensor<32x4x1x16x2xf32>
 //      CHECK: return %[[WRITE]] : tensor<32x4x1x16x2xf32>
 
@@ -1457,7 +1448,6 @@ func.func @pack_with_dynamic_dims(
 //      CHECK: %[[TR:.*]] = vector.transpose %[[SC]], [0, 2, 3, 1] : vector<4x2x1x16xf32> to vector<4x1x16x2xf32>
 
 /// Compute mask for xfer_write
-//  CHECK-DAG: %[[C0_2:.*]] = arith.constant 0 : index
 //  CHECK-DAG: %[[C16:.*]] = arith.constant 16 : index
 //  CHECK-DAG: %[[C2:.*]] = arith.constant 2 : index
 //  CHECK-DAG: %[[D2:.*]] = tensor.dim %[[DEST]], {{.*}} : tensor<?x?x16x2xf32>
@@ -1466,7 +1456,7 @@ func.func @pack_with_dynamic_dims(
 
 /// --= write =---
 //      CHECK: %[[WRITE:.*]] = vector.mask %[[MASK_0]] {
-// CHECK-SAME:   vector.transfer_write %[[TR]], %[[DEST]][%[[C0_2]], %[[C0_2]], %[[C0_2]], %[[C0_2]]]
+// CHECK-SAME:   vector.transfer_write %[[TR]], %[[DEST]][%[[C0_1]], %[[C0_1]], %[[C0_1]], %[[C0_1]]]
 // CHECK-SAME:   {in_bounds = [true, true, true, true]} : vector<4x1x16x2xf32>, tensor<?x?x16x2xf32>
 
 //      CHECK: return %[[WRITE]] : tensor<?x?x16x2xf32>
@@ -1521,7 +1511,6 @@ func.func @pack_with_dynamic_dims_and_dynamic_inner_tile(
 //      CHECK: %[[TR:.*]] = vector.transpose %[[SC]], [0, 2, 3, 1] : vector<4x2x1x16xf32> to vector<4x1x16x2xf32>
 
 /// Compute mask for xfer_write
-//  CHECK-DAG: %[[C0_2:.*]] = arith.constant 0 : index
 //  CHECK-DAG: %[[C2:.*]] = arith.constant 2 : index
 //  CHECK-DAG: %[[C2_2:.*]] = arith.constant 2 : index
 //  CHECK-DAG: %[[D2:.*]] = tensor.dim %[[DEST]], {{.*}} : tensor<?x?x?x2xf32>
@@ -1531,7 +1520,7 @@ func.func @pack_with_dynamic_dims_and_dynamic_inner_tile(
 
 /// --= write =---
 //      CHECK: %[[WRITE:.*]] = vector.mask %[[MASK_0]] {
-// CHECK-SAME:   vector.transfer_write %[[TR]], %[[DEST]][%[[C0_2]], %[[C0_2]], %[[C0_2]], %[[C0_2]]]
+// CHECK-SAME:   vector.transfer_write %[[TR]], %[[DEST]][%[[C0_1]], %[[C0_1]], %[[C0_1]], %[[C0_1]]]
 // CHECK-SAME:   {in_bounds = [true, true, true, true]} : vector<4x1x16x2xf32>, tensor<?x?x?x2xf32>
 
 //      CHECK: return %[[WRITE]] : tensor<?x?x?x2xf32>

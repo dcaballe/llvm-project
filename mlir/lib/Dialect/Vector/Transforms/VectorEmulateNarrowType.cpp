@@ -304,7 +304,7 @@ static Value dynamicallyExtractSubVector(OpBuilder &rewriter, Location loc,
                  : arith::AddIOp::create(
                        rewriter, loc, rewriter.getIndexType(),
                        dyn_cast<Value>(offset),
-                       arith::ConstantIndexOp::create(rewriter, loc, i));
+                       rewriter.createOrFold<arith::ConstantIndexOp>(loc, i));
     auto extractOp = vector::ExtractOp::create(rewriter, loc, src, extractLoc);
     dest = vector::InsertOp::create(rewriter, loc, extractOp, dest, i);
   }
@@ -349,7 +349,7 @@ static Value dynamicallyInsertSubVector(RewriterBase &rewriter, Location loc,
         i == 0 ? destOffsetVal
                : arith::AddIOp::create(
                      rewriter, loc, rewriter.getIndexType(), destOffsetVal,
-                     arith::ConstantIndexOp::create(rewriter, loc, i));
+                     rewriter.createOrFold<arith::ConstantIndexOp>(loc, i));
     auto extractOp = vector::ExtractOp::create(rewriter, loc, src, i);
     dest = vector::InsertOp::create(rewriter, loc, extractOp, dest, insertLoc);
   }
@@ -794,7 +794,7 @@ struct ConvertVectorStore final : OpConversionPattern<vector::StoreOp> {
 
     // Increment the destination index by 1 to align to the emulated width
     // boundary.
-    auto constantOne = arith::ConstantIndexOp::create(rewriter, loc, 1);
+    auto constantOne = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
     currentDestIndex = arith::AddIOp::create(
         rewriter, loc, rewriter.getIndexType(), currentDestIndex, constantOne);
 
@@ -823,7 +823,7 @@ struct ConvertVectorStore final : OpConversionPattern<vector::StoreOp> {
       currentSourceIndex += numNonFullWidthElements;
       currentDestIndex = arith::AddIOp::create(
           rewriter, loc, rewriter.getIndexType(), currentDestIndex,
-          arith::ConstantIndexOp::create(rewriter, loc, fullWidthStoreSize));
+          rewriter.createOrFold<arith::ConstantIndexOp>(loc, fullWidthStoreSize));
     }
 
     // 3. Partial width store for the trailing output byte.
@@ -952,7 +952,7 @@ struct ConvertVectorMaskedStore final
     auto numElements = (origElements + emulatedPerContainerElem - 1) /
                        emulatedPerContainerElem;
     auto newType = VectorType::get(numElements, containerElemTy);
-    auto passThru = arith::ConstantOp::create(rewriter, loc, newType,
+    auto passThru = rewriter.createOrFold<arith::ConstantOp>(loc, newType,
                                               rewriter.getZeroAttr(newType));
 
     auto newLoad = vector::MaskedLoadOp::create(
@@ -1233,7 +1233,7 @@ struct ConvertVectorMaskedLoad final
         numElements * emulatedPerContainerElem, rewriter.getI1Type());
     // TODO: try to fold if op's mask is constant
     auto emptyMask =
-        arith::ConstantOp::create(rewriter, loc, newSelectMaskType,
+        rewriter.createOrFold<arith::ConstantOp>(loc, newSelectMaskType,
                                   rewriter.getZeroAttr(newSelectMaskType));
     if (!foldedIntraVectorOffset) {
       mask = dynamicallyInsertSubVector(rewriter, loc, mask, emptyMask,
