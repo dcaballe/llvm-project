@@ -197,9 +197,9 @@ func.func @broadcast_vec2d_from_vec0d(%arg0: vector<f32>) -> vector<3x2xf32> {
 // CHECK-LABEL: @broadcast_vec2d_from_vec0d(
 // CHECK-SAME:  %[[A:.*]]: vector<f32>)
 //       CHECK: %[[T1:.*]] = llvm.mlir.constant(0 : i64) : i64
+//       CHECK: %[[T3:.*]] = llvm.mlir.poison : !llvm.array<3 x vector<2xf32>>
 //       CHECK: %[[T0:.*]] = builtin.unrealized_conversion_cast %[[A]] : vector<f32> to vector<1xf32>
 //       CHECK: %[[T2:.*]] = llvm.extractelement %[[T0]][%[[T1]] : i64] : vector<1xf32>
-//       CHECK: %[[T3:.*]] = llvm.mlir.poison : !llvm.array<3 x vector<2xf32>>
 //       CHECK: %[[T4Insert:.*]] = llvm.insertelement %[[T2]]
 //       CHECK: %[[T4:.*]] = llvm.shufflevector %[[T4Insert]]
 //       CHECK: %[[T5:.*]] = llvm.insertvalue %[[T4]], %[[T3]][0] : !llvm.array<3 x vector<2xf32>>
@@ -1160,8 +1160,8 @@ func.func @extract_strided_slice_f32_1d_from_2d(%arg0: vector<4x8xf32>) -> vecto
 }
 // CHECK-LABEL: @extract_strided_slice_f32_1d_from_2d(
 //  CHECK-SAME:    %[[ARG:.*]]: vector<4x8xf32>)
-//       CHECK:    %[[A:.*]] = builtin.unrealized_conversion_cast %[[ARG]] : vector<4x8xf32> to !llvm.array<4 x vector<8xf32>>
 //       CHECK:    %[[T0:.*]] = llvm.mlir.poison : !llvm.array<2 x vector<8xf32>>
+//       CHECK:    %[[A:.*]] = builtin.unrealized_conversion_cast %[[ARG]] : vector<4x8xf32> to !llvm.array<4 x vector<8xf32>>
 //       CHECK:    %[[T1:.*]] = llvm.extractvalue %[[A]][2] : !llvm.array<4 x vector<8xf32>>
 //       CHECK:    %[[T2:.*]] = llvm.insertvalue %[[T1]], %[[T0]][0] : !llvm.array<2 x vector<8xf32>>
 //       CHECK:    %[[T3:.*]] = llvm.extractvalue %[[A]][3] : !llvm.array<4 x vector<8xf32>>
@@ -1760,8 +1760,7 @@ func.func @deinterleave_2d_scalable(%arg: vector<2x[8]xf32>) -> (vector<2x[4]xf3
 //       CHECK:  %[[VEC0_1:.*]] = llvm.insertelement %[[ARG_1]], %[[VEC0_0]][%[[C1]] : i64] : vector<2xf32>
 //       CHECK:  %[[RES_RANK_2_0:.*]] = llvm.insertvalue %[[VEC0_1]], %[[UNDEF_VEC_RANK_2_LLVM]][0] : !llvm.array<1 x vector<2xf32>>
 //       CHECK:  %[[RES_0:.*]] = llvm.insertvalue %[[RES_RANK_2_0]], %[[UNDEF_RES_LLVM]][0] : !llvm.array<2 x array<1 x vector<2xf32>>>
-//       CHECK:  %[[UNDEF_VEC1:.*]] = llvm.mlir.poison : vector<2xf32>
-//       CHECK:  %[[VEC1_0:.*]] = llvm.insertelement %[[ARG_2]], %[[UNDEF_VEC1]][%[[C0]] : i64] : vector<2xf32>
+//       CHECK:  %[[VEC1_0:.*]] = llvm.insertelement %[[ARG_2]], %[[UNDEF_VEC0]][%[[C0]] : i64] : vector<2xf32>
 //       CHECK:  %[[VEC1_1:.*]] = llvm.insertelement %[[ARG_3]], %[[VEC1_0]][%[[C1]] : i64] : vector<2xf32>
 //       CHECK:  %[[RES_RANK_2_1:.*]] = llvm.insertvalue %[[VEC1_1]], %[[UNDEF_VEC_RANK_2_LLVM]][0] : !llvm.array<1 x vector<2xf32>>
 //       CHECK:  %[[RES_1:.*]] = llvm.insertvalue %[[RES_RANK_2_1]], %[[RES_0]][1] : !llvm.array<2 x array<1 x vector<2xf32>>>

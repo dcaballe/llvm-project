@@ -35,7 +35,7 @@ static constexpr unsigned kImaginaryPosInComplexNumberStruct = 1;
 
 ComplexStructBuilder ComplexStructBuilder::poison(OpBuilder &builder,
                                                   Location loc, Type type) {
-  Value val = LLVM::PoisonOp::create(builder, loc, type);
+  Value val = builder.createOrFold<LLVM::PoisonOp>(loc, type);
   return ComplexStructBuilder(val);
 }
 

@@ -628,7 +628,7 @@ static Value scalarizeVectorOpHelper(Operation *op, ValueRange operands,
   TypeRange operandTypes(operands);
   VectorType vectorType = cast<VectorType>(llvm1DVectorTy);
   Location loc = op->getLoc();
-  Value result = LLVM::PoisonOp::create(rewriter, loc, vectorType);
+  Value result = rewriter.createOrFold<LLVM::PoisonOp>(loc, vectorType);
   Type indexType = converter.convertType(rewriter.getIndexType());
   StringAttr name = op->getName().getIdentifier();
   Type elementType = vectorType.getElementType();
@@ -821,7 +821,7 @@ LogicalResult GPUReturnOpLowering::matchAndRewrite(
     return rewriter.notifyMatchFailure(op, "could not convert result types");
   }
 
-  Value packed = LLVM::PoisonOp::create(rewriter, loc, packedType);
+  Value packed = rewriter.createOrFold<LLVM::PoisonOp>(loc, packedType);
   for (auto [idx, operand] : llvm::enumerate(updatedOperands)) {
     packed = LLVM::InsertValueOp::create(rewriter, loc, packed, operand, idx);
   }

@@ -149,7 +149,7 @@ static Value broadcast(Location loc, Value toBroadcast, unsigned numElements,
   auto vectorType = VectorType::get(numElements, toBroadcast.getType());
   auto llvmVectorType = typeConverter.convertType(vectorType);
   auto llvmI32Type = typeConverter.convertType(rewriter.getIntegerType(32));
-  Value broadcasted = LLVM::PoisonOp::create(rewriter, loc, llvmVectorType);
+  Value broadcasted = rewriter.createOrFold<LLVM::PoisonOp>(loc, llvmVectorType);
   for (unsigned i = 0; i < numElements; ++i) {
     auto index = rewriter.createOrFold<LLVM::ConstantOp>(
         loc, llvmI32Type, rewriter.getI32IntegerAttr(i));
@@ -679,7 +679,7 @@ public:
     Value overflow = LLVM::ExtractValueOp::create(rewriter, loc, intrResult, 1);
     overflow = LLVM::ZExtOp::create(rewriter, loc, operandType, overflow);
 
-    Value result = LLVM::PoisonOp::create(rewriter, loc, dstType);
+    Value result = rewriter.createOrFold<LLVM::PoisonOp>(loc, dstType);
     result = LLVM::InsertValueOp::create(rewriter, loc, result, lowBits,
                                          ArrayRef<int64_t>{0});
     result = LLVM::InsertValueOp::create(rewriter, loc, result, overflow,
@@ -743,7 +743,7 @@ public:
 
     // Initialize the struct and set the execution mode value.
     rewriter.setInsertionPointToStart(block);
-    Value structValue = LLVM::PoisonOp::create(rewriter, loc, structType);
+    Value structValue = rewriter.createOrFold<LLVM::PoisonOp>(loc, structType);
     Value executionMode = rewriter.createOrFold<LLVM::ConstantOp>(
         loc, llvmI32Type,
         rewriter.getI32IntegerAttr(
@@ -2065,7 +2065,7 @@ public:
     auto componentsArray = components.getValue();
     auto *context = rewriter.getContext();
     auto llvmI32Type = IntegerType::get(context, 32);
-    Value targetOp = LLVM::PoisonOp::create(rewriter, loc, dstType);
+    Value targetOp = rewriter.createOrFold<LLVM::PoisonOp>(loc, dstType);
     for (unsigned i = 0; i < componentsArray.size(); i++) {
       if (!isa<IntegerAttr>(componentsArray[i]))
         return op.emitError("unable to support non-constant component");

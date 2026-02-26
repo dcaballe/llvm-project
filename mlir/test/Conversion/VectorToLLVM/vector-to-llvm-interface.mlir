@@ -254,9 +254,9 @@ func.func @shuffle_2D(%a: vector<1x4xf32>, %b: vector<2x4xf32>) -> vector<3x4xf3
 // CHECK-LABEL: @shuffle_2D(
 // CHECK-SAME: %[[A:.*]]: vector<1x4xf32>,
 // CHECK-SAME: %[[B:.*]]: vector<2x4xf32>)
+//       CHECK:   %[[U0:.*]] = llvm.mlir.poison : !llvm.array<3 x vector<4xf32>>
 //       CHECK-DAG:   %[[VAL_0:.*]] = builtin.unrealized_conversion_cast %[[A]] : vector<1x4xf32> to !llvm.array<1 x vector<4xf32>>
 //       CHECK-DAG:   %[[VAL_1:.*]] = builtin.unrealized_conversion_cast %[[B]] : vector<2x4xf32> to !llvm.array<2 x vector<4xf32>>
-//       CHECK:   %[[U0:.*]] = llvm.mlir.poison : !llvm.array<3 x vector<4xf32>>
 //       CHECK:   %[[E1:.*]] = llvm.extractvalue %[[VAL_1]][0] : !llvm.array<2 x vector<4xf32>>
 //       CHECK:   %[[I1:.*]] = llvm.insertvalue %[[E1]], %[[U0]][0] : !llvm.array<3 x vector<4xf32>>
 //       CHECK:   %[[E2:.*]] = llvm.extractvalue %[[VAL_0]][0] : !llvm.array<1 x vector<4xf32>>
@@ -755,8 +755,8 @@ func.func @type_cast_f32(%arg0: memref<8x8x8xf32>) -> memref<vector<8x8x8xf32>> 
   return %0 : memref<vector<8x8x8xf32>>
 }
 // CHECK-LABEL: @type_cast_f32
-//       CHECK:   llvm.mlir.constant(0 : index
 //       CHECK:   llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64)>
+//       CHECK:   llvm.mlir.constant(0 : index
 //       CHECK:   %[[allocated:.*]] = llvm.extractvalue {{.*}}[0] : !llvm.struct<(ptr, ptr, i64, array<3 x i64>, array<3 x i64>)>
 //       CHECK:   llvm.insertvalue %[[allocated]], {{.*}}[0] : !llvm.struct<(ptr, ptr, i64)>
 //       CHECK:   %[[aligned:.*]] = llvm.extractvalue {{.*}}[1] : !llvm.struct<(ptr, ptr, i64, array<3 x i64>, array<3 x i64>)>
@@ -786,8 +786,8 @@ func.func @type_cast_non_zero_addrspace(%arg0: memref<8x8x8xf32, 3>) -> memref<v
   return %0 : memref<vector<8x8x8xf32>, 3>
 }
 // CHECK-LABEL: @type_cast_non_zero_addrspace
-//       CHECK:   llvm.mlir.constant(0 : index
 //       CHECK:   llvm.mlir.poison : !llvm.struct<(ptr<3>, ptr<3>, i64)>
+//       CHECK:   llvm.mlir.constant(0 : index
 //       CHECK:   %[[allocated:.*]] = llvm.extractvalue {{.*}}[0] : !llvm.struct<(ptr<3>, ptr<3>, i64, array<3 x i64>, array<3 x i64>)>
 //       CHECK:   llvm.insertvalue %[[allocated]], {{.*}}[0] : !llvm.struct<(ptr<3>, ptr<3>, i64)>
 //       CHECK:   %[[aligned:.*]] = llvm.extractvalue {{.*}}[1] : !llvm.struct<(ptr<3>, ptr<3>, i64, array<3 x i64>, array<3 x i64>)>

@@ -5,7 +5,7 @@ func.func @vec_bin(%arg0: vector<2x2x2xf32>) -> vector<2x2x2xf32> {
   // CHECK: llvm.mlir.poison : !llvm.array<2 x array<2 x vector<2xf32>>>
 
   // This block appears 2x2 times
-  // CHECK-NEXT: llvm.extractvalue %{{.*}}[0, 0] : !llvm.array<2 x array<2 x vector<2xf32>>>
+  // CHECK: llvm.extractvalue %{{.*}}[0, 0] : !llvm.array<2 x array<2 x vector<2xf32>>>
   // CHECK-NEXT: llvm.extractvalue %{{.*}}[0, 0] : !llvm.array<2 x array<2 x vector<2xf32>>>
   // CHECK-NEXT: llvm.fadd %{{.*}} : vector<2xf32>
   // CHECK-NEXT: llvm.insertvalue %{{.*}}[0, 0] : !llvm.array<2 x array<2 x vector<2xf32>>>

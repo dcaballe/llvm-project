@@ -317,7 +317,7 @@ struct ConvertArmSMESpillsAndFillsToLLVM : public ConvertToLLVMPattern {
     auto allTruePredicate = rewriter.createOrFold<arith::ConstantOp>(
         loc, DenseElementsAttr::get(predicateType, true));
     // Create padding vector (never used due to all-true predicate).
-    auto padVector = LLVM::PoisonOp::create(rewriter, loc, sliceType);
+    Value padVector = rewriter.createOrFold<LLVM::PoisonOp>(loc, sliceType);
     // Get a pointer to the current slice.
     auto slicePtr =
         getInMemoryTileSlicePtr(rewriter, loc, tileAlloca, sliceIndex);

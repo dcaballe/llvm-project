@@ -6,26 +6,26 @@ gpu.module @kernel {
   gpu.func @private(%arg0: f32) private(%arg1: memref<4xf32, #gpu.address_space<private>>) {
     // Allocate private memory inside the function.
     // NVVM: %[[size:.*]] = llvm.mlir.constant(4 : i64) : i64
+    // NVVM: %[[descr1:.*]] = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
     // NVVM: %[[c0:.*]] = llvm.mlir.constant(0 : index) : i64
     // NVVM: %[[c4:.*]] = llvm.mlir.constant(4 : index) : i64
     // NVVM: %[[c1:.*]] = llvm.mlir.constant(1 : index) : i64
     // NVVM: %[[raw:.*]] = llvm.alloca %[[size]] x f32 : (i64) -> !llvm.ptr
 
     // ROCDL: %[[size:.*]] = llvm.mlir.constant(4 : i64) : i64
+    // ROCDL: %[[descr1:.*]] = llvm.mlir.poison : !llvm.struct<(ptr<5>, ptr<5>, i64, array<1 x i64>, array<1 x i64>)>
     // ROCDL: %[[c0:.*]] = llvm.mlir.constant(0 : index) : i64
     // ROCDL: %[[c4:.*]] = llvm.mlir.constant(4 : index) : i64
     // ROCDL: %[[c1:.*]] = llvm.mlir.constant(1 : index) : i64
     // ROCDL: %[[raw:.*]] = llvm.alloca %[[size]] x f32 : (i64) -> !llvm.ptr<5>
 
     // Populate the memref descriptor.
-    // NVVM: %[[descr1:.*]] = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
     // NVVM: %[[descr2:.*]] = llvm.insertvalue %[[raw]], %[[descr1]][0]
     // NVVM: %[[descr3:.*]] = llvm.insertvalue %[[raw]], %[[descr2]][1]
     // NVVM: %[[descr4:.*]] = llvm.insertvalue %[[c0]], %[[descr3]][2]
     // NVVM: %[[descr5:.*]] = llvm.insertvalue %[[c4]], %[[descr4]][3, 0]
     // NVVM: %[[descr6:.*]] = llvm.insertvalue %[[c1]], %[[descr5]][4, 0]
 
-    // ROCDL: %[[descr1:.*]] = llvm.mlir.poison : !llvm.struct<(ptr<5>, ptr<5>, i64, array<1 x i64>, array<1 x i64>)>
     // ROCDL: %[[descr2:.*]] = llvm.insertvalue %[[raw]], %[[descr1]][0]
     // ROCDL: %[[descr3:.*]] = llvm.insertvalue %[[raw]], %[[descr2]][1]
     // ROCDL: %[[descr4:.*]] = llvm.insertvalue %[[c0]], %[[descr3]][2]
@@ -68,6 +68,7 @@ gpu.module @kernel {
   gpu.func @workgroup(%arg0: f32) workgroup(%arg1: memref<4xf32, #gpu.address_space<workgroup>>) {
     // Get the address of the first element in the global array.
     // NVVM: %[[addr:.*]] = llvm.mlir.addressof @[[$buffer]] : !llvm.ptr<3>
+    // NVVM: %[[descr1:.*]] = llvm.mlir.poison : !llvm.struct<(ptr<3>, ptr<3>, i64, array<1 x i64>, array<1 x i64>)>
     // NVVM: %[[c0:.*]] = llvm.mlir.constant(0 : index) : i64
     // NVVM: %[[c4:.*]] = llvm.mlir.constant(4 : index) : i64
     // NVVM: %[[c1:.*]] = llvm.mlir.constant(1 : index) : i64
@@ -75,6 +76,7 @@ gpu.module @kernel {
     // NVVM-SAME: !llvm.ptr<3>
 
     // ROCDL: %[[addr:.*]] = llvm.mlir.addressof @[[$buffer]] : !llvm.ptr<3>
+    // ROCDL: %[[descr1:.*]] = llvm.mlir.poison : !llvm.struct<(ptr<3>, ptr<3>, i64, array<1 x i64>, array<1 x i64>)>
     // ROCDL: %[[c0:.*]] = llvm.mlir.constant(0 : index) : i64
     // ROCDL: %[[c4:.*]] = llvm.mlir.constant(4 : index) : i64
     // ROCDL: %[[c1:.*]] = llvm.mlir.constant(1 : index) : i64
@@ -82,14 +84,12 @@ gpu.module @kernel {
     // ROCDL-SAME: !llvm.ptr<3>
 
     // Populate the memref descriptor.
-    // NVVM: %[[descr1:.*]] = llvm.mlir.poison : !llvm.struct<(ptr<3>, ptr<3>, i64, array<1 x i64>, array<1 x i64>)>
     // NVVM: %[[descr2:.*]] = llvm.insertvalue %[[raw]], %[[descr1]][0]
     // NVVM: %[[descr3:.*]] = llvm.insertvalue %[[raw]], %[[descr2]][1]
     // NVVM: %[[descr4:.*]] = llvm.insertvalue %[[c0]], %[[descr3]][2]
     // NVVM: %[[descr5:.*]] = llvm.insertvalue %[[c4]], %[[descr4]][3, 0]
     // NVVM: %[[descr6:.*]] = llvm.insertvalue %[[c1]], %[[descr5]][4, 0]
 
-    // ROCDL: %[[descr1:.*]] = llvm.mlir.poison : !llvm.struct<(ptr<3>, ptr<3>, i64, array<1 x i64>, array<1 x i64>)>
     // ROCDL: %[[descr2:.*]] = llvm.insertvalue %[[raw]], %[[descr1]][0]
     // ROCDL: %[[descr3:.*]] = llvm.insertvalue %[[raw]], %[[descr2]][1]
     // ROCDL: %[[descr4:.*]] = llvm.insertvalue %[[c0]], %[[descr3]][2]
@@ -129,6 +129,7 @@ gpu.module @kernel {
   gpu.func @workgroup3d(%arg0: f32) workgroup(%arg1: memref<4x2x6xf32, #gpu.address_space<workgroup>>) {
     // Get the address of the first element in the global array.
     // NVVM: %[[addr:.*]] = llvm.mlir.addressof @[[$buffer]] : !llvm.ptr<3>
+    // NVVM: %[[descr1:.*]] = llvm.mlir.poison : !llvm.struct<(ptr<3>, ptr<3>, i64, array<3 x i64>, array<3 x i64>)>
     // NVVM: %[[c0:.*]] = llvm.mlir.constant(0 : index) : i64
     // NVVM: %[[c4:.*]] = llvm.mlir.constant(4 : index) : i64
     // NVVM: %[[c12:.*]] = llvm.mlir.constant(12 : index) : i64
@@ -139,6 +140,7 @@ gpu.module @kernel {
     // NVVM-SAME: !llvm.ptr<3>
 
     // ROCDL: %[[addr:.*]] = llvm.mlir.addressof @[[$buffer]] : !llvm.ptr<3>
+    // ROCDL: %[[descr1:.*]] = llvm.mlir.poison : !llvm.struct<(ptr<3>, ptr<3>, i64, array<3 x i64>, array<3 x i64>)>
     // ROCDL: %[[c0:.*]] = llvm.mlir.constant(0 : index) : i64
     // ROCDL: %[[c4:.*]] = llvm.mlir.constant(4 : index) : i64
     // ROCDL: %[[c12:.*]] = llvm.mlir.constant(12 : index) : i64
@@ -149,7 +151,6 @@ gpu.module @kernel {
     // ROCDL-SAME: !llvm.ptr<3>
 
     // Populate the memref descriptor.
-    // NVVM: %[[descr1:.*]] = llvm.mlir.poison : !llvm.struct<(ptr<3>, ptr<3>, i64, array<3 x i64>, array<3 x i64>)>
     // NVVM: %[[descr2:.*]] = llvm.insertvalue %[[raw]], %[[descr1]][0]
     // NVVM: %[[descr3:.*]] = llvm.insertvalue %[[raw]], %[[descr2]][1]
     // NVVM: %[[descr4:.*]] = llvm.insertvalue %[[c0]], %[[descr3]][2]
@@ -160,7 +161,6 @@ gpu.module @kernel {
     // NVVM: %[[descr9:.*]] = llvm.insertvalue %[[c6]], %[[descr8]][3, 2]
     // NVVM: %[[descr10:.*]] = llvm.insertvalue %[[c1]], %[[descr9]][4, 2]
 
-    // ROCDL: %[[descr1:.*]] = llvm.mlir.poison : !llvm.struct<(ptr<3>, ptr<3>, i64, array<3 x i64>, array<3 x i64>)>
     // ROCDL: %[[descr2:.*]] = llvm.insertvalue %[[raw]], %[[descr1]][0]
     // ROCDL: %[[descr3:.*]] = llvm.insertvalue %[[raw]], %[[descr2]][1]
     // ROCDL: %[[descr4:.*]] = llvm.insertvalue %[[c0]], %[[descr3]][2]

@@ -87,7 +87,7 @@ LogicalResult LLVM::detail::handleMultidimensionalVectors(
   auto result1DVectorTy = resultTypeInfo.llvm1DVectorTy;
   auto resultNDVectoryTy = resultTypeInfo.llvmNDVectorTy;
   auto loc = op->getLoc();
-  Value desc = LLVM::PoisonOp::create(rewriter, loc, resultNDVectoryTy);
+  Value desc = rewriter.createOrFold<LLVM::PoisonOp>(loc, resultNDVectoryTy);
   nDVectorIterate(resultTypeInfo, rewriter, [&](ArrayRef<int64_t> position) {
     // For this unrolled `position` corresponding to the `linearIndex`^th
     // element, extract operand vectors

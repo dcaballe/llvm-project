@@ -700,12 +700,13 @@ func.func @mului_extended_vector1d(%arg0: vector<3xi64>, %arg1: vector<3xi64>) -
 // CHECK-LABEL: func @cmpf_2dvector(
 //  CHECK-SAME:     %[[OARG0:.*]]: vector<4x3xf32>, %[[OARG1:.*]]: vector<4x3xf32>)
 func.func @cmpf_2dvector(%arg0 : vector<4x3xf32>, %arg1 : vector<4x3xf32>) {
+  // CHECK: %[[POISON:.*]] = llvm.mlir.poison : !llvm.array<4 x vector<3xi1>>
   // CHECK-DAG: %[[ARG0:.*]] = builtin.unrealized_conversion_cast %[[OARG0]]
   // CHECK-DAG: %[[ARG1:.*]] = builtin.unrealized_conversion_cast %[[OARG1]]
   // CHECK: %[[EXTRACT1:.*]] = llvm.extractvalue %[[ARG0]][0] : !llvm.array<4 x vector<3xf32>>
   // CHECK: %[[EXTRACT2:.*]] = llvm.extractvalue %[[ARG1]][0] : !llvm.array<4 x vector<3xf32>>
   // CHECK: %[[CMP:.*]] = llvm.fcmp "olt" %[[EXTRACT1]], %[[EXTRACT2]] : vector<3xf32>
-  // CHECK: %[[INSERT:.*]] = llvm.insertvalue %[[CMP]], %2[0] : !llvm.array<4 x vector<3xi1>>
+  // CHECK: %[[INSERT:.*]] = llvm.insertvalue %[[CMP]], %[[POISON]][0] : !llvm.array<4 x vector<3xi1>>
   %0 = arith.cmpf olt, %arg0, %arg1 : vector<4x3xf32>
   func.return
 }
@@ -727,12 +728,13 @@ func.func @cmpi_0dvector(%arg0 : vector<i32>, %arg1 : vector<i32>) {
 // CHECK-LABEL: func @cmpi_2dvector(
 //  CHECK-SAME:     %[[OARG0:.*]]: vector<4x3xi32>, %[[OARG1:.*]]: vector<4x3xi32>)
 func.func @cmpi_2dvector(%arg0 : vector<4x3xi32>, %arg1 : vector<4x3xi32>) {
+  // CHECK: %[[POISON:.*]] = llvm.mlir.poison : !llvm.array<4 x vector<3xi1>>
   // CHECK-DAG: %[[ARG0:.*]] = builtin.unrealized_conversion_cast %[[OARG0]]
   // CHECK-DAG: %[[ARG1:.*]] = builtin.unrealized_conversion_cast %[[OARG1]]
   // CHECK: %[[EXTRACT1:.*]] = llvm.extractvalue %[[ARG0]][0] : !llvm.array<4 x vector<3xi32>>
   // CHECK: %[[EXTRACT2:.*]] = llvm.extractvalue %[[ARG1]][0] : !llvm.array<4 x vector<3xi32>>
   // CHECK: %[[CMP:.*]] = llvm.icmp "ult" %[[EXTRACT1]], %[[EXTRACT2]] : vector<3xi32>
-  // CHECK: %[[INSERT:.*]] = llvm.insertvalue %[[CMP]], %2[0] : !llvm.array<4 x vector<3xi1>>
+  // CHECK: %[[INSERT:.*]] = llvm.insertvalue %[[CMP]], %[[POISON]][0] : !llvm.array<4 x vector<3xi1>>
   %0 = arith.cmpi ult, %arg0, %arg1 : vector<4x3xi32>
   func.return
 }

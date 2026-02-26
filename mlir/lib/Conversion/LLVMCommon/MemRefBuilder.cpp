@@ -32,7 +32,7 @@ MemRefDescriptor::MemRefDescriptor(Value descriptor)
 MemRefDescriptor MemRefDescriptor::poison(OpBuilder &builder, Location loc,
                                           Type descriptorType) {
 
-  Value descriptor = LLVM::PoisonOp::create(builder, loc, descriptorType);
+  Value descriptor = builder.createOrFold<LLVM::PoisonOp>(loc, descriptorType);
   return MemRefDescriptor(descriptor);
 }
 
@@ -307,7 +307,7 @@ UnrankedMemRefDescriptor::UnrankedMemRefDescriptor(Value descriptor)
 UnrankedMemRefDescriptor UnrankedMemRefDescriptor::poison(OpBuilder &builder,
                                                           Location loc,
                                                           Type descriptorType) {
-  Value descriptor = LLVM::PoisonOp::create(builder, loc, descriptorType);
+  Value descriptor = builder.createOrFold<LLVM::PoisonOp>(loc, descriptorType);
   return UnrankedMemRefDescriptor(descriptor);
 }
 Value UnrankedMemRefDescriptor::rank(OpBuilder &builder, Location loc) const {

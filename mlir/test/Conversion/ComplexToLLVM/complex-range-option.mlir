@@ -9,18 +9,17 @@ func.func @complex_div(%lhs: complex<f32>, %rhs: complex<f32>) -> complex<f32> {
 }
 // DIV-SMITH-LABEL: func @complex_div
 // DIV-SMITH-SAME:    %[[LHS:.*]]: complex<f32>, %[[RHS:.*]]: complex<f32>
+// DIV-SMITH: %[[RESULT_0:.*]] = llvm.mlir.poison : ![[C_TY:.*>]]
 // DIV-SMITH-DAG: %[[ZERO:.*]] = llvm.mlir.constant(0.000000e+00 : f32) : f32
 // DIV-SMITH-DAG: %[[INF:.*]] = llvm.mlir.constant(0x7F800000 : f32) : f32
 // DIV-SMITH-DAG: %[[ONE:.*]] = llvm.mlir.constant(1.000000e+00 : f32) : f32
-// DIV-SMITH-DAG: %[[CASTED_LHS:.*]] = builtin.unrealized_conversion_cast %[[LHS]] : complex<f32> to ![[C_TY:.*>]]
+// DIV-SMITH-DAG: %[[CASTED_LHS:.*]] = builtin.unrealized_conversion_cast %[[LHS]] : complex<f32> to ![[C_TY]]
 // DIV-SMITH-DAG: %[[CASTED_RHS:.*]] = builtin.unrealized_conversion_cast %[[RHS]] : complex<f32> to ![[C_TY]]
 
 // DIV-SMITH: %[[LHS_REAL:.*]] = llvm.extractvalue %[[CASTED_LHS]][0] : ![[C_TY]]
 // DIV-SMITH: %[[LHS_IMAG:.*]] = llvm.extractvalue %[[CASTED_LHS]][1] : ![[C_TY]]
 // DIV-SMITH: %[[RHS_REAL:.*]] = llvm.extractvalue %[[CASTED_RHS]][0] : ![[C_TY]]
 // DIV-SMITH: %[[RHS_IMAG:.*]] = llvm.extractvalue %[[CASTED_RHS]][1] : ![[C_TY]]
-
-// DIV-SMITH: %[[RESULT_0:.*]] = llvm.mlir.poison : ![[C_TY]]
 
 // DIV-SMITH: %[[RHS_REAL_IMAG_RATIO:.*]] = llvm.fdiv %[[RHS_REAL]], %[[RHS_IMAG]] : f32
 // DIV-SMITH: %[[RHS_REAL_TIMES_RHS_REAL_IMAG_RATIO:.*]] = llvm.fmul %[[RHS_REAL_IMAG_RATIO]], %[[RHS_REAL]] : f32
@@ -122,15 +121,14 @@ func.func @complex_div(%lhs: complex<f32>, %rhs: complex<f32>) -> complex<f32> {
 
 // DIV-ALGEBRAIC-LABEL: func @complex_div
 // DIV-ALGEBRAIC-SAME:    %[[LHS:.*]]: complex<f32>, %[[RHS:.*]]: complex<f32>
-// DIV-ALGEBRAIC-DAG: %[[CASTED_LHS:.*]] = builtin.unrealized_conversion_cast %[[LHS]] : complex<f32> to ![[C_TY:.*>]]
+// DIV-ALGEBRAIC: %[[RESULT_0:.*]] = llvm.mlir.poison : ![[C_TY:.*>]]
+// DIV-ALGEBRAIC-DAG: %[[CASTED_LHS:.*]] = builtin.unrealized_conversion_cast %[[LHS]] : complex<f32> to ![[C_TY]]
 // DIV-ALGEBRAIC-DAG: %[[CASTED_RHS:.*]] = builtin.unrealized_conversion_cast %[[RHS]] : complex<f32> to ![[C_TY]]
 
 // DIV-ALGEBRAIC: %[[LHS_RE:.*]] = llvm.extractvalue %[[CASTED_LHS]][0] : ![[C_TY]]
 // DIV-ALGEBRAIC: %[[LHS_IM:.*]] = llvm.extractvalue %[[CASTED_LHS]][1] : ![[C_TY]]
 // DIV-ALGEBRAIC: %[[RHS_RE:.*]] = llvm.extractvalue %[[CASTED_RHS]][0] : ![[C_TY]]
 // DIV-ALGEBRAIC: %[[RHS_IM:.*]] = llvm.extractvalue %[[CASTED_RHS]][1] : ![[C_TY]]
-
-// DIV-ALGEBRAIC: %[[RESULT_0:.*]] = llvm.mlir.poison : ![[C_TY]]
 
 // DIV-ALGEBRAIC-DAG: %[[RHS_RE_SQ:.*]] = llvm.fmul %[[RHS_RE]], %[[RHS_RE]]  : f32
 // DIV-ALGEBRAIC-DAG: %[[RHS_IM_SQ:.*]] = llvm.fmul %[[RHS_IM]], %[[RHS_IM]]  : f32
@@ -159,18 +157,17 @@ func.func @complex_div_with_fmf(%lhs: complex<f32>, %rhs: complex<f32>) -> compl
 }
 // DIV-SMITH-LABEL: func @complex_div_with_fmf
 // DIV-SMITH-SAME:    %[[LHS:.*]]: complex<f32>, %[[RHS:.*]]: complex<f32>
+// DIV-SMITH: %[[RESULT_0:.*]] = llvm.mlir.poison : ![[C_TY:.*>]]
 // DIV-SMITH-DAG: %[[ZERO:.*]] = llvm.mlir.constant(0.000000e+00 : f32) : f32
 // DIV-SMITH-DAG: %[[INF:.*]] = llvm.mlir.constant(0x7F800000 : f32) : f32
 // DIV-SMITH-DAG: %[[ONE:.*]] = llvm.mlir.constant(1.000000e+00 : f32) : f32
-// DIV-SMITH-DAG: %[[CASTED_LHS:.*]] = builtin.unrealized_conversion_cast %[[LHS]] : complex<f32> to ![[C_TY:.*>]]
+// DIV-SMITH-DAG: %[[CASTED_LHS:.*]] = builtin.unrealized_conversion_cast %[[LHS]] : complex<f32> to ![[C_TY]]
 // DIV-SMITH-DAG: %[[CASTED_RHS:.*]] = builtin.unrealized_conversion_cast %[[RHS]] : complex<f32> to ![[C_TY]]
 
 // DIV-SMITH: %[[LHS_REAL:.*]] = llvm.extractvalue %[[CASTED_LHS]][0] : ![[C_TY]]
 // DIV-SMITH: %[[LHS_IMAG:.*]] = llvm.extractvalue %[[CASTED_LHS]][1] : ![[C_TY]]
 // DIV-SMITH: %[[RHS_REAL:.*]] = llvm.extractvalue %[[CASTED_RHS]][0] : ![[C_TY]]
 // DIV-SMITH: %[[RHS_IMAG:.*]] = llvm.extractvalue %[[CASTED_RHS]][1] : ![[C_TY]]
-
-// DIV-SMITH: %[[RESULT_0:.*]] = llvm.mlir.poison : ![[C_TY]]
 
 // DIV-SMITH: %[[RHS_REAL_IMAG_RATIO:.*]] = llvm.fdiv %[[RHS_REAL]], %[[RHS_IMAG]] {fastmathFlags = #llvm.fastmath<nsz, arcp>} : f32
 // DIV-SMITH: %[[RHS_REAL_TIMES_RHS_REAL_IMAG_RATIO:.*]] = llvm.fmul %[[RHS_REAL_IMAG_RATIO]], %[[RHS_REAL]] {fastmathFlags = #llvm.fastmath<nsz, arcp>} : f32
@@ -272,15 +269,14 @@ func.func @complex_div_with_fmf(%lhs: complex<f32>, %rhs: complex<f32>) -> compl
 
 // DIV-ALGEBRAIC-LABEL: func @complex_div_with_fmf
 // DIV-ALGEBRAIC-SAME:    %[[LHS:.*]]: complex<f32>, %[[RHS:.*]]: complex<f32>
-// DIV-ALGEBRAIC-DAG: %[[CASTED_LHS:.*]] = builtin.unrealized_conversion_cast %[[LHS]] : complex<f32> to ![[C_TY:.*>]]
+// DIV-ALGEBRAIC: %[[RESULT_0:.*]] = llvm.mlir.poison : ![[C_TY:.*>]]
+// DIV-ALGEBRAIC-DAG: %[[CASTED_LHS:.*]] = builtin.unrealized_conversion_cast %[[LHS]] : complex<f32> to ![[C_TY]]
 // DIV-ALGEBRAIC-DAG: %[[CASTED_RHS:.*]] = builtin.unrealized_conversion_cast %[[RHS]] : complex<f32> to ![[C_TY]]
 
 // DIV-ALGEBRAIC: %[[LHS_RE:.*]] = llvm.extractvalue %[[CASTED_LHS]][0] : ![[C_TY]]
 // DIV-ALGEBRAIC: %[[LHS_IM:.*]] = llvm.extractvalue %[[CASTED_LHS]][1] : ![[C_TY]]
 // DIV-ALGEBRAIC: %[[RHS_RE:.*]] = llvm.extractvalue %[[CASTED_RHS]][0] : ![[C_TY]]
 // DIV-ALGEBRAIC: %[[RHS_IM:.*]] = llvm.extractvalue %[[CASTED_RHS]][1] : ![[C_TY]]
-
-// DIV-ALGEBRAIC: %[[RESULT_0:.*]] = llvm.mlir.poison : ![[C_TY]]
 
 // DIV-ALGEBRAIC-DAG: %[[RHS_RE_SQ:.*]] = llvm.fmul %[[RHS_RE]], %[[RHS_RE]] {fastmathFlags = #llvm.fastmath<nsz, arcp>} : f32
 // DIV-ALGEBRAIC-DAG: %[[RHS_IM_SQ:.*]] = llvm.fmul %[[RHS_IM]], %[[RHS_IM]] {fastmathFlags = #llvm.fastmath<nsz, arcp>} : f32

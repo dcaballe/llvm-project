@@ -142,7 +142,7 @@ static Value convertIntrinsicResult(Location loc, Type intrinsicResultType,
 
       for (unsigned i = 0, e = structType.getBody().size() / 2; i < e; i++) {
         Value vec =
-            LLVM::PoisonOp::create(rewriter, loc, arrayType.getElementType());
+            rewriter.createOrFold<LLVM::PoisonOp>(loc, arrayType.getElementType());
         Value x1 =
             LLVM::ExtractValueOp::create(rewriter, loc, intrinsicResult, i * 2);
         Value x2 = LLVM::ExtractValueOp::create(rewriter, loc, intrinsicResult,
@@ -156,7 +156,7 @@ static Value convertIntrinsicResult(Location loc, Type intrinsicResultType,
     }
 
     // Create the final vectorized result.
-    Value result = LLVM::PoisonOp::create(rewriter, loc, arrayType);
+    Value result = rewriter.createOrFold<LLVM::PoisonOp>(loc, arrayType);
     for (const auto &el : llvm::enumerate(elements)) {
       result = LLVM::InsertValueOp::create(rewriter, loc, result, el.value(),
                                            el.index());
@@ -300,7 +300,7 @@ struct MmaLdMatrixOpToNVVM : public ConvertOpToLLVMPattern<nvgpu::LdMatrixOp> {
     // actual vector type (still of width 32b) and repack them into a result
     // struct.
     Type finalResultType = typeConverter->convertType(vectorResultType);
-    Value result = LLVM::PoisonOp::create(b, finalResultType);
+    Value result = b.createOrFold<LLVM::PoisonOp>(finalResultType);
     for (int64_t i = 0, e = vectorResultType.getDimSize(0); i < e; i++) {
       Value i32Register =
           num32BitRegs > 1 ? LLVM::ExtractValueOp::create(b, ldMatrixResult, i)
@@ -1410,7 +1410,7 @@ struct NVGPUWarpgroupMmaOpLowering
     /// Generates multiple wgmma instructions to complete the given GEMM shape
     Value generateWgmmaGroup() {
       Value wgmmaResult =
-          LLVM::PoisonOp::create(b, adaptor.getMatrixC().getType());
+          b.createOrFold<LLVM::PoisonOp>(adaptor.getMatrixC().getType());
 
       // Perform GEMM
       SmallVector<Value> wgmmaResults;
@@ -1623,7 +1623,7 @@ struct NVGPUWarpgroupMmaInitAccumulatorOpLowering
                         .front();
     Value zero =
         b.createOrFold<LLVM::ConstantOp>(elemType, b.getZeroAttr(elemType));
-    Value packStruct = LLVM::PoisonOp::create(b, packStructType);
+    Value packStruct = b.createOrFold<LLVM::PoisonOp>(packStructType);
     SmallVector<Value> innerStructs;
     // Unpack the structs and set all values to zero
     for (auto [idx, s] : llvm::enumerate(packStructType.getBody())) {
@@ -1692,7 +1692,7 @@ struct NVGPURcpOpLowering : public ConvertOpToLLVMPattern<nvgpu::RcpOp> {
     VectorType inTy = op.getIn().getType();
     // apply rcp.approx.ftz.f on each element in vector.
     auto convert1DVec = [&](Type llvm1DVectorTy, Value inVec) {
-      Value ret1DVec = LLVM::PoisonOp::create(b, llvm1DVectorTy);
+      Value ret1DVec = b.createOrFold<LLVM::PoisonOp>(llvm1DVectorTy);
       int numElems = llvm::cast<VectorType>(llvm1DVectorTy).getNumElements();
       for (int i = 0; i < numElems; i++) {
         Value idx =

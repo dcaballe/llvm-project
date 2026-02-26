@@ -197,18 +197,17 @@ gpu.module @test_module_5 {
   func.func @gpu_named_barriers(%member_count : i32) {
     // CHECK: %[[ID0_ADDR:.*]] = llvm.mlir.addressof @[[$NB0:__named_barrier_id[_0-9]*]] : !llvm.ptr
     // CHECK: %[[WARP_SIZE0:.*]] = llvm.mlir.constant(32 : i32) : i32
+    // CHECK: %[[DESC0:.*]] = llvm.mlir.poison : !llvm.struct<(i32, i32)>
     // CHECK: %[[ID1_ADDR:.*]] = llvm.mlir.addressof @[[$NB1:__named_barrier_id[_0-9]*]] : !llvm.ptr
     // CHECK: %[[ID0:.*]] = llvm.load %[[ID0_ADDR]] : !llvm.ptr -> i32
     // CHECK: %[[THREADS0:.*]] = llvm.mul %[[MEMBER_COUNT]], %[[WARP_SIZE0]] : i32
-    // CHECK: %[[DESC0:.*]] = llvm.mlir.poison : !llvm.struct<(i32, i32)>
     // CHECK: %[[DESC1:.*]] = llvm.insertvalue %[[ID0]], %[[DESC0]][0] : !llvm.struct<(i32, i32)>
     // CHECK: %[[DESC2:.*]] = llvm.insertvalue %[[THREADS0]], %[[DESC1]][1] : !llvm.struct<(i32, i32)>
     %nb0 = gpu.initialize_named_barrier %member_count : i32 -> !gpu.named_barrier
     %c2 = arith.constant 2 : i32
     // CHECK: %[[ID1:.*]] = llvm.load %[[ID1_ADDR]] : !llvm.ptr -> i32
     // CHECK: %[[THREADS1:.*]] = llvm.mul %{{.*}}, %[[WARP_SIZE0]] : i32
-    // CHECK: %[[DESC3:.*]] = llvm.mlir.poison : !llvm.struct<(i32, i32)>
-    // CHECK: %[[DESC4:.*]] = llvm.insertvalue %[[ID1]], %[[DESC3]][0] : !llvm.struct<(i32, i32)>
+    // CHECK: %[[DESC4:.*]] = llvm.insertvalue %[[ID1]], %[[DESC0]][0] : !llvm.struct<(i32, i32)>
     // CHECK: %[[DESC5:.*]] = llvm.insertvalue %[[THREADS1]], %[[DESC4]][1] : !llvm.struct<(i32, i32)>
     %nb1 = gpu.initialize_named_barrier %c2 : i32 -> !gpu.named_barrier
     // CHECK: %[[BARRIER_ID0:.*]] = llvm.extractvalue %[[DESC2]][0] : !llvm.struct<(i32, i32)>
@@ -782,12 +781,12 @@ gpu.module @test_module_34 {
   // CHECK-LABEL: llvm.func @memref_signature(
   //  CHECK-SAME:     %{{.*}}: !llvm.ptr, %{{.*}}: !llvm.ptr, %{{.*}}: i64, %{{.*}}: i64, %{{.*}}: i64, %{{.*}}: f32) -> !llvm.struct<(struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>, f32)>
   //       CHECK:   llvm.mlir.poison
-  //       CHECK:   llvm.insertvalue
-  //       CHECK:   llvm.insertvalue
-  //       CHECK:   llvm.insertvalue
-  //       CHECK:   llvm.insertvalue
-  //       CHECK:   llvm.insertvalue
   //       CHECK:   llvm.mlir.poison
+  //       CHECK:   llvm.insertvalue
+  //       CHECK:   llvm.insertvalue
+  //       CHECK:   llvm.insertvalue
+  //       CHECK:   llvm.insertvalue
+  //       CHECK:   llvm.insertvalue
   //       CHECK:   llvm.insertvalue
   //       CHECK:   llvm.insertvalue
   //       CHECK:   llvm.return

@@ -110,7 +110,7 @@ public:
 
 Value SpecifierStructBuilder::getInitValue(OpBuilder &builder, Location loc,
                                            Type structType, Value source) {
-  Value metaData = LLVM::PoisonOp::create(builder, loc, structType);
+  Value metaData = builder.createOrFold<LLVM::PoisonOp>(loc, structType);
   SpecifierStructBuilder md(metaData);
   if (!source) {
     auto memSizeArrayType =

@@ -3716,7 +3716,7 @@ struct AMDGPUMakeDmaBaseLowering : public ConvertOpToLLVMPattern<BaseOp> {
 
     Type v4i32 = this->typeConverter->convertType(VectorType::get(4, i32));
     assert(v4i32 && "expected type conversion to succeed");
-    Value result = LLVM::PoisonOp::create(rewriter, loc, v4i32);
+    Value result = rewriter.createOrFold<LLVM::PoisonOp>(loc, v4i32);
 
     for (auto [sgpr, constant] : llvm::zip_equal(sgprs, consts))
       result =
@@ -4097,7 +4097,7 @@ struct AMDGPULowerDescriptor : public ConvertOpToLLVMPattern<DescriptorOp> {
     IntegerType i32 = rewriter.getI32Type();
     Type v8i32 = this->typeConverter->convertType(VectorType::get(8, i32));
     assert(v8i32 && "expected type conversion to succeed");
-    Value dgroup1 = LLVM::PoisonOp::create(rewriter, loc, v8i32);
+    Value dgroup1 = rewriter.createOrFold<LLVM::PoisonOp>(loc, v8i32);
 
     for (auto [sgpr, constant] : llvm::zip_equal(sgprs, consts)) {
       dgroup1 =
@@ -4265,7 +4265,7 @@ struct AMDGPULowerDescriptor : public ConvertOpToLLVMPattern<DescriptorOp> {
     sgprs[3] =
         setTileDim3OrIterateCount(op, adaptor, rewriter, loc, sgprs[3], consts);
 
-    Value dgroup2 = LLVM::PoisonOp::create(rewriter, loc, v4i32);
+    Value dgroup2 = rewriter.createOrFold<LLVM::PoisonOp>(loc, v4i32);
     for (auto [sgpr, constant] : llvm::zip(sgprs, consts))
       dgroup2 =
           LLVM::InsertElementOp::create(rewriter, loc, dgroup2, sgpr, constant);
@@ -4329,7 +4329,7 @@ struct AMDGPULowerDescriptor : public ConvertOpToLLVMPattern<DescriptorOp> {
       }
     }
 
-    Value dgroup = LLVM::PoisonOp::create(rewriter, loc, v4i32);
+    Value dgroup = rewriter.createOrFold<LLVM::PoisonOp>(loc, v4i32);
     for (auto [sgpr, constant] : llvm::zip_first(indicesToInsert, consts))
       dgroup =
           LLVM::InsertElementOp::create(rewriter, loc, dgroup, sgpr, constant);
@@ -4400,7 +4400,7 @@ struct AMDGPULowerDescriptor : public ConvertOpToLLVMPattern<DescriptorOp> {
         setTensorDim4(op, adaptor, rewriter, loc, sgprs[1], sgprs[2], consts);
     sgprs[2] = setTileDim4(op, adaptor, rewriter, loc, sgprs[2], consts);
 
-    Value dgroup3 = LLVM::PoisonOp::create(rewriter, loc, v4i32);
+    Value dgroup3 = rewriter.createOrFold<LLVM::PoisonOp>(loc, v4i32);
     for (auto [sgpr, constant] : llvm::zip(sgprs, consts))
       dgroup3 =
           LLVM::InsertElementOp::create(rewriter, loc, dgroup3, sgpr, constant);

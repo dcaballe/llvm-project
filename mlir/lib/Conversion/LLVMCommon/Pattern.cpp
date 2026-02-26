@@ -113,7 +113,7 @@ void ConvertToLLVMPattern::getMemRefDescriptorSizes(
   Value runningStride = createIndexAttrConstant(rewriter, loc, indexType, 1);
   strides.resize(memRefType.getRank());
   for (auto i = memRefType.getRank(); i-- > 0;) {
-    strides[i] = overflowed ? LLVM::PoisonOp::create(rewriter, loc, indexType)
+    strides[i] = overflowed ? rewriter.createOrFold<LLVM::PoisonOp>(loc, indexType)
                             : runningStride;
 
     int64_t staticSize = memRefType.getShape()[i];
@@ -130,7 +130,7 @@ void ConvertToLLVMPattern::getMemRefDescriptorSizes(
     }
 
     if (overflowed)
-      runningStride = LLVM::PoisonOp::create(rewriter, loc, indexType);
+      runningStride = rewriter.createOrFold<LLVM::PoisonOp>(loc, indexType);
     else if (useSizeAsStride)
       runningStride = sizes[i];
     else if (stride == ShapedType::kDynamic)
@@ -511,7 +511,7 @@ LogicalResult mlir::LLVM::decomposeValue(OpBuilder &builder, Location loc,
 static Value composeValueImpl(OpBuilder &builder, Location loc, ValueRange src,
                               size_t &offset, Type dstType) {
   if (auto arrayType = dyn_cast<LLVM::LLVMArrayType>(dstType)) {
-    Value result = LLVM::PoisonOp::create(builder, loc, arrayType);
+    Value result = builder.createOrFold<LLVM::PoisonOp>(loc, arrayType);
     Type elemType = arrayType.getElementType();
     for (auto i : llvm::seq(arrayType.getNumElements())) {
       Value elem = composeValueImpl(builder, loc, src, offset, elemType);
@@ -521,7 +521,7 @@ static Value composeValueImpl(OpBuilder &builder, Location loc, ValueRange src,
   }
 
   if (auto structType = dyn_cast<LLVM::LLVMStructType>(dstType)) {
-    Value result = LLVM::PoisonOp::create(builder, loc, structType);
+    Value result = builder.createOrFold<LLVM::PoisonOp>(loc, structType);
     for (auto [i, fieldType] : llvm::enumerate(structType.getBody())) {
       Value field = composeValueImpl(builder, loc, src, offset, fieldType);
       result = LLVM::InsertValueOp::create(builder, loc, result, field,
@@ -568,7 +568,7 @@ static Value composeValueImpl(OpBuilder &builder, Location loc, ValueRange src,
   int64_t roundedBitWidth = numElements * elemBitWidth;
 
   auto vecType = VectorType::get(numElements, front.getType());
-  Value res = LLVM::PoisonOp::create(builder, loc, vecType);
+  Value res = builder.createOrFold<LLVM::PoisonOp>(loc, vecType);
   for (auto i : llvm::seq(numElements)) {
     Value idx = createI32Constant(builder, loc, i);
     res = LLVM::InsertElementOp::create(builder, loc, vecType, res,

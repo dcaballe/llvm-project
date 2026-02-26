@@ -388,21 +388,21 @@ func.func private @get_memref() -> (memref<42x?x10x?xf32>)
 // CHECK32-LABEL: llvm.func @multireturn() -> !llvm.struct<(i64, f32, struct<(ptr, ptr, i32, array<4 x i32>, array<4 x i32>)>)> {
 func.func @multireturn() -> (i64, f32, memref<42x?x10x?xf32>) {
 ^bb0:
+// CHECK-NEXT:  {{.*}} = llvm.mlir.poison : !llvm.struct<(i64, f32, struct<(ptr, ptr, i64, array<4 x i64>, array<4 x i64>)>)>
 // CHECK-NEXT:  {{.*}} = llvm.call @get_i64() : () -> i64
 // CHECK-NEXT:  {{.*}} = llvm.call @get_f32() : () -> f32
 // CHECK-NEXT:  {{.*}} = llvm.call @get_memref() : () -> !llvm.struct<(ptr, ptr, i64, array<4 x i64>, array<4 x i64>)>
+// CHECK32-NEXT:  {{.*}} = llvm.mlir.poison : !llvm.struct<(i64, f32, struct<(ptr, ptr, i32, array<4 x i32>, array<4 x i32>)>)>
 // CHECK32-NEXT:  {{.*}} = llvm.call @get_i64() : () -> i64
 // CHECK32-NEXT:  {{.*}} = llvm.call @get_f32() : () -> f32
 // CHECK32-NEXT:  {{.*}} = llvm.call @get_memref() : () -> !llvm.struct<(ptr, ptr, i32, array<4 x i32>, array<4 x i32>)>
   %0 = call @get_i64() : () -> (i64)
   %1 = call @get_f32() : () -> (f32)
   %2 = call @get_memref() : () -> (memref<42x?x10x?xf32>)
-// CHECK-NEXT:  {{.*}} = llvm.mlir.poison : !llvm.struct<(i64, f32, struct<(ptr, ptr, i64, array<4 x i64>, array<4 x i64>)>)>
 // CHECK-NEXT:  {{.*}} = llvm.insertvalue {{.*}}, {{.*}}[0] : !llvm.struct<(i64, f32, struct<(ptr, ptr, i64, array<4 x i64>, array<4 x i64>)>)>
 // CHECK-NEXT:  {{.*}} = llvm.insertvalue {{.*}}, {{.*}}[1] : !llvm.struct<(i64, f32, struct<(ptr, ptr, i64, array<4 x i64>, array<4 x i64>)>)>
 // CHECK-NEXT:  {{.*}} = llvm.insertvalue {{.*}}, {{.*}}[2] : !llvm.struct<(i64, f32, struct<(ptr, ptr, i64, array<4 x i64>, array<4 x i64>)>)>
 // CHECK-NEXT:  llvm.return {{.*}} : !llvm.struct<(i64, f32, struct<(ptr, ptr, i64, array<4 x i64>, array<4 x i64>)>)>
-// CHECK32-NEXT:  {{.*}} = llvm.mlir.poison : !llvm.struct<(i64, f32, struct<(ptr, ptr, i32, array<4 x i32>, array<4 x i32>)>)>
 // CHECK32-NEXT:  {{.*}} = llvm.insertvalue {{.*}}, {{.*}}[0] : !llvm.struct<(i64, f32, struct<(ptr, ptr, i32, array<4 x i32>, array<4 x i32>)>)>
 // CHECK32-NEXT:  {{.*}} = llvm.insertvalue {{.*}}, {{.*}}[1] : !llvm.struct<(i64, f32, struct<(ptr, ptr, i32, array<4 x i32>, array<4 x i32>)>)>
 // CHECK32-NEXT:  {{.*}} = llvm.insertvalue {{.*}}, {{.*}}[2] : !llvm.struct<(i64, f32, struct<(ptr, ptr, i32, array<4 x i32>, array<4 x i32>)>)>

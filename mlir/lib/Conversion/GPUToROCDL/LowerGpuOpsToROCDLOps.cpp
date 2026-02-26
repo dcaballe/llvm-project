@@ -698,7 +698,7 @@ struct GPUInitializeNamedBarrierOpLowering final
       Region &region = globalOp.getInitializerRegion();
       Block *block = detachedBuilder.createBlock(&region);
       detachedBuilder.setInsertionPointToStart(block);
-      auto poison = LLVM::PoisonOp::create(detachedBuilder, loc, targetTy);
+      auto poison = detachedBuilder.createOrFold<LLVM::PoisonOp>(loc, targetTy);
       LLVM::ReturnOp::create(detachedBuilder, loc, poison);
     }
     // SymbolTable::insert places the op in the symbol-table body and renames

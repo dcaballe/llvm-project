@@ -23,14 +23,16 @@ func.func @view(%arg0 : index, %arg1 : index, %arg2 : index) {
   // CHECK: llvm.mlir.constant(2048 : index) : i64
   // CHECK: llvm.mlir.constant(1 : index) : i64
   // CHECK: llvm.mlir.zero : !llvm.ptr
+  // CHECK: llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
   // CHECK: %[[C0:.*]] = llvm.mlir.constant(0 : index) : i64
+  // CHECK: llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   // CHECK: llvm.mlir.constant(4 : index) : i64
   // CHECK: llvm.mlir.constant(64 : index) : i64
-  // CHECK: llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
+  // CHECK: llvm.mlir.poison : !llvm.struct<(ptr<4>, ptr<4>, i64, array<1 x i64>, array<1 x i64>)>
+  // CHECK: llvm.mlir.poison : !llvm.struct<(ptr<4>, ptr<4>, i64, array<2 x i64>, array<2 x i64>)>
   %0 = memref.alloc() : memref<2048xi8>
 
   // Test two dynamic sizes.
-  // CHECK: llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   // CHECK: %[[BASE_PTR:.*]] = llvm.extractvalue %{{.*}}[1] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
   // CHECK: %[[SHIFTED_BASE_PTR:.*]] = llvm.getelementptr %[[BASE_PTR]][%[[ARG2]]] : (!llvm.ptr, i64) -> !llvm.ptr, i8
   // CHECK: llvm.insertvalue %[[SHIFTED_BASE_PTR]], %{{.*}}[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
@@ -43,7 +45,6 @@ func.func @view(%arg0 : index, %arg1 : index, %arg2 : index) {
   %1 = memref.view %0[%arg2][%arg0, %arg1] : memref<2048xi8> to memref<?x?xf32>
 
   // Test one dynamic size.
-  // CHECK: llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   // CHECK: %[[BASE_PTR_2:.*]] = llvm.extractvalue %{{.*}}[1] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
   // CHECK: %[[SHIFTED_BASE_PTR_2:.*]] = llvm.getelementptr %[[BASE_PTR_2]][%[[ARG2]]] : (!llvm.ptr, i64) -> !llvm.ptr, i8
   // CHECK: llvm.insertvalue %[[SHIFTED_BASE_PTR_2]], %{{.*}}[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
@@ -56,7 +57,6 @@ func.func @view(%arg0 : index, %arg1 : index, %arg2 : index) {
   %3 = memref.view %0[%arg2][%arg1] : memref<2048xi8> to memref<4x?xf32>
 
   // Test static sizes.
-  // CHECK: llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   // CHECK: %[[BASE_PTR_3:.*]] = llvm.extractvalue %{{.*}}[1] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
   // CHECK: %[[SHIFTED_BASE_PTR_3:.*]] = llvm.getelementptr %[[BASE_PTR_3]][%[[ARG2]]] : (!llvm.ptr, i64) -> !llvm.ptr, i8
   // CHECK: llvm.insertvalue %[[SHIFTED_BASE_PTR_3]], %{{.*}}[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
@@ -68,10 +68,8 @@ func.func @view(%arg0 : index, %arg1 : index, %arg2 : index) {
   %5 = memref.view %0[%arg2][] : memref<2048xi8> to memref<64x4xf32>
 
   // Test view memory space.
-  // CHECK: llvm.mlir.poison : !llvm.struct<(ptr<4>, ptr<4>, i64, array<1 x i64>, array<1 x i64>)>
   %6 = memref.alloc() : memref<2048xi8, 4>
 
-  // CHECK: llvm.mlir.poison : !llvm.struct<(ptr<4>, ptr<4>, i64, array<2 x i64>, array<2 x i64>)>
   // CHECK: %[[BASE_PTR_4:.*]] = llvm.extractvalue %{{.*}}[1] : !llvm.struct<(ptr<4>, ptr<4>, i64, array<1 x i64>, array<1 x i64>)>
   // CHECK: %[[SHIFTED_BASE_PTR_4:.*]] = llvm.getelementptr %[[BASE_PTR_4]][%[[ARG2]]] : (!llvm.ptr<4>, i64) -> !llvm.ptr<4>, i8
   // CHECK: llvm.insertvalue %[[SHIFTED_BASE_PTR_4]], %{{.*}}[1] : !llvm.struct<(ptr<4>, ptr<4>, i64, array<2 x i64>, array<2 x i64>)>
@@ -96,20 +94,20 @@ func.func @view(%arg0 : index, %arg1 : index, %arg2 : index) {
 // CHECK-INTERFACE:        %[[ARG1:.*]]: memref<0xi8>)
 func.func @view_empty_memref(%offset: index, %mem: memref<0xi8>) {
 
+  // CHECK: llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   // CHECK: llvm.mlir.constant(0 : index) : i64
   // CHECK: llvm.mlir.constant(4 : index) : i64
   // CHECK: llvm.mlir.constant(1 : index) : i64
-  // CHECK: llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   // CHECK: llvm.insertvalue %{{.*}}, %{{.*}}[2] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   // CHECK: llvm.insertvalue %{{.*}}, %{{.*}}[3, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   // CHECK: llvm.insertvalue %{{.*}}, %{{.*}}[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   // CHECK: llvm.insertvalue %{{.*}}, %{{.*}}[3, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   // CHECK: = llvm.insertvalue %{{.*}}, %{{.*}}[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
 
+  // CHECK-INTERFACE: llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   // CHECK-INTERFACE: llvm.mlir.constant(0 : index) : i64
   // CHECK-INTERFACE: llvm.mlir.constant(4 : index) : i64
   // CHECK-INTERFACE: llvm.mlir.constant(1 : index) : i64
-  // CHECK-INTERFACE: llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   // CHECK-INTERFACE: llvm.insertvalue %{{.*}}, %{{.*}}[2] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   // CHECK-INTERFACE: llvm.insertvalue %{{.*}}, %{{.*}}[3, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   // CHECK-INTERFACE: llvm.insertvalue %{{.*}}, %{{.*}}[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
@@ -127,10 +125,10 @@ func.func @view_empty_memref(%offset: index, %mem: memref<0xi8>) {
 // ALL-SAME:      %[[MEM:.*]]: memref<2xi8>) {
 func.func @view_memref_as_rank0(%offset: index, %mem: memref<2xi8>) {
 
+  // ALL:  llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64)>
   // ALL:  llvm.mlir.constant(0 : index) : i64
   // ALL:  builtin.unrealized_conversion_cast %[[OFFSET]] : index to i64
   // ALL:  builtin.unrealized_conversion_cast %[[MEM]] : memref<2xi8> to !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
-  // ALL:  llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64)>
   // ALL:  llvm.extractvalue %{{.*}}[0] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
   // ALL:  llvm.insertvalue %{{.*}}, %{{.*}}[0] : !llvm.struct<(ptr, ptr, i64)>
   // ALL:  llvm.extractvalue %{{.*}}[1] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
@@ -326,10 +324,10 @@ func.func @get_gv0_memref() {
   // CHECK: %[[STRIDE:.*]] = llvm.mlir.constant(1 : index) : i64
   // CHECK: %[[ADDR:.*]] = llvm.mlir.addressof @gv0 : !llvm.ptr
   // CHECK: %[[DEADBEEF:.*]] = llvm.mlir.constant(3735928559 : index) : i64
+  // CHECK: llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
   // CHECK: %[[OFFSET:.*]] = llvm.mlir.constant(0 : index) : i64
   // CHECK: %[[GEP:.*]] = llvm.getelementptr %[[ADDR]][0, 0] : (!llvm.ptr) -> !llvm.ptr, !llvm.array<2 x f32>
   // CHECK: %[[DEADBEEFPTR:.*]] = llvm.inttoptr %[[DEADBEEF]] : i64 to !llvm.ptr
-  // CHECK: llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
   // CHECK: llvm.insertvalue %[[DEADBEEFPTR]], {{.*}}[0] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
   // CHECK: llvm.insertvalue %[[GEP]], {{.*}}[1] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
   // CHECK: llvm.insertvalue %[[OFFSET]], {{.*}}[2] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
@@ -349,10 +347,10 @@ func.func @get_gv2_memref() {
   // CHECK: %[[STRIDE1:.*]] = llvm.mlir.constant(1 : index) : i64
   // CHECK: %[[ADDR:.*]] = llvm.mlir.addressof @gv2 : !llvm.ptr
   // CHECK: %[[DEADBEEF:.*]] = llvm.mlir.constant(3735928559 : index) : i64
+  // CHECK: llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   // CHECK: %[[OFFSET:.*]] = llvm.mlir.constant(0 : index) : i64
   // CHECK: %[[GEP:.*]] = llvm.getelementptr %[[ADDR]][0, 0, 0] : (!llvm.ptr) -> !llvm.ptr, !llvm.array<2 x array<3 x f32>>
   // CHECK: %[[DEADBEEFPTR:.*]] = llvm.inttoptr %[[DEADBEEF]] : i64 to !llvm.ptr
-  // CHECK: llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   // CHECK: llvm.insertvalue %[[DEADBEEFPTR]], {{.*}}[0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   // CHECK: llvm.insertvalue %[[GEP]], {{.*}}[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   // CHECK: llvm.insertvalue %[[OFFSET]], {{.*}}[2] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
@@ -376,10 +374,10 @@ memref.global @gv3 : memref<f32> = dense<1.0>
 func.func @get_gv3_memref() {
   // CHECK: %[[ADDR:.*]] = llvm.mlir.addressof @gv3 : !llvm.ptr
   // CHECK: %[[DEADBEEF:.*]] = llvm.mlir.constant(3735928559 : index) : i64
+  // CHECK: llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64)>
   // CHECK: %[[OFFSET:.*]] = llvm.mlir.constant(0 : index) : i64
   // CHECK: %[[GEP:.*]] = llvm.getelementptr %[[ADDR]][0] : (!llvm.ptr) -> !llvm.ptr, f32
   // CHECK: %[[DEADBEEFPTR:.*]] = llvm.inttoptr %[[DEADBEEF]] : i64 to !llvm.ptr
-  // CHECK: llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64)>
   // CHECK: llvm.insertvalue %[[DEADBEEFPTR]], {{.*}}[0] : !llvm.struct<(ptr, ptr, i64)>
   // CHECK: llvm.insertvalue %[[GEP]], {{.*}}[1] : !llvm.struct<(ptr, ptr, i64)>
   // CHECK: llvm.insertvalue %[[OFFSET]], {{.*}}[2] : !llvm.struct<(ptr, ptr, i64)>
@@ -610,7 +608,6 @@ func.func @memref_copy_ranked() {
   // CHECK: llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
   %1 = memref.cast %0 : memref<2xf32> to memref<?xf32>
   %2 = memref.alloc() : memref<2xf32>
-  // CHECK: llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
   %3 = memref.cast %2 : memref<2xf32> to memref<?xf32>
   memref.copy %1, %3 : memref<?xf32> to memref<?xf32>
   // CHECK: [[EXTRACT0:%.*]] = llvm.extractvalue {{%.*}}[3, 0] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
@@ -701,21 +698,20 @@ func.func @memref_copy_unranked() {
   // CHECK: llvm.mlir.constant(2 : index) : i64
   // CHECK: [[ONE:%.*]] = llvm.mlir.constant(1 : index) : i64
   // CHECK: llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
+  // CHECK: [[UNDEF:%.*]] = llvm.mlir.poison : !llvm.struct<(i64, ptr)>
   %1 = memref.cast %0 : memref<2xi1> to memref<*xi1>
   %2 = memref.alloc() : memref<2xi1>
-  // CHECK: llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
   %3 = memref.cast %2 : memref<2xi1> to memref<*xi1>
   memref.copy %1, %3 : memref<*xi1> to memref<*xi1>
   // CHECK: [[ALLOCA:%.*]] = llvm.alloca [[ONE]] x !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> : (i64) -> !llvm.ptr
   // CHECK: llvm.store {{%.*}}, [[ALLOCA]] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>, !llvm.ptr
-  // CHECK: [[UNDEF:%.*]] = llvm.mlir.poison : !llvm.struct<(i64, ptr)>
   // CHECK: [[INSERT:%.*]] = llvm.insertvalue %{{.*}}, [[UNDEF]][0] : !llvm.struct<(i64, ptr)>
   // CHECK: [[INSERT2:%.*]] = llvm.insertvalue [[ALLOCA]], [[INSERT]][1] : !llvm.struct<(i64, ptr)>
   // CHECK: [[STACKSAVE:%.*]] = llvm.intr.stacksave : !llvm.ptr
   // CHECK: [[ALLOCA2:%.*]] = llvm.alloca %{{.*}} x !llvm.struct<(i64, ptr)> : (i64) -> !llvm.ptr
-  // CHECK: llvm.store {{%.*}}, [[ALLOCA2]] : !llvm.struct<(i64, ptr)>, !llvm.ptr
+  // CHECK: llvm.store [[INSERT2]], [[ALLOCA2]] : !llvm.struct<(i64, ptr)>, !llvm.ptr
   // CHECK: [[ALLOCA3:%.*]] = llvm.alloca %{{.*}} x !llvm.struct<(i64, ptr)> : (i64) -> !llvm.ptr
-  // CHECK: llvm.store [[INSERT2]], [[ALLOCA3]] : !llvm.struct<(i64, ptr)>, !llvm.ptr
+  // CHECK: llvm.store {{%.*}}, [[ALLOCA3]] : !llvm.struct<(i64, ptr)>, !llvm.ptr
   // CHECK: [[SIZEPTR:%.*]] = llvm.getelementptr {{%.*}}[1] : (!llvm.ptr) -> !llvm.ptr, i1
   // CHECK: [[SIZE:%.*]] = llvm.ptrtoint [[SIZEPTR]] : !llvm.ptr to i64
   // CHECK: llvm.call @memrefCopy([[SIZE]], [[ALLOCA2]], [[ALLOCA3]]) : (i64, !llvm.ptr, !llvm.ptr) -> ()
@@ -760,11 +756,11 @@ func.func @extract_aligned_pointer_as_index_unranked(%m: memref<*xf32>) -> index
 
 // CHECK-LABEL: func @extract_strided_metadata(
 // CHECK-SAME: %[[ARG:.*]]: memref
+// CHECK: %[[DESC:.*]] = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64)>
 // CHECK: %[[OFF0:.*]] = llvm.mlir.constant(0 : index) : i64
 // CHECK: %[[MEM_DESC:.*]] = builtin.unrealized_conversion_cast %[[ARG]] : memref<?x?xf32, strided<[?, ?], offset: ?>> to !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
 // CHECK: %[[BASE:.*]] = llvm.extractvalue %[[MEM_DESC]][0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
 // CHECK: %[[ALIGNED_BASE:.*]] = llvm.extractvalue %[[MEM_DESC]][1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
-// CHECK: %[[DESC:.*]] = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64)>
 // CHECK: %[[DESC0:.*]] = llvm.insertvalue %[[BASE]], %[[DESC]][0] : !llvm.struct<(ptr, ptr, i64)>
 // CHECK: %[[DESC1:.*]] = llvm.insertvalue %[[ALIGNED_BASE]], %[[DESC0]][1] : !llvm.struct<(ptr, ptr, i64)>
 // CHECK: %[[BASE_BUFFER_DESC:.*]] = llvm.insertvalue %[[OFF0]], %[[DESC1]][2] : !llvm.struct<(ptr, ptr, i64)>

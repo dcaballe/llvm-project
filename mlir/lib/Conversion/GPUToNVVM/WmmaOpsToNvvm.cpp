@@ -293,7 +293,7 @@ struct WmmaConstantOpToNVVMLowering
     }
     // If the element type is a vector create a vector from the operand.
     if (auto vecType = dyn_cast<VectorType>(structType.getBody()[0])) {
-      Value vecCst = LLVM::PoisonOp::create(rewriter, loc, vecType);
+      Value vecCst = rewriter.createOrFold<LLVM::PoisonOp>(loc, vecType);
       for (int64_t vecEl = 0; vecEl < vecType.getNumElements(); vecEl++) {
         Value idx = rewriter.createOrFold<LLVM::ConstantOp>(
             loc, rewriter.getI32Type(), vecEl);
@@ -302,7 +302,7 @@ struct WmmaConstantOpToNVVMLowering
       }
       cst = vecCst;
     }
-    Value matrixStruct = LLVM::PoisonOp::create(rewriter, loc, structType);
+    Value matrixStruct = rewriter.createOrFold<LLVM::PoisonOp>(loc, structType);
     for (size_t i : llvm::seq(size_t(0), structType.getBody().size())) {
       matrixStruct =
           LLVM::InsertValueOp::create(rewriter, loc, matrixStruct, cst, i);
@@ -383,7 +383,8 @@ struct WmmaElementwiseOpToNVVMLowering
       rewriter.replaceOp(subgroupMmaElementwiseOp, element);
       return success();
     }
-    Value matrixStruct = LLVM::PoisonOp::create(rewriter, loc, structDestTy);
+    Value matrixStruct =
+        rewriter.createOrFold<LLVM::PoisonOp>(loc, structDestTy);
     for (size_t i = 0, e = structDestTy.getBody().size(); i < e; ++i) {
       SmallVector<Value> extractedOperands;
       for (size_t opIdx = 0; opIdx < numOperands; opIdx++) {

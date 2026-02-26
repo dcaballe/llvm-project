@@ -34,11 +34,11 @@ func.func @complex_extract(%cplx: complex<f32>) {
 }
 
 // CHECK-LABEL: func @complex_addition
+// CHECK:         %[[C0:.*]] = llvm.mlir.poison : !llvm.struct<(f64, f64)>
 // CHECK-DAG:     %[[A_REAL:.*]] = llvm.extractvalue %[[A:.*]][0] : !llvm.struct<(f64, f64)>
 // CHECK-DAG:     %[[B_REAL:.*]] = llvm.extractvalue %[[B:.*]][0] : !llvm.struct<(f64, f64)>
 // CHECK-DAG:     %[[A_IMAG:.*]] = llvm.extractvalue %[[A]][1] : !llvm.struct<(f64, f64)>
 // CHECK-DAG:     %[[B_IMAG:.*]] = llvm.extractvalue %[[B]][1] : !llvm.struct<(f64, f64)>
-// CHECK:         %[[C0:.*]] = llvm.mlir.poison : !llvm.struct<(f64, f64)>
 // CHECK-DAG:     %[[C_REAL:.*]] = llvm.fadd %[[A_REAL]], %[[B_REAL]] : f64
 // CHECK-DAG:     %[[C_IMAG:.*]] = llvm.fadd %[[A_IMAG]], %[[B_IMAG]] : f64
 // CHECK:         %[[C1:.*]] = llvm.insertvalue %[[C_REAL]], %[[C0]][0] : !llvm.struct<(f64, f64)>
@@ -55,11 +55,11 @@ func.func @complex_addition() {
 }
 
 // CHECK-LABEL: func @complex_substraction
+// CHECK:         %[[C0:.*]] = llvm.mlir.poison : !llvm.struct<(f64, f64)>
 // CHECK-DAG:     %[[A_REAL:.*]] = llvm.extractvalue %[[A:.*]][0] : !llvm.struct<(f64, f64)>
 // CHECK-DAG:     %[[B_REAL:.*]] = llvm.extractvalue %[[B:.*]][0] : !llvm.struct<(f64, f64)>
 // CHECK-DAG:     %[[A_IMAG:.*]] = llvm.extractvalue %[[A]][1] : !llvm.struct<(f64, f64)>
 // CHECK-DAG:     %[[B_IMAG:.*]] = llvm.extractvalue %[[B]][1] : !llvm.struct<(f64, f64)>
-// CHECK:         %[[C0:.*]] = llvm.mlir.poison : !llvm.struct<(f64, f64)>
 // CHECK-DAG:     %[[C_REAL:.*]] = llvm.fsub %[[A_REAL]], %[[B_REAL]] : f64
 // CHECK-DAG:     %[[C_IMAG:.*]] = llvm.fsub %[[A_IMAG]], %[[B_IMAG]] : f64
 // CHECK:         %[[C1:.*]] = llvm.insertvalue %[[C_REAL]], %[[C0]][0] : !llvm.struct<(f64, f64)>
@@ -81,15 +81,14 @@ func.func @complex_div(%lhs: complex<f32>, %rhs: complex<f32>) -> complex<f32> {
   %div = complex.div %lhs, %rhs : complex<f32>
   return %div : complex<f32>
 }
-// CHECK-DAG: %[[CASTED_LHS:.*]] = builtin.unrealized_conversion_cast %[[LHS]] : complex<f32> to ![[C_TY:.*>]]
+// CHECK: %[[RESULT_0:.*]] = llvm.mlir.poison : ![[C_TY:.*>]]
+// CHECK-DAG: %[[CASTED_LHS:.*]] = builtin.unrealized_conversion_cast %[[LHS]] : complex<f32> to ![[C_TY]]
 // CHECK-DAG: %[[CASTED_RHS:.*]] = builtin.unrealized_conversion_cast %[[RHS]] : complex<f32> to ![[C_TY]]
 
 // CHECK: %[[LHS_RE:.*]] = llvm.extractvalue %[[CASTED_LHS]][0] : ![[C_TY]]
 // CHECK: %[[LHS_IM:.*]] = llvm.extractvalue %[[CASTED_LHS]][1] : ![[C_TY]]
 // CHECK: %[[RHS_RE:.*]] = llvm.extractvalue %[[CASTED_RHS]][0] : ![[C_TY]]
 // CHECK: %[[RHS_IM:.*]] = llvm.extractvalue %[[CASTED_RHS]][1] : ![[C_TY]]
-
-// CHECK: %[[RESULT_0:.*]] = llvm.mlir.poison : ![[C_TY]]
 
 // CHECK-DAG: %[[RHS_RE_SQ:.*]] = llvm.fmul %[[RHS_RE]], %[[RHS_RE]]  : f32
 // CHECK-DAG: %[[RHS_IM_SQ:.*]] = llvm.fmul %[[RHS_IM]], %[[RHS_IM]]  : f32
@@ -117,14 +116,14 @@ func.func @complex_mul(%lhs: complex<f32>, %rhs: complex<f32>) -> complex<f32> {
   %mul = complex.mul %lhs, %rhs : complex<f32>
   return %mul : complex<f32>
 }
-// CHECK-DAG: %[[CASTED_LHS:.*]] = builtin.unrealized_conversion_cast %[[LHS]] : complex<f32> to ![[C_TY:.*>]]
+// CHECK: %[[RESULT_0:.*]] = llvm.mlir.poison : ![[C_TY:.*>]]
+// CHECK-DAG: %[[CASTED_LHS:.*]] = builtin.unrealized_conversion_cast %[[LHS]] : complex<f32> to ![[C_TY]]
 // CHECK-DAG: %[[CASTED_RHS:.*]] = builtin.unrealized_conversion_cast %[[RHS]] : complex<f32> to ![[C_TY]]
 
 // CHECK: %[[LHS_RE:.*]] = llvm.extractvalue %[[CASTED_LHS]][0] : ![[C_TY]]
 // CHECK: %[[LHS_IM:.*]] = llvm.extractvalue %[[CASTED_LHS]][1] : ![[C_TY]]
 // CHECK: %[[RHS_RE:.*]] = llvm.extractvalue %[[CASTED_RHS]][0] : ![[C_TY]]
 // CHECK: %[[RHS_IM:.*]] = llvm.extractvalue %[[CASTED_RHS]][1] : ![[C_TY]]
-// CHECK: %[[RESULT_0:.*]] = llvm.mlir.poison : ![[C_TY]]
 
 // CHECK: %[[REAL_TMP_0:.*]] = llvm.fmul %[[RHS_RE]], %[[LHS_RE]]  : f32
 // CHECK: %[[REAL_TMP_1:.*]] = llvm.fmul %[[RHS_IM]], %[[LHS_IM]]  : f32
@@ -156,11 +155,11 @@ func.func @complex_abs(%arg: complex<f32>) -> f32 {
 // CHECK: return %[[NORM]] : f32
 
 // CHECK-LABEL: func @complex_addition_with_fmf
+// CHECK:         %[[C0:.*]] = llvm.mlir.poison : !llvm.struct<(f64, f64)>
 // CHECK-DAG:     %[[A_REAL:.*]] = llvm.extractvalue %[[A:.*]][0] : !llvm.struct<(f64, f64)>
 // CHECK-DAG:     %[[B_REAL:.*]] = llvm.extractvalue %[[B:.*]][0] : !llvm.struct<(f64, f64)>
 // CHECK-DAG:     %[[A_IMAG:.*]] = llvm.extractvalue %[[A]][1] : !llvm.struct<(f64, f64)>
 // CHECK-DAG:     %[[B_IMAG:.*]] = llvm.extractvalue %[[B]][1] : !llvm.struct<(f64, f64)>
-// CHECK:         %[[C0:.*]] = llvm.mlir.poison : !llvm.struct<(f64, f64)>
 // CHECK-DAG:     %[[C_REAL:.*]] = llvm.fadd %[[A_REAL]], %[[B_REAL]] {fastmathFlags = #llvm.fastmath<reassoc>} : f64
 // CHECK-DAG:     %[[C_IMAG:.*]] = llvm.fadd %[[A_IMAG]], %[[B_IMAG]] {fastmathFlags = #llvm.fastmath<reassoc>} : f64
 // CHECK:         %[[C1:.*]] = llvm.insertvalue %[[C_REAL]], %[[C0]][0] : !llvm.struct<(f64, f64)>
@@ -177,11 +176,11 @@ func.func @complex_addition_with_fmf() {
 }
 
 // CHECK-LABEL: func @complex_substraction_with_fmf
+// CHECK:         %[[C0:.*]] = llvm.mlir.poison : !llvm.struct<(f64, f64)>
 // CHECK-DAG:     %[[A_REAL:.*]] = llvm.extractvalue %[[A:.*]][0] : !llvm.struct<(f64, f64)>
 // CHECK-DAG:     %[[B_REAL:.*]] = llvm.extractvalue %[[B:.*]][0] : !llvm.struct<(f64, f64)>
 // CHECK-DAG:     %[[A_IMAG:.*]] = llvm.extractvalue %[[A]][1] : !llvm.struct<(f64, f64)>
 // CHECK-DAG:     %[[B_IMAG:.*]] = llvm.extractvalue %[[B]][1] : !llvm.struct<(f64, f64)>
-// CHECK:         %[[C0:.*]] = llvm.mlir.poison : !llvm.struct<(f64, f64)>
 // CHECK-DAG:     %[[C_REAL:.*]] = llvm.fsub %[[A_REAL]], %[[B_REAL]] {fastmathFlags = #llvm.fastmath<nnan, ninf>} : f64
 // CHECK-DAG:     %[[C_IMAG:.*]] = llvm.fsub %[[A_IMAG]], %[[B_IMAG]] {fastmathFlags = #llvm.fastmath<nnan, ninf>} : f64
 // CHECK:         %[[C1:.*]] = llvm.insertvalue %[[C_REAL]], %[[C0]][0] : !llvm.struct<(f64, f64)>
@@ -199,15 +198,14 @@ func.func @complex_substraction_with_fmf() {
 
 // CHECK-LABEL: func @complex_div_with_fmf
 // CHECK-SAME:    %[[LHS:.*]]: complex<f32>, %[[RHS:.*]]: complex<f32>
-// CHECK-DAG: %[[CASTED_LHS:.*]] = builtin.unrealized_conversion_cast %[[LHS]] : complex<f32> to ![[C_TY:.*>]]
+// CHECK: %[[RESULT_0:.*]] = llvm.mlir.poison : ![[C_TY:.*>]]
+// CHECK-DAG: %[[CASTED_LHS:.*]] = builtin.unrealized_conversion_cast %[[LHS]] : complex<f32> to ![[C_TY]]
 // CHECK-DAG: %[[CASTED_RHS:.*]] = builtin.unrealized_conversion_cast %[[RHS]] : complex<f32> to ![[C_TY]]
 
 // CHECK: %[[LHS_RE:.*]] = llvm.extractvalue %[[CASTED_LHS]][0] : ![[C_TY]]
 // CHECK: %[[LHS_IM:.*]] = llvm.extractvalue %[[CASTED_LHS]][1] : ![[C_TY]]
 // CHECK: %[[RHS_RE:.*]] = llvm.extractvalue %[[CASTED_RHS]][0] : ![[C_TY]]
 // CHECK: %[[RHS_IM:.*]] = llvm.extractvalue %[[CASTED_RHS]][1] : ![[C_TY]]
-
-// CHECK: %[[RESULT_0:.*]] = llvm.mlir.poison : ![[C_TY]]
 
 // CHECK-DAG: %[[RHS_RE_SQ:.*]] = llvm.fmul %[[RHS_RE]], %[[RHS_RE]] {fastmathFlags = #llvm.fastmath<nsz, arcp>} : f32
 // CHECK-DAG: %[[RHS_IM_SQ:.*]] = llvm.fmul %[[RHS_IM]], %[[RHS_IM]] {fastmathFlags = #llvm.fastmath<nsz, arcp>} : f32
@@ -236,14 +234,14 @@ func.func @complex_div_with_fmf(%lhs: complex<f32>, %rhs: complex<f32>) -> compl
 
 // CHECK-LABEL: func @complex_mul_with_fmf
 // CHECK-SAME:    %[[LHS:.*]]: complex<f32>, %[[RHS:.*]]: complex<f32>
-// CHECK-DAG: %[[CASTED_LHS:.*]] = builtin.unrealized_conversion_cast %[[LHS]] : complex<f32> to ![[C_TY:.*>]]
+// CHECK: %[[RESULT_0:.*]] = llvm.mlir.poison : ![[C_TY:.*>]]
+// CHECK-DAG: %[[CASTED_LHS:.*]] = builtin.unrealized_conversion_cast %[[LHS]] : complex<f32> to ![[C_TY]]
 // CHECK-DAG: %[[CASTED_RHS:.*]] = builtin.unrealized_conversion_cast %[[RHS]] : complex<f32> to ![[C_TY]]
 
 // CHECK: %[[LHS_RE:.*]] = llvm.extractvalue %[[CASTED_LHS]][0] : ![[C_TY]]
 // CHECK: %[[LHS_IM:.*]] = llvm.extractvalue %[[CASTED_LHS]][1] : ![[C_TY]]
 // CHECK: %[[RHS_RE:.*]] = llvm.extractvalue %[[CASTED_RHS]][0] : ![[C_TY]]
 // CHECK: %[[RHS_IM:.*]] = llvm.extractvalue %[[CASTED_RHS]][1] : ![[C_TY]]
-// CHECK: %[[RESULT_0:.*]] = llvm.mlir.poison : ![[C_TY]]
 
 // CHECK: %[[REAL_TMP:.*]] = llvm.fmul %[[LHS_IM]], %[[RHS_IM]] {fastmathFlags = #llvm.fastmath<contract, afn>} : f32
 // CHECK: %[[NEG_REAL_TMP:.*]] = llvm.fneg %[[REAL_TMP]] {fastmathFlags = #llvm.fastmath<contract, afn>} : f32

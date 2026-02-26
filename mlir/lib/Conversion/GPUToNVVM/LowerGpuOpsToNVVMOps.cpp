@@ -483,7 +483,7 @@ struct GPUInitializeNamedBarrierOpToNVVMLowering final
         LLVM::MulOp::create(rewriter, loc, adaptor.getMemberCount(), warpSize);
 
     Value namedBarrier =
-        LLVM::PoisonOp::create(rewriter, loc, namedBarrierType);
+        rewriter.createOrFold<LLVM::PoisonOp>(loc, namedBarrierType);
     DenseI64ArrayAttr barrierIdPos = rewriter.getDenseI64ArrayAttr({0});
     DenseI64ArrayAttr numberOfThreadsPos = rewriter.getDenseI64ArrayAttr({1});
     namedBarrier = LLVM::InsertValueOp::create(rewriter, loc, namedBarrier,

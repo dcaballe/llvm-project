@@ -191,6 +191,7 @@ func.func @make_dma_base(%idx: index, %mem: memref<8xi32, #gpu.address_space<glo
   // CHECK-DAG: %[[SHIFT:.+]] = llvm.mlir.constant(32 : i64)
   // CHECK-DAG: %[[MASK:.+]] = llvm.mlir.constant(33554431 : i32)
   // CHECK: %[[TYPE_SHIFT:.+]] = llvm.mlir.constant(30 : i32)
+  // CHECK: %[[V4I32_0_0:.+]] = llvm.mlir.poison : vector<4xi32>
   // CHECK-DAG: %[[INT:.+]] = builtin.unrealized_conversion_cast %[[IDX]] : index to i64
   // CHECK-DAG: %[[MEMREF_DESC_MEM:.+]] = builtin.unrealized_conversion_cast %[[MEM]] : memref<8xi32, #gpu.address_space<global>>
   // CHECK-DAG: %[[MEMREF_DESC_SMEM:.+]] = builtin.unrealized_conversion_cast %[[SMEM]] : memref<8xi32, #gpu.address_space<workgroup>>
@@ -213,7 +214,6 @@ func.func @make_dma_base(%idx: index, %mem: memref<8xi32, #gpu.address_space<glo
   // CHECK: %[[TYPE_FIELD:.+]] = llvm.shl %[[C2]], %[[TYPE_SHIFT]]
   // CHECK: %[[MEM_INT_HIGH_TYPE:.+]] = llvm.or disjoint %[[VALID_MEM_INT_HIGH]], %[[TYPE_FIELD]]
 
-  // CHECK: %[[V4I32_0_0:.+]] = llvm.mlir.poison : vector<4xi32>
   // CHECK: %[[V4I32_0_1:.+]] = llvm.insertelement %[[C1]], %[[V4I32_0_0]][%[[C0]] : i32]
   // CHECK: %[[V4I32_0_2:.+]] = llvm.insertelement %[[SMEM_INT]], %[[V4I32_0_1]][%[[C1]] : i32]
   // CHECK: %[[V4I32_0_3:.+]] = llvm.insertelement %[[MEM_INT_LOW]], %[[V4I32_0_2]][%[[C2]] : i32]
@@ -237,10 +237,10 @@ func.func @make_gather_dma_base(%idx: index, %mem: memref<8xi32, #gpu.address_sp
   // CHECK-DAG: %[[C3:.+]] = llvm.mlir.constant(3 : i32) : i32
   // CHECK-DAG: %[[GATHER_MODE_OFFSET:.+]] = llvm.mlir.constant(30 : i32) : i32
   // CHECK-DAG: %[[INDEX_SIZE_OFFSET:.+]] = llvm.mlir.constant(31 : i32) : i32
+  // CHECK-DAG: %[[V4I32_0_0:.+]] = llvm.mlir.poison : vector<4xi32>
   // CHECK-DAG: %[[GATHER_MODE_BIT:.+]] = llvm.shl %[[C1]], %[[GATHER_MODE_OFFSET]]
   // CHECK: %[[SGPR0:.+]] = llvm.or disjoint %[[C1]], %[[GATHER_MODE_BIT]]
 
-  // CHECK: %[[V4I32_0_0:.+]] = llvm.mlir.poison : vector<4xi32>
   // CHECK: %[[V4I32_0_1:.+]] = llvm.insertelement %[[SGPR0]], %[[V4I32_0_0]][%[[C0]] : i32]
 
   %0 = amdgpu.make_gather_dma_base %mem[%idx], %smem[%idx] : memref<8xi32, #gpu.address_space<global>>, memref<8xi32, #gpu.address_space<workgroup>> -> !amdgpu.tdm_gather_base<i32, i16>
@@ -252,7 +252,6 @@ func.func @make_gather_dma_base(%idx: index, %mem: memref<8xi32, #gpu.address_sp
   // CHECK-DAG: %[[INDEX_SIZE_BIT:.+]] = llvm.shl %[[C1]], %[[INDEX_SIZE_OFFSET]]
   // CHECK: %[[SGPR0:.+]] = llvm.or disjoint %[[SGPR0_0]], %[[INDEX_SIZE_BIT]]
 
-  // CHECK: %[[V4I32_0_0:.+]] = llvm.mlir.poison : vector<4xi32>
   // CHECK: %[[V4I32_0_1:.+]] = llvm.insertelement %[[SGPR0]], %[[V4I32_0_0]][%[[C0]] : i32]
 
 
@@ -283,6 +282,7 @@ func.func @make_dma_descriptor(%base: !amdgpu.tdm_base<i32>) -> !amdgpu.tdm_desc
   // CHECK-DAG: %[[TENSOR_DIM_0_STRIDE:.+]] = llvm.mlir.constant(64 : i64) : i64
   // CHECK-DAG: %[[MASK:.+]] = llvm.mlir.constant(281474976710655 : i64) : i64
   // CHECK-DAG: %[[SHIFT:.+]] = llvm.mlir.constant(32 : i64) : i64
+  // CHECK: %[[V8I32:.+]] = llvm.mlir.poison : vector<8xi32>
   // CHECK: %[[DGROUP2:.+]] = llvm.mlir.zero : vector<4xi32>
   // CHECK-DAG: %[[DGROUP0:.+]] = builtin.unrealized_conversion_cast %[[BASE]]
 
@@ -308,7 +308,6 @@ func.func @make_dma_descriptor(%base: !amdgpu.tdm_base<i32>) -> !amdgpu.tdm_desc
   // CHECK: %[[TENSOR_DIM_0_STRIDE_HIGH_64:.+]] = llvm.lshr %[[TENSOR_DIM_0_STRIDE_MASKED]], %[[SHIFT]]
   // CHECK: %[[SGPR6:.+]] = llvm.trunc %[[TENSOR_DIM_0_STRIDE_HIGH_64]] : i64 to i32
 
-  // CHECK: %[[V8I32:.+]] = llvm.mlir.poison : vector<8xi32>
   // CHECK: %[[DGROUP1_0:.+]] = llvm.insertelement %[[SGPR0]], %[[V8I32]][%[[C0]] : i32]
   // CHECK: %[[DGROUP1_1:.+]] = llvm.insertelement %[[SGPR1]], %[[DGROUP1_0]][%[[C1]] : i32]
   // CHECK: %[[DGROUP1_2:.+]] = llvm.insertelement %[[SGPR2]], %[[DGROUP1_1]][%[[C2]] : i32]
@@ -344,6 +343,7 @@ func.func @make_dma_descriptor_atomic_barrier(%base: !amdgpu.tdm_base<i32>, %bar
   // CHECK-DAG: %[[INDEX:.+]] = builtin.unrealized_conversion_cast %[[IDX]] : index to i64
   // CHECK-DAG: %[[BARRIER_MEMREF_DESC:.+]] = builtin.unrealized_conversion_cast %[[BARRIER]]
   // CHECK-DAG: %[[DGROUP0:.+]] = builtin.unrealized_conversion_cast %[[BASE]]
+  // CHECK-DAG: %[[V8I32:.+]] = llvm.mlir.poison : vector<8xi32>
 
 
   // CHECK: %[[SGPR0_0:.+]] = llvm.shl %[[C2]], %[[C16]]
@@ -362,7 +362,6 @@ func.func @make_dma_descriptor_atomic_barrier(%base: !amdgpu.tdm_base<i32>, %bar
 
   // CHECK: %[[SGPR2_0:.+]] = llvm.lshr %[[TENSOR_DIM_0]], %[[C16]]
 
-  // CHECK: %[[V8I32:.+]] = llvm.mlir.poison : vector<8xi32>
   // CHECK: %[[DGROUP1_0:.+]] = llvm.insertelement %[[SGPR0]], %[[V8I32]][%[[C0]] : i32]
   // CHECK: %[[DGROUP1_1:.+]] = llvm.insertelement %[[SGPR1]], %[[DGROUP1_0]][%[[C1]] : i32]
 
@@ -390,6 +389,8 @@ func.func @make_dma_descriptor_iterate(%base: !amdgpu.tdm_base<i32>, %idx : inde
   // CHECK-DAG: %[[MASK:.+]] = llvm.mlir.constant([[FIRST_16_HIGH:65535]] : i32) : i32
   // CHECK-DAG: %[[DGROUP0:.+]] = builtin.unrealized_conversion_cast %[[BASE]]
   // CHECK-DAG: %[[INDEX:.+]] = builtin.unrealized_conversion_cast %[[IDX]] : index to i64
+  // CHECK-DAG: %[[V8I32:.+]] = llvm.mlir.poison : vector<8xi32>
+  // CHECK-DAG: %[[V4I32:.+]] = llvm.mlir.poison : vector<4xi32>
 
 
   // CHECK: %[[SGPR0_0:.+]] = llvm.shl %[[C2]], %[[C16]]
@@ -397,7 +398,6 @@ func.func @make_dma_descriptor_iterate(%base: !amdgpu.tdm_base<i32>, %idx : inde
   // CHECK: %[[ITERATE_ENABLE:.+]] = llvm.shl %[[C1]], %[[ITERATE_SHIFT]]
   // CHECK: %[[SGPR0:.+]] = llvm.or disjoint %[[SGPR0_0]], %[[ITERATE_ENABLE]]
 
-  // CHECK: %[[V8I32:.+]] = llvm.mlir.poison : vector<8xi32>
   // CHECK: %[[DGROUP1_0:.+]] = llvm.insertelement %[[SGPR0]], %[[V8I32]][%[[C0]] : i32]
 
   // CHECK: %[[SGPR2:.+]] = llvm.trunc %[[INDEX]] : i64 to i32
@@ -411,7 +411,6 @@ func.func @make_dma_descriptor_iterate(%base: !amdgpu.tdm_base<i32>, %idx : inde
   // CHECK: %[[ITERATE_COUNT_SHIFTED:.+]] = llvm.shl %[[ITERATE_COUNT_M1]], %[[C16]]
   // CHECK: %[[SGPR3:.+]] = llvm.or disjoint %[[SGPR3_LOW]], %[[ITERATE_COUNT_SHIFTED]]
 
-  // CHECK: %[[V4I32:.+]] = llvm.mlir.poison : vector<4xi32>
   // CHECK: %[[DGROUP2_0:.+]] = llvm.insertelement %[[C0]], %[[V4I32]][%[[C0]]
   // CHECK: %[[DGROUP2_1:.+]] = llvm.insertelement %[[I32]], %[[DGROUP2_0]][%[[C1]]
   // CHECK: %[[DGROUP2_2:.+]] = llvm.insertelement %[[SGPR2]], %[[DGROUP2_1]][%[[C2]]
@@ -519,6 +518,8 @@ func.func @make_dma_descriptor(%base: !amdgpu.tdm_base<i32>) -> !amdgpu.tdm_desc
   // CHECK-DAG: %[[SHIFT:.+]] = llvm.mlir.constant(32 : i64) : i64
   // CHECK-DAG: %[[SHIFT_16:.+]] = llvm.mlir.constant(16 : i64) : i64
   // CHECK-DAG: %[[DGROUP0:.+]] = builtin.unrealized_conversion_cast %[[BASE]]
+  // CHECK-DAG: %[[V8I32:.+]] = llvm.mlir.poison : vector<8xi32>
+  // CHECK-DAG: %[[V4I32:.+]] = llvm.mlir.poison : vector<4xi32>
 
 
 
@@ -552,7 +553,6 @@ func.func @make_dma_descriptor(%base: !amdgpu.tdm_base<i32>) -> !amdgpu.tdm_desc
   // CHECK: %[[TENSOR_DIM_1_STRIDE_SHIFTED:.+]] = llvm.lshr %[[TENSOR_DIM_1_STRIDE_MASKED]], %[[SHIFT_16]]
   // CHECK: %[[SGPR7:.+]] = llvm.trunc %[[TENSOR_DIM_1_STRIDE_SHIFTED]] : i64 to i32
 
-  // CHECK: %[[V8I32:.+]] = llvm.mlir.poison : vector<8xi32>
   // CHECK: %[[DGROUP1_0:.+]] = llvm.insertelement %[[SGPR0]], %[[V8I32]][%[[C0]] : i32]
   // CHECK: %[[DGROUP1_1:.+]] = llvm.insertelement %[[SGPR1]], %[[DGROUP1_0]][%[[C1]] : i32]
   // CHECK: %[[DGROUP1_2:.+]] = llvm.insertelement %[[SGPR2]], %[[DGROUP1_1]][%[[C2]] : i32]
@@ -573,7 +573,6 @@ func.func @make_dma_descriptor(%base: !amdgpu.tdm_base<i32>) -> !amdgpu.tdm_desc
   // CHECK: %[[TILE_DIM_3_SHIFTED:.+]] = llvm.shl %[[TENSOR_DIM_0]], %[[C16]]
   // CHECK: %[[SGPR3:.+]] = llvm.or disjoint %[[SGPR3_0]], %[[TILE_DIM_3_SHIFTED]]
 
-  // CHECK-DAG: %[[V4I32:.+]] = llvm.mlir.poison : vector<4xi32>
   // CHECK: %[[DGROUP2_0:.+]] = llvm.insertelement %[[TENSOR_DIM_0]], %[[V4I32]][%[[C0]] : i32]
   // CHECK: %[[DGROUP2_1:.+]] = llvm.insertelement %[[TENSOR_DIM_0]], %[[DGROUP2_0]][%[[C1]] : i32]
   // CHECK: %[[DGROUP2_2:.+]] = llvm.insertelement %[[SGPR2]], %[[DGROUP2_1]][%[[C2]] : i32]
@@ -592,7 +591,6 @@ func.func @make_dma_descriptor(%base: !amdgpu.tdm_base<i32>) -> !amdgpu.tdm_desc
   // CHECK: %[[TILE_DIM_4_SHIFTED:.+]] = llvm.shl %[[TENSOR_DIM_0]], %[[C16]]
   // CHECK: %[[SGPR2:.+]] = llvm.or disjoint %[[SGPR2_0]], %[[TILE_DIM_4_SHIFTED]]
 
-  // CHECK: %[[V4I32:.+]] = llvm.mlir.poison : vector<4xi32>
   // CHECK: %[[DGROUP3_0:.+]] = llvm.insertelement %[[TENSOR_DIM3_STRIDE_LOW]], %[[V4I32]][%[[C0]] : i32]
   // CHECK: %[[DGROUP3_1:.+]] = llvm.insertelement %[[SGPR1]], %[[DGROUP3_0]][%[[C1]] : i32]
   // CHECK: %[[DGROUP3_2:.+]] = llvm.insertelement %[[SGPR2]], %[[DGROUP3_1]][%[[C2]] : i32]
@@ -623,6 +621,7 @@ func.func @make_dma_descriptor_workgroup_mask(%base: !amdgpu.tdm_base<i32>, %wg_
   // CHECK-DAG: %[[TENSOR_DIM_0_STRIDE:.+]] = llvm.mlir.constant(64 : i64) : i64
   // CHECK-DAG: %[[MASK:.+]] = llvm.mlir.constant(281474976710655 : i64) : i64
   // CHECK-DAG: %[[SHIFT:.+]] = llvm.mlir.constant(32 : i64) : i64
+  // CHECK: %[[V8I32:.+]] = llvm.mlir.poison : vector<8xi32>
   // CHECK: %[[DGROUP2:.+]] = llvm.mlir.zero : vector<4xi32>
   // CHECK-DAG: %[[DGROUP0:.+]] = builtin.unrealized_conversion_cast %[[BASE]]
 
@@ -654,7 +653,6 @@ func.func @make_dma_descriptor_workgroup_mask(%base: !amdgpu.tdm_base<i32>, %wg_
   // CHECK: %[[TENSOR_DIM_0_STRIDE_HIGH_64:.+]] = llvm.lshr %[[TENSOR_DIM_0_STRIDE_MASKED]], %[[SHIFT]]
   // CHECK: %[[SGPR6:.+]] = llvm.trunc %[[TENSOR_DIM_0_STRIDE_HIGH_64]] : i64 to i32
 
-  // CHECK: %[[V8I32:.+]] = llvm.mlir.poison : vector<8xi32>
   // CHECK: %[[DGROUP1_0:.+]] = llvm.insertelement %[[SGPR0]], %[[V8I32]][%[[C0]] : i32]
   // CHECK: %[[DGROUP1_1:.+]] = llvm.insertelement %[[SGPR1]], %[[DGROUP1_0]][%[[C1]] : i32]
   // CHECK: %[[DGROUP1_2:.+]] = llvm.insertelement %[[SGPR2]], %[[DGROUP1_1]][%[[C2]] : i32]
@@ -704,6 +702,8 @@ func.func @make_gather_dma_descriptor(%base: !amdgpu.tdm_gather_base<i32, i16>, 
   // CHECK-DAG: %[[C7:.+]] = llvm.mlir.constant(7 : i32)
   // CHECK: %[[SHIFT:.+]] = llvm.mlir.constant(16 : i32) : i32
   // CHECK: %[[SGPR4:.+]] = llvm.mlir.constant([[VALID_INDICES:13]] : i32) : i32
+  // CHECK: %[[V8I32:.+]] = llvm.mlir.poison : vector<8xi32>
+  // CHECK: %[[DGROUP2_0:.+]] = llvm.mlir.poison : vector<4xi32>
   // CHECK: %[[C8:.+]] = llvm.mlir.constant(8 : i32)
   // CHECK: %[[C9:.+]] = llvm.mlir.constant(9 : i32)
   // CHECK: %[[C10:.+]] = llvm.mlir.constant(10 : i32)
@@ -713,7 +713,6 @@ func.func @make_gather_dma_descriptor(%base: !amdgpu.tdm_gather_base<i32, i16>, 
 
 
 
-  // CHECK: %[[V8I32:.+]] = llvm.mlir.poison : vector<8xi32>
   // CHECK: %[[DGROUP1_0:.+]] = llvm.insertelement {{.*}}, %[[V8I32]][%[[C0]] : i32]
   // CHECK: %[[DGROUP1_1:.+]] = llvm.insertelement {{.*}}, %[[DGROUP1_0]][%[[C1]] : i32]
   // CHECK: %[[DGROUP1_2:.+]] = llvm.insertelement {{.*}}, %[[DGROUP1_1]][%[[C2]] : i32]
@@ -753,7 +752,6 @@ func.func @make_gather_dma_descriptor(%base: !amdgpu.tdm_gather_base<i32, i16>, 
   // CHECK: %[[IDX7:.+]] = llvm.shl %[[IDX7_32]], %[[SHIFT]]
   // CHECK: %[[SGPR3:.+]] = llvm.or disjoint %[[IDX6_32]], %[[IDX7]]
 
-  // CHECK: %[[DGROUP2_0:.+]] = llvm.mlir.poison : vector<4xi32>
   // CHECK: %[[DGROUP2_1:.+]] = llvm.insertelement %[[SGPR0]], %[[DGROUP2_0]][%[[C0]] : i32]
   // CHECK: %[[DGROUP2_2:.+]] = llvm.insertelement %[[SGPR1]], %[[DGROUP2_1]][%[[C1]] : i32]
   // CHECK: %[[DGROUP2_3:.+]] = llvm.insertelement %[[SGPR2]], %[[DGROUP2_2]][%[[C2]] : i32]
@@ -780,8 +778,7 @@ func.func @make_gather_dma_descriptor(%base: !amdgpu.tdm_gather_base<i32, i16>, 
   // CHECK: %[[IDX13:.+]] = llvm.shl %[[C0]], %[[SHIFT]]
   // CHECK: %[[SGPR2:.+]] = llvm.or disjoint %[[IDX12_32]], %[[IDX13]]
 
-  // CHECK-DAG: %[[DGROUP3_0:.+]] = llvm.mlir.poison : vector<4xi32>
-  // CHECK: %[[DGROUP3_1:.+]] = llvm.insertelement %[[SGPR0]], %[[DGROUP3_0]][%[[C0]] : i32]
+  // CHECK: %[[DGROUP3_1:.+]] = llvm.insertelement %[[SGPR0]], %[[DGROUP2_0]][%[[C0]] : i32]
   // CHECK: %[[DGROUP3_2:.+]] = llvm.insertelement %[[SGPR1]], %[[DGROUP3_1]][%[[C1]] : i32]
   // CHECK: %[[DGROUP3:.+]] = llvm.insertelement %[[SGPR2]], %[[DGROUP3_2]][%[[C2]] : i32]
 

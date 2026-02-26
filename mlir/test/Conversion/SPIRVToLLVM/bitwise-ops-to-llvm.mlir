@@ -98,8 +98,7 @@ spirv.func @bitfield_insert_vector(%base: vector<2xi32>, %insert: vector<2xi32>,
   // CHECK: %[[MINUS_ONE:.*]] = llvm.mlir.constant(dense<-1> : vector<2xi32>) : vector<2xi32>
   // CHECK: %[[OFFSET_V1:.*]] = llvm.insertelement %[[OFFSET]], %[[OFFSET_V0]][%[[ZERO]] : i32] : vector<2xi32>
   // CHECK: %[[OFFSET_V2:.*]] = llvm.insertelement  %[[OFFSET]], %[[OFFSET_V1]][%[[ONE]] : i32] : vector<2xi32>
-  // CHECK: %[[COUNT_V0:.*]] = llvm.mlir.poison : vector<2xi32>
-  // CHECK: %[[COUNT_V1:.*]] = llvm.insertelement %[[COUNT]], %[[COUNT_V0]][%[[ZERO]] : i32] : vector<2xi32>
+  // CHECK: %[[COUNT_V1:.*]] = llvm.insertelement %[[COUNT]], %[[OFFSET_V0]][%[[ZERO]] : i32] : vector<2xi32>
   // CHECK: %[[COUNT_V2:.*]] = llvm.insertelement %[[COUNT]], %[[COUNT_V1]][%[[ONE]] : i32] : vector<2xi32>
   // CHECK: %[[T0:.*]] = llvm.shl %[[MINUS_ONE]], %[[COUNT_V2]] : vector<2xi32>
   // CHECK: %[[T1:.*]] = llvm.xor %[[T0]], %[[MINUS_ONE]] : vector<2xi32>
@@ -168,8 +167,7 @@ spirv.func @bitfield_sextract_vector(%base: vector<2xi32>, %offset: i32, %count:
   // CHECK: %[[SIZE:.*]] = llvm.mlir.constant(dense<32> : vector<2xi32>) : vector<2xi32>
   // CHECK: %[[OFFSET_V1:.*]] = llvm.insertelement %[[OFFSET]], %[[OFFSET_V0]][%[[ZERO]] : i32] : vector<2xi32>
   // CHECK: %[[OFFSET_V2:.*]] = llvm.insertelement  %[[OFFSET]], %[[OFFSET_V1]][%[[ONE]] : i32] : vector<2xi32>
-  // CHECK: %[[COUNT_V0:.*]] = llvm.mlir.poison : vector<2xi32>
-  // CHECK: %[[COUNT_V1:.*]] = llvm.insertelement %[[COUNT]], %[[COUNT_V0]][%[[ZERO]] : i32] : vector<2xi32>
+  // CHECK: %[[COUNT_V1:.*]] = llvm.insertelement %[[COUNT]], %[[OFFSET_V0]][%[[ZERO]] : i32] : vector<2xi32>
   // CHECK: %[[COUNT_V2:.*]] = llvm.insertelement %[[COUNT]], %[[COUNT_V1]][%[[ONE]] : i32] : vector<2xi32>
   // CHECK: %[[T0:.*]] = llvm.add %[[COUNT_V2]], %[[OFFSET_V2]] : vector<2xi32>
   // CHECK: %[[T1:.*]] = llvm.sub %[[SIZE]], %[[T0]] : vector<2xi32>
@@ -232,8 +230,7 @@ spirv.func @bitfield_uextract_vector(%base: vector<2xi32>, %offset: i32, %count:
   // CHECK: %[[MINUS_ONE:.*]] = llvm.mlir.constant(dense<-1> : vector<2xi32>) : vector<2xi32>
   // CHECK: %[[OFFSET_V1:.*]] = llvm.insertelement %[[OFFSET]], %[[OFFSET_V0]][%[[ZERO]] : i32] : vector<2xi32>
   // CHECK: %[[OFFSET_V2:.*]] = llvm.insertelement  %[[OFFSET]], %[[OFFSET_V1]][%[[ONE]] : i32] : vector<2xi32>
-  // CHECK: %[[COUNT_V0:.*]] = llvm.mlir.poison : vector<2xi32>
-  // CHECK: %[[COUNT_V1:.*]] = llvm.insertelement %[[COUNT]], %[[COUNT_V0]][%[[ZERO]] : i32] : vector<2xi32>
+  // CHECK: %[[COUNT_V1:.*]] = llvm.insertelement %[[COUNT]], %[[OFFSET_V0]][%[[ZERO]] : i32] : vector<2xi32>
   // CHECK: %[[COUNT_V2:.*]] = llvm.insertelement %[[COUNT]], %[[COUNT_V1]][%[[ONE]] : i32] : vector<2xi32>
   // CHECK: %[[T0:.*]] = llvm.shl %[[MINUS_ONE]], %[[COUNT_V2]] : vector<2xi32>
   // CHECK: %[[MASK:.*]] = llvm.xor %[[T0]], %[[MINUS_ONE]] : vector<2xi32>

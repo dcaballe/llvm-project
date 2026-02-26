@@ -370,7 +370,8 @@ LogicalResult TruncfToFloat16RewritePattern::matchAndRewrite(
 
   // Handle the case where input type is not a vector type
   if (!inVectorTy) {
-    auto sourceB = LLVM::PoisonOp::create(rewriter, loc, rewriter.getF32Type());
+    Value sourceB =
+        rewriter.createOrFold<LLVM::PoisonOp>(loc, rewriter.getF32Type());
     Value asF16s =
         ROCDL::CvtPkRtz::create(rewriter, loc, truncResType, in, sourceB);
     Value result = vector::ExtractOp::create(rewriter, loc, asF16s, 0);
@@ -395,7 +396,8 @@ LogicalResult TruncfToFloat16RewritePattern::matchAndRewrite(
     int64_t elemsThisOp = std::min(numElements, i + 2) - i;
     Value thisResult = nullptr;
     Value elemA = vector::ExtractOp::create(rewriter, loc, in, i);
-    Value elemB = LLVM::PoisonOp::create(rewriter, loc, rewriter.getF32Type());
+    Value elemB =
+        rewriter.createOrFold<LLVM::PoisonOp>(loc, rewriter.getF32Type());
 
     if (elemsThisOp == 2) {
       elemB = vector::ExtractOp::create(rewriter, loc, in, i + 1);

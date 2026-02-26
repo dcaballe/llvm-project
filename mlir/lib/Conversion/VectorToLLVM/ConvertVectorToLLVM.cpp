@@ -1100,7 +1100,7 @@ public:
       eltType = arrayType.getElementType();
     else
       eltType = cast<VectorType>(llvmType).getElementType();
-    Value insert = LLVM::PoisonOp::create(rewriter, loc, llvmType);
+    Value insert = rewriter.createOrFold<LLVM::PoisonOp>(loc, llvmType);
     int64_t insPos = 0;
     for (int64_t extPos : mask) {
       Value value = adaptor.getV1();
@@ -1772,7 +1772,7 @@ struct VectorBroadcastScalarToLowRankLowering
     // First insert it into a poison vector so we can shuffle it.
     auto vectorType = typeConverter->convertType(broadcast.getType());
     Value poison =
-        LLVM::PoisonOp::create(rewriter, broadcast.getLoc(), vectorType);
+        rewriter.createOrFold<LLVM::PoisonOp>(broadcast.getLoc(), vectorType);
     Value zero = rewriter.createOrFold<LLVM::ConstantOp>(
         broadcast.getLoc(),
         typeConverter->convertType(rewriter.getIntegerType(32)),
@@ -1831,11 +1831,11 @@ struct VectorBroadcastScalarToNdLowering
       return failure();
 
     // Construct returned value.
-    Value desc = LLVM::PoisonOp::create(rewriter, loc, llvmNDVectorTy);
+    Value desc = rewriter.createOrFold<LLVM::PoisonOp>(loc, llvmNDVectorTy);
 
     // Construct a 1-D vector with the broadcasted value that we insert in all
     // the places within the returned descriptor.
-    Value vdesc = LLVM::PoisonOp::create(rewriter, loc, llvm1DVectorTy);
+    Value vdesc = rewriter.createOrFold<LLVM::PoisonOp>(loc, llvm1DVectorTy);
     Value zero = rewriter.createOrFold<LLVM::ConstantOp>(
         loc, typeConverter->convertType(rewriter.getIntegerType(32)),
         rewriter.getZeroAttr(rewriter.getIntegerType(32)));
@@ -1949,7 +1949,7 @@ struct VectorDeinterleaveOpLowering
         oddShuffleMask.push_back(i);
     }
 
-    auto poison = LLVM::PoisonOp::create(rewriter, loc, sourceType);
+    Value poison = rewriter.createOrFold<LLVM::PoisonOp>(loc, sourceType);
     auto evenShuffle = LLVM::ShuffleVectorOp::create(
         rewriter, loc, adaptor.getSource(), poison, evenShuffleMask);
     auto oddShuffle = LLVM::ShuffleVectorOp::create(
@@ -1978,7 +1978,7 @@ struct VectorFromElementsLowering
                                          "rank > 1 vectors are not supported");
     Type llvmType = typeConverter->convertType(vectorType);
     Type llvmIndexType = typeConverter->convertType(rewriter.getIndexType());
-    Value result = LLVM::PoisonOp::create(rewriter, loc, llvmType);
+    Value result = rewriter.createOrFold<LLVM::PoisonOp>(loc, llvmType);
     for (auto [idx, val] : llvm::enumerate(adaptor.getElements())) {
       Value constIdx =
           rewriter.createOrFold<LLVM::ConstantOp>(loc, llvmIndexType, idx);

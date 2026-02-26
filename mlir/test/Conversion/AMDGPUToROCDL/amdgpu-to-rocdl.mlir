@@ -15,13 +15,13 @@ func.func @fat_raw_buffer_cast(%buf: memref<8xi32, #gpu.address_space<global>>) 
   // GFX9:  %[[flags:.*]] = llvm.mlir.constant(159744 : i32)
   // GFX1250: %[[flags:.*]] = llvm.mlir.constant(0 : i32)
   // RDNA:  %[[flags:.*]] = llvm.mlir.constant(822243328 : i32)
+  // CHECK: %[[ret0:.*]] = llvm.mlir.poison : !llvm.struct<(ptr<7>, ptr<7>, i64, array<1 x i64>, array<1 x i64>)>
   // CHECK: %[[desc:.*]] = builtin.unrealized_conversion_cast %{{.*}} : memref<8xi32, #gpu.address_space<global>> to !llvm.struct<(ptr<1>, ptr<1>, i64, array<1 x i64>, array<1 x i64>)>
   // CHECK-DAG: %[[base:.*]] = llvm.extractvalue %[[desc]][1]
   // CHECK-DAG: %[[offset:.*]] = llvm.extractvalue %[[desc]][2]
   // CHECK-DAG: %[[sizes:.*]] = llvm.extractvalue %[[desc]][3]
   // CHECK-DAG: %[[strides:.*]] = llvm.extractvalue %[[desc]][4]
   // CHECK: %[[fatBuf:.*]] = rocdl.make.buffer.rsrc %[[base]], %[[strideArg]], %[[numRecords]], %[[flags]] : <1> to <7>
-  // CHECK: %[[ret0:.*]] = llvm.mlir.poison : !llvm.struct<(ptr<7>, ptr<7>, i64, array<1 x i64>, array<1 x i64>)>
   // CHECK: %[[ret1:.*]] = llvm.insertvalue %[[fatBuf]], %[[ret0]][0]
   // CHECK: %[[ret2:.*]] = llvm.insertvalue %[[fatBuf]], %[[ret1]][1]
   // CHECK: %[[ret3:.*]] = llvm.insertvalue %[[offset]], %[[ret2]][2]
@@ -39,11 +39,11 @@ func.func @fat_raw_buffer_cast_0d(%buf: memref<i32, #gpu.address_space<global>>)
   // GFX9:  %[[flags:.*]] = llvm.mlir.constant(159744 : i32)
   // GFX1250: %[[flags:.*]] = llvm.mlir.constant(0 : i32)
   // RDNA:  %[[flags:.*]] = llvm.mlir.constant(822243328 : i32)
+  // CHECK: %[[ret0:.*]] = llvm.mlir.poison : !llvm.struct<(ptr<7>, ptr<7>, i64)>
   // CHECK: %[[desc:.*]] = builtin.unrealized_conversion_cast %{{.*}} : memref<i32, #gpu.address_space<global>> to !llvm.struct<(ptr<1>, ptr<1>, i64)>
   // CHECK-DAG: %[[base:.*]] = llvm.extractvalue %[[desc]][1]
   // CHECK-DAG: %[[offset:.*]] = llvm.extractvalue %[[desc]][2]
   // CHECK: %[[fatBuf:.*]] = rocdl.make.buffer.rsrc %[[base]], %[[strideArg]], %[[numRecords]], %[[flags]]
-  // CHECK: %[[ret0:.*]] = llvm.mlir.poison : !llvm.struct<(ptr<7>, ptr<7>, i64)>
   // CHECK: %[[ret1:.*]] = llvm.insertvalue %[[fatBuf]], %[[ret0]][0]
   // CHECK: %[[ret2:.*]] = llvm.insertvalue %[[fatBuf]], %[[ret1]][1]
   // CHECK: %[[ret3:.*]] = llvm.insertvalue %[[offset]], %[[ret2]][2]

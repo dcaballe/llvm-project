@@ -778,12 +778,12 @@ gpu.module @test_module {
     // CHECK: llvm.mlir.constant(-1 : i32) : i32
     // CHECK: %[[IDX0:.*]] = llvm.mlir.constant(0 : i32) : i32
     // CHECK: %[[IDX1:.*]] = llvm.mlir.constant(1 : i32) : i32
+    // CHECK: %[[V0:.*]] = llvm.mlir.poison : vector<2xi32>
     // CHECK: %[[CAST1:.*]] = llvm.bitcast %[[ARG]] : vector<4xf16> to vector<2xi32>
     // CHECK: %[[ELEM0:.*]] = llvm.extractelement %[[CAST1]][%[[IDX0]] : i32] : vector<2xi32>
     // CHECK: %[[ELEM1:.*]] = llvm.extractelement %[[CAST1]][%[[IDX1]] : i32] : vector<2xi32>
     // CHECK: %[[PERM0:.*]] = rocdl.ds_bpermute %{{.*}}, %[[ELEM0]] : (i32, i32) -> i32
     // CHECK: %[[PERM1:.*]] = rocdl.ds_bpermute %{{.*}}, %[[ELEM1]] : (i32, i32) -> i32
-    // CHECK: %[[V0:.*]] = llvm.mlir.poison : vector<2xi32>
     // CHECK: %[[V1:.*]] = llvm.insertelement %[[PERM0]], %[[V0]][%[[IDX0]] : i32] : vector<2xi32>
     // CHECK: %[[V2:.*]] = llvm.insertelement %[[PERM1]], %[[V1]][%[[IDX1]] : i32] : vector<2xi32>
     // CHECK: %[[RES:.*]] = llvm.bitcast %[[V2]] : vector<2xi32> to vector<4xf16>
@@ -849,12 +849,12 @@ func.func @broadcast_i8(%arg0 : i8, %arg1 : i32) -> (i8, i8) {
 func.func @broadcast_4xi16(%arg0 : vector<4xi16>) -> vector<4xi16> {
 //       CHECK:   %[[C0:.*]] = llvm.mlir.constant(0 : i32) : i32
 //       CHECK:   %[[C1:.*]] = llvm.mlir.constant(1 : i32) : i32
+//       CHECK:   %[[POISON:.*]] = llvm.mlir.poison : vector<2xi32>
 //       CHECK:   %[[BITCAST:.*]] = llvm.bitcast %[[ARG:.*]] : vector<4xi16> to vector<2xi32>
 //       CHECK:   %[[ELEM0:.*]] = llvm.extractelement %[[BITCAST]][%[[C0]] : i32] : vector<2xi32>
 //       CHECK:   %[[ELEM1:.*]] = llvm.extractelement %[[BITCAST]][%[[C1]] : i32] : vector<2xi32>
 //       CHECK:   %[[RFL0:.*]] = rocdl.readfirstlane %[[ELEM0]] : i32
 //       CHECK:   %[[RFL1:.*]] = rocdl.readfirstlane %[[ELEM1]] : i32
-//       CHECK:   %[[POISON:.*]] = llvm.mlir.poison : vector<2xi32>
 //       CHECK:   %[[INS0:.*]] = llvm.insertelement %[[RFL0]], %[[POISON]][%[[C0]] : i32] : vector<2xi32>
 //       CHECK:   %[[INS1:.*]] = llvm.insertelement %[[RFL1]], %[[INS0]][%[[C1]] : i32] : vector<2xi32>
 //       CHECK:   %[[BITCAST2:.*]] = llvm.bitcast %[[INS1]] : vector<2xi32> to vector<4xi16>
@@ -866,13 +866,13 @@ func.func @broadcast_4xi16(%arg0 : vector<4xi16>) -> vector<4xi16> {
 // CHECK-LABEL: func @broadcast_2x2xi16
 //  CHECK-SAME:   (%[[ARG:.+]]: !llvm.array<2 x vector<2xi16>>)
 func.func @broadcast_2x2xi16(%arg0 : vector<2x2xi16>) -> vector<2x2xi16> {
+  // CHECK: %[[POISON:.+]] = llvm.mlir.poison : !llvm.array<2 x vector<2xi16>>
   // CHECK-DAG: %[[E0:.+]] = llvm.extractvalue %[[ARG]][0] : !llvm.array<2 x vector<2xi16>>
   // CHECK-DAG: %[[BC0:.+]] = llvm.bitcast %[[E0]] : vector<2xi16> to i32
   // CHECK-DAG: %[[E1:.+]] = llvm.extractvalue %[[ARG]][1] : !llvm.array<2 x vector<2xi16>>
   // CHECK-DAG: %[[BC1:.+]] = llvm.bitcast %[[E1]] : vector<2xi16> to i32
   // CHECK: %[[R0:.+]] = rocdl.readfirstlane %[[BC0]] : i32
   // CHECK: %[[R1:.+]] = rocdl.readfirstlane %[[BC1]] : i32
-  // CHECK: %[[POISON:.+]] = llvm.mlir.poison : !llvm.array<2 x vector<2xi16>>
   // CHECK: %[[RBC0:.+]] = llvm.bitcast %[[R0]] : i32 to vector<2xi16>
   // CHECK: %[[INS0:.+]] = llvm.insertvalue %[[RBC0]], %[[POISON]][0] : !llvm.array<2 x vector<2xi16>>
   // CHECK: %[[RBC1:.+]] = llvm.bitcast %[[R1]] : i32 to vector<2xi16>
@@ -884,6 +884,7 @@ func.func @broadcast_2x2xi16(%arg0 : vector<2x2xi16>) -> vector<2x2xi16> {
 
 // CHECK-LABEL: func @broadcast_memref
 func.func @broadcast_memref(%arg0 : memref<?xi32>) -> memref<?xi32> {
+  // CHECK: %[[SOUT:.+]] = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
   // CHECK-DAG: %[[PTR0:.+]] = llvm.extractvalue %{{.+}}[0] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
   // CHECK-DAG: %[[PTR1:.+]] = llvm.extractvalue %{{.+}}[1] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
   // CHECK-DAG: %[[OFF:.+]] = llvm.extractvalue %{{.+}}[2] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
@@ -910,7 +911,6 @@ func.func @broadcast_memref(%arg0 : memref<?xi32>) -> memref<?xi32> {
   // CHECK: %[[RSTR0:.+]] = rocdl.readfirstlane %[[STR0]] : i32
   // CHECK: %[[RSTR1:.+]] = rocdl.readfirstlane %[[STR1]] : i32
   //
-  // CHECK: %[[SOUT:.+]] = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
   // CHECK: %[[S0:.+]] = llvm.insertvalue %[[RPTR0]], %[[SOUT]][0]
   // CHECK: %[[S1:.+]] = llvm.insertvalue %[[RPTR1]], %[[S0]][1]
   // CHECK: %[[OVEC:.+]] = llvm.insertelement %[[ROFF0]], %{{.+}}[%{{.+}} : i32] : vector<2xi32>
@@ -937,13 +937,13 @@ func.func @broadcast_memref(%arg0 : memref<?xi32>) -> memref<?xi32> {
 func.func @broadcast_i48(%arg0 : i48) -> i48 {
 //       CHECK:   %[[C0:.*]] = llvm.mlir.constant(0 : i32) : i32
 //       CHECK:   %[[C1:.*]] = llvm.mlir.constant(1 : i32) : i32
+//       CHECK:   %[[POISON:.*]] = llvm.mlir.poison : vector<2xi32>
 //       CHECK:   %[[ZEXT:.*]] = llvm.zext %[[ARG]] : i48 to i64
 //       CHECK:   %[[BITCAST:.*]] = llvm.bitcast %[[ZEXT]] : i64 to vector<2xi32>
 //       CHECK:   %[[ELEM0:.*]] = llvm.extractelement %[[BITCAST]][%[[C0]] : i32] : vector<2xi32>
 //       CHECK:   %[[ELEM1:.*]] = llvm.extractelement %[[BITCAST]][%[[C1]] : i32] : vector<2xi32>
 //       CHECK:   %[[RFL0:.*]] = rocdl.readfirstlane %[[ELEM0]] : i32
 //       CHECK:   %[[RFL1:.*]] = rocdl.readfirstlane %[[ELEM1]] : i32
-//       CHECK:   %[[POISON:.*]] = llvm.mlir.poison : vector<2xi32>
 //       CHECK:   %[[INS0:.*]] = llvm.insertelement %[[RFL0]], %[[POISON]][%[[C0]] : i32] : vector<2xi32>
 //       CHECK:   %[[INS1:.*]] = llvm.insertelement %[[RFL1]], %[[INS0]][%[[C1]] : i32] : vector<2xi32>
 //       CHECK:   %[[CAST64:.*]] = llvm.bitcast %[[INS1]] : vector<2xi32> to i64
@@ -958,6 +958,7 @@ func.func @broadcast_i48(%arg0 : i48) -> i48 {
 func.func @broadcast_3xi16(%arg0 : vector<3xi16>) -> vector<3xi16> {
 //       CHECK:   %[[C0:.*]] = llvm.mlir.constant(0 : i32) : i32
 //       CHECK:   %[[C1:.*]] = llvm.mlir.constant(1 : i32) : i32
+//       CHECK:   %[[POISON:.*]] = llvm.mlir.poison : vector<2xi32>
 //       CHECK:   %[[BC1:.*]] = llvm.bitcast %[[ARG]] : vector<3xi16> to i48
 //       CHECK:   %[[ZEXT:.*]] = llvm.zext %[[BC1]] : i48 to i64
 //       CHECK:   %[[BC2:.*]] = llvm.bitcast %[[ZEXT]] : i64 to vector<2xi32>
@@ -965,7 +966,6 @@ func.func @broadcast_3xi16(%arg0 : vector<3xi16>) -> vector<3xi16> {
 //       CHECK:   %[[ELEM1:.*]] = llvm.extractelement %[[BC2]][%[[C1]] : i32] : vector<2xi32>
 //       CHECK:   %[[RFL0:.*]] = rocdl.readfirstlane %[[ELEM0]] : i32
 //       CHECK:   %[[RFL1:.*]] = rocdl.readfirstlane %[[ELEM1]] : i32
-//       CHECK:   %[[POISON:.*]] = llvm.mlir.poison : vector<2xi32>
 //       CHECK:   %[[INS0:.*]] = llvm.insertelement %[[RFL0]], %[[POISON]][%[[C0]] : i32] : vector<2xi32>
 //       CHECK:   %[[INS1:.*]] = llvm.insertelement %[[RFL1]], %[[INS0]][%[[C1]] : i32] : vector<2xi32>
 //       CHECK:   %[[CAST64:.*]] = llvm.bitcast %[[INS1]] : vector<2xi32> to i64

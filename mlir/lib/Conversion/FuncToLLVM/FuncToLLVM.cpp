@@ -808,7 +808,7 @@ struct ReturnOpLowering : public ConvertOpToLLVMPattern<func::ReturnOp> {
       return rewriter.notifyMatchFailure(op, "could not convert result types");
     }
 
-    Value packed = LLVM::PoisonOp::create(rewriter, loc, packedType);
+    Value packed = rewriter.createOrFold<LLVM::PoisonOp>(loc, packedType);
     for (auto [idx, operand] : llvm::enumerate(updatedOperands)) {
       packed = LLVM::InsertValueOp::create(rewriter, loc, packed, operand, idx);
     }

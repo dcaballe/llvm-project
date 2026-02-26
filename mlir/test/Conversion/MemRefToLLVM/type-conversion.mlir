@@ -97,10 +97,10 @@ func.func @one_to_n_return_conversion(%arg0: i17) -> i17 {
 }
 
 // CHECK: llvm.func @caller(%[[arg0:.*]]: i18, %[[arg1:.*]]: i18)
+// CHECK:   %[[i0:.*]] = llvm.mlir.poison : !llvm.struct<(i18, i18)>
 // CHECK:   %[[res:.*]] = llvm.call @one_to_n_return_conversion(%[[arg0]], %[[arg1]]) : (i18, i18) -> !llvm.struct<(i18, i18)>
 // CHECK:   %[[e0:.*]] = llvm.extractvalue %[[res]][0] : !llvm.struct<(i18, i18)>
 // CHECK:   %[[e1:.*]] = llvm.extractvalue %[[res]][1] : !llvm.struct<(i18, i18)>
-// CHECK:   %[[i0:.*]] = llvm.mlir.poison : !llvm.struct<(i18, i18)>
 // CHECK:   %[[i1:.*]] = llvm.insertvalue %[[e0]], %[[i0]][0] : !llvm.struct<(i18, i18)>
 // CHECK:   %[[i2:.*]] = llvm.insertvalue %[[e1]], %[[i1]][1] : !llvm.struct<(i18, i18)>
 // CHECK:   llvm.return %[[i2]]
@@ -123,11 +123,11 @@ func.func @multi_return(%arg0: i17, %arg1: i1) -> (i17, i1) {
 }
 
 // CHECK: llvm.func @caller(%[[arg0:.*]]: i1, %[[arg1:.*]]: i18, %[[arg2:.*]]: i18)
+// CHECK:   %[[i0:.*]] = llvm.mlir.poison : !llvm.struct<(i18, i18, i1, i18, i18)>
 // CHECK:   %[[res:.*]] = llvm.call @multi_return(%[[arg1]], %[[arg2]], %[[arg0]]) : (i18, i18, i1) -> !llvm.struct<(i18, i18, i1)>
 // CHECK:   %[[e0:.*]] = llvm.extractvalue %[[res]][0] : !llvm.struct<(i18, i18, i1)>
 // CHECK:   %[[e1:.*]] = llvm.extractvalue %[[res]][1] : !llvm.struct<(i18, i18, i1)>
 // CHECK:   %[[e2:.*]] = llvm.extractvalue %[[res]][2] : !llvm.struct<(i18, i18, i1)>
-// CHECK:   %[[i0:.*]] = llvm.mlir.poison : !llvm.struct<(i18, i18, i1, i18, i18)>
 // CHECK:   %[[i1:.*]] = llvm.insertvalue %[[e0]], %[[i0]][0]
 // CHECK:   %[[i2:.*]] = llvm.insertvalue %[[e1]], %[[i1]][1]
 // CHECK:   %[[i3:.*]] = llvm.insertvalue %[[e2]], %[[i2]][2]

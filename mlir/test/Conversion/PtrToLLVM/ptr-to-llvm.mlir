@@ -4,11 +4,11 @@
 // (regular, nusw, nuw, inbounds)
 // CHECK-LABEL:   llvm.func @test_ptr_add(
 // CHECK-SAME:      %[[ARG0:.*]]: !llvm.ptr, %[[ARG1:.*]]: i64) -> !llvm.struct<(ptr, ptr, ptr, ptr)> {
+// CHECK:           %[[VAL_4:.*]] = llvm.mlir.poison : !llvm.struct<(ptr, ptr, ptr, ptr)>
 // CHECK:           %[[VAL_0:.*]] = llvm.getelementptr %[[ARG0]]{{\[}}%[[ARG1]]] : (!llvm.ptr, i64) -> !llvm.ptr, i8
 // CHECK:           %[[VAL_1:.*]] = llvm.getelementptr nusw %[[ARG0]]{{\[}}%[[ARG1]]] : (!llvm.ptr, i64) -> !llvm.ptr, i8
 // CHECK:           %[[VAL_2:.*]] = llvm.getelementptr nuw %[[ARG0]]{{\[}}%[[ARG1]]] : (!llvm.ptr, i64) -> !llvm.ptr, i8
 // CHECK:           %[[VAL_3:.*]] = llvm.getelementptr inbounds %[[ARG0]]{{\[}}%[[ARG1]]] : (!llvm.ptr, i64) -> !llvm.ptr, i8
-// CHECK:           %[[VAL_4:.*]] = llvm.mlir.poison : !llvm.struct<(ptr, ptr, ptr, ptr)>
 // CHECK:           %[[VAL_5:.*]] = llvm.insertvalue %[[VAL_0]], %[[VAL_4]][0] : !llvm.struct<(ptr, ptr, ptr, ptr)>
 // CHECK:           %[[VAL_6:.*]] = llvm.insertvalue %[[VAL_1]], %[[VAL_5]][1] : !llvm.struct<(ptr, ptr, ptr, ptr)>
 // CHECK:           %[[VAL_7:.*]] = llvm.insertvalue %[[VAL_2]], %[[VAL_6]][2] : !llvm.struct<(ptr, ptr, ptr, ptr)>
@@ -26,13 +26,13 @@ func.func @test_ptr_add(%arg0: !ptr.ptr<#ptr.generic_space>, %arg1: index) -> (!
 // Tests type_offset operation which returns the size of different types
 // CHECK-LABEL:   llvm.func @test_type_offset() -> !llvm.struct<(i64, i64, i64)> {
 // CHECK:           %[[VAL_0:.*]] = llvm.mlir.zero : !llvm.ptr
+// CHECK:           %[[VAL_9:.*]] = llvm.mlir.poison : !llvm.struct<(i64, i64, i64)>
 // CHECK:           %[[VAL_1:.*]] = llvm.getelementptr %[[VAL_0]][1] : (!llvm.ptr) -> !llvm.ptr, f32
 // CHECK:           %[[VAL_2:.*]] = llvm.ptrtoint %[[VAL_1]] : !llvm.ptr to i64
 // CHECK:           %[[VAL_4:.*]] = llvm.getelementptr %[[VAL_0]][1] : (!llvm.ptr) -> !llvm.ptr, i64
 // CHECK:           %[[VAL_5:.*]] = llvm.ptrtoint %[[VAL_4]] : !llvm.ptr to i64
 // CHECK:           %[[VAL_7:.*]] = llvm.getelementptr %[[VAL_0]][1] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i32, f64)>
 // CHECK:           %[[VAL_8:.*]] = llvm.ptrtoint %[[VAL_7]] : !llvm.ptr to i64
-// CHECK:           %[[VAL_9:.*]] = llvm.mlir.poison : !llvm.struct<(i64, i64, i64)>
 // CHECK:           %[[VAL_10:.*]] = llvm.insertvalue %[[VAL_2]], %[[VAL_9]][0] : !llvm.struct<(i64, i64, i64)>
 // CHECK:           %[[VAL_11:.*]] = llvm.insertvalue %[[VAL_5]], %[[VAL_10]][1] : !llvm.struct<(i64, i64, i64)>
 // CHECK:           %[[VAL_12:.*]] = llvm.insertvalue %[[VAL_8]], %[[VAL_11]][2] : !llvm.struct<(i64, i64, i64)>
@@ -216,6 +216,7 @@ func.func @test_memref_strided(%arg0: memref<10x20xf32, strided<[40, 2], offset:
 // CHECK-SAME:      %[[ARG0:.*]]: !llvm.ptr, %[[ARG1:.*]]: !llvm.ptr, %[[ARG2:.*]]: i64, %[[ARG3:.*]]: i64, %[[ARG4:.*]]: i64, %[[ARG5:.*]]: i64, %[[ARG6:.*]]: i64) -> !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> {
 // CHECK:           %[[VAL_9:.*]] = llvm.mlir.undef : !llvm.struct<(ptr, i64, i64, i64, i64, i64)>
 // CHECK:           %[[VAL_22:.*]] = llvm.mlir.zero : !llvm.ptr
+// CHECK:           %[[VAL_26:.*]] = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
 // CHECK:           %[[VAL_0:.*]] = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
 // CHECK:           %[[VAL_1:.*]] = llvm.insertvalue %[[ARG0]], %[[VAL_0]][0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
 // CHECK:           %[[VAL_2:.*]] = llvm.insertvalue %[[ARG1]], %[[VAL_1]][1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
@@ -240,7 +241,6 @@ func.func @test_memref_strided(%arg0: memref<10x20xf32, strided<[40, 2], offset:
 // CHECK:           %[[VAL_23:.*]] = llvm.getelementptr %[[VAL_22]][1] : (!llvm.ptr) -> !llvm.ptr, f32
 // CHECK:           %[[VAL_24:.*]] = llvm.ptrtoint %[[VAL_23]] : !llvm.ptr to i64
 // CHECK:           %[[VAL_25:.*]] = llvm.getelementptr inbounds %[[VAL_8]]{{\[}}%[[VAL_24]]] : (!llvm.ptr, i64) -> !llvm.ptr, i8
-// CHECK:           %[[VAL_26:.*]] = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
 // CHECK:           %[[VAL_27:.*]] = llvm.extractvalue %[[VAL_21]][0] : !llvm.struct<(ptr, i64, i64, i64, i64, i64)>
 // CHECK:           %[[VAL_28:.*]] = llvm.insertvalue %[[VAL_27]], %[[VAL_26]][0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
 // CHECK:           %[[VAL_29:.*]] = llvm.insertvalue %[[VAL_25]], %[[VAL_28]][1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
@@ -316,9 +316,9 @@ func.func @test_memref_ptradd_indexing(%arg0: memref<10x?x30xf32, #ptr.generic_s
 
 // CHECK-LABEL: func @test_constant_address_ops
 //       CHECK:   %[[C_0:.*]] = llvm.mlir.constant(0 : i64) : i64
+//       CHECK:   %[[RET_0:.*]] = llvm.mlir.poison : !llvm.struct<(ptr, ptr)>
 //       CHECK:   %[[PTR_0:.*]] = llvm.inttoptr %[[C_0]] : i64 to !llvm.ptr
 //       CHECK:   %[[PTR_ZERO:.*]] = llvm.mlir.zero : !llvm.ptr
-//       CHECK:   %[[RET_0:.*]] = llvm.mlir.poison : !llvm.struct<(ptr, ptr)>
 //       CHECK:   %[[RET_1:.*]] = llvm.insertvalue %[[PTR_0]], %[[RET_0]][0] : !llvm.struct<(ptr, ptr)>
 //       CHECK:   %[[RET_2:.*]] = llvm.insertvalue %[[PTR_ZERO]], %[[RET_1]][1] : !llvm.struct<(ptr, ptr)>
 //       CHECK:   llvm.return %[[RET_2]] : !llvm.struct<(ptr, ptr)>

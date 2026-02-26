@@ -4735,7 +4735,7 @@ Operation *LLVMDialect::materializeConstant(OpBuilder &builder, Attribute value,
   if (isa<LLVM::UndefAttr>(value))
     return LLVM::UndefOp::create(builder, loc, type);
   if (isa<LLVM::PoisonAttr>(value))
-    return LLVM::PoisonOp::create(builder, loc, type);
+    return builder.createOrFold<LLVM::PoisonOp>(loc, type).getDefiningOp();
   if (isa<LLVM::ZeroAttr>(value))
     return LLVM::ZeroOp::create(builder, loc, type);
   if (isa<LLVM::MDStringAttr, LLVM::MDConstantAttr, LLVM::MDGlobalValueAttr,

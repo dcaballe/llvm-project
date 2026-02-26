@@ -24,11 +24,11 @@ spirv.func @iadd_vector(%arg0: vector<4xi64>, %arg1: vector<4xi64>) "None" {
 
 // CHECK-LABEL: @iaddcarry_scalar
 spirv.func @iaddcarry_scalar(%arg0: i32, %arg1: i32) "None" {
+  // CHECK: %[[UNDEF:.*]] = llvm.mlir.poison : !llvm.struct<packed (i32, i32)>
   // CHECK: %[[O:.*]] = "llvm.intr.uadd.with.overflow"(%{{.*}}, %{{.*}}) : (i32, i32) -> !llvm.struct<(i32, i1)>
   // CHECK: %[[LOW:.*]] = llvm.extractvalue %[[O]][0] : !llvm.struct<(i32, i1)>
   // CHECK: %[[CARRY:.*]] = llvm.extractvalue %[[O]][1] : !llvm.struct<(i32, i1)>
   // CHECK: %[[CARRYEXT:.*]] = llvm.zext %[[CARRY]] : i1 to i32
-  // CHECK: %[[UNDEF:.*]] = llvm.mlir.poison : !llvm.struct<packed (i32, i32)>
   // CHECK: %[[R0:.*]] = llvm.insertvalue %[[LOW]], %[[UNDEF]][0] : !llvm.struct<packed (i32, i32)>
   // CHECK: llvm.insertvalue %[[CARRYEXT]], %[[R0]][1] : !llvm.struct<packed (i32, i32)>
   %0 = spirv.IAddCarry %arg0, %arg1 : !spirv.struct<(i32, i32)>
@@ -37,11 +37,11 @@ spirv.func @iaddcarry_scalar(%arg0: i32, %arg1: i32) "None" {
 
 // CHECK-LABEL: @iaddcarry_vector
 spirv.func @iaddcarry_vector(%arg0: vector<2xi32>, %arg1: vector<2xi32>) "None" {
+  // CHECK: %[[UNDEF:.*]] = llvm.mlir.poison : !llvm.struct<packed (vector<2xi32>, vector<2xi32>)>
   // CHECK: %[[O:.*]] = "llvm.intr.uadd.with.overflow"(%{{.*}}, %{{.*}}) : (vector<2xi32>, vector<2xi32>) -> !llvm.struct<(vector<2xi32>, vector<2xi1>)>
   // CHECK: %[[LOW:.*]] = llvm.extractvalue %[[O]][0] : !llvm.struct<(vector<2xi32>, vector<2xi1>)>
   // CHECK: %[[CARRY:.*]] = llvm.extractvalue %[[O]][1] : !llvm.struct<(vector<2xi32>, vector<2xi1>)>
   // CHECK: %[[CARRYEXT:.*]] = llvm.zext %[[CARRY]] : vector<2xi1> to vector<2xi32>
-  // CHECK: %[[UNDEF:.*]] = llvm.mlir.poison : !llvm.struct<packed (vector<2xi32>, vector<2xi32>)>
   // CHECK: %[[R0:.*]] = llvm.insertvalue %[[LOW]], %[[UNDEF]][0] : !llvm.struct<packed (vector<2xi32>, vector<2xi32>)>
   // CHECK: llvm.insertvalue %[[CARRYEXT]], %[[R0]][1] : !llvm.struct<packed (vector<2xi32>, vector<2xi32>)>
   %0 = spirv.IAddCarry %arg0, %arg1 : !spirv.struct<(vector<2xi32>, vector<2xi32>)>
@@ -72,11 +72,11 @@ spirv.func @isub_vector(%arg0: vector<2xi16>, %arg1: vector<2xi16>) "None" {
 
 // CHECK-LABEL: @isubborrow_scalar
 spirv.func @isubborrow_scalar(%arg0: i32, %arg1: i32) "None" {
+  // CHECK: %[[UNDEF:.*]] = llvm.mlir.poison : !llvm.struct<packed (i32, i32)>
   // CHECK: %[[O:.*]] = "llvm.intr.usub.with.overflow"(%{{.*}}, %{{.*}}) : (i32, i32) -> !llvm.struct<(i32, i1)>
   // CHECK: %[[LOW:.*]] = llvm.extractvalue %[[O]][0] : !llvm.struct<(i32, i1)>
   // CHECK: %[[BORROW:.*]] = llvm.extractvalue %[[O]][1] : !llvm.struct<(i32, i1)>
   // CHECK: %[[BORROWEXT:.*]] = llvm.zext %[[BORROW]] : i1 to i32
-  // CHECK: %[[UNDEF:.*]] = llvm.mlir.poison : !llvm.struct<packed (i32, i32)>
   // CHECK: %[[R0:.*]] = llvm.insertvalue %[[LOW]], %[[UNDEF]][0] : !llvm.struct<packed (i32, i32)>
   // CHECK: llvm.insertvalue %[[BORROWEXT]], %[[R0]][1] : !llvm.struct<packed (i32, i32)>
   %0 = spirv.ISubBorrow %arg0, %arg1 : !spirv.struct<(i32, i32)>
@@ -85,11 +85,11 @@ spirv.func @isubborrow_scalar(%arg0: i32, %arg1: i32) "None" {
 
 // CHECK-LABEL: @isubborrow_vector
 spirv.func @isubborrow_vector(%arg0: vector<2xi32>, %arg1: vector<2xi32>) "None" {
+  // CHECK: %[[UNDEF:.*]] = llvm.mlir.poison : !llvm.struct<packed (vector<2xi32>, vector<2xi32>)>
   // CHECK: %[[O:.*]] = "llvm.intr.usub.with.overflow"(%{{.*}}, %{{.*}}) : (vector<2xi32>, vector<2xi32>) -> !llvm.struct<(vector<2xi32>, vector<2xi1>)>
   // CHECK: %[[LOW:.*]] = llvm.extractvalue %[[O]][0] : !llvm.struct<(vector<2xi32>, vector<2xi1>)>
   // CHECK: %[[BORROW:.*]] = llvm.extractvalue %[[O]][1] : !llvm.struct<(vector<2xi32>, vector<2xi1>)>
   // CHECK: %[[BORROWEXT:.*]] = llvm.zext %[[BORROW]] : vector<2xi1> to vector<2xi32>
-  // CHECK: %[[UNDEF:.*]] = llvm.mlir.poison : !llvm.struct<packed (vector<2xi32>, vector<2xi32>)>
   // CHECK: %[[R0:.*]] = llvm.insertvalue %[[LOW]], %[[UNDEF]][0] : !llvm.struct<packed (vector<2xi32>, vector<2xi32>)>
   // CHECK: llvm.insertvalue %[[BORROWEXT]], %[[R0]][1] : !llvm.struct<packed (vector<2xi32>, vector<2xi32>)>
   %0 = spirv.ISubBorrow %arg0, %arg1 : !spirv.struct<(vector<2xi32>, vector<2xi32>)>
