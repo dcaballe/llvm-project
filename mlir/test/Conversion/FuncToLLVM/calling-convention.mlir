@@ -13,6 +13,7 @@
 func.func private @external(%arg0: memref<?x?xf32>, %arg1: memref<f32>)
   // Populate the descriptor for arg0.
   // CHECK: %[[DESC00:.*]] = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
+  // CHECK: %[[C1:.*]] = llvm.mlir.constant(1 : index)
   // CHECK: %[[DESC01:.*]] = llvm.insertvalue %arg0, %[[DESC00]][0]
   // CHECK: %[[DESC02:.*]] = llvm.insertvalue %arg1, %[[DESC01]][1]
   // CHECK: %[[DESC03:.*]] = llvm.insertvalue %arg2, %[[DESC02]][2]
@@ -22,7 +23,6 @@ func.func private @external(%arg0: memref<?x?xf32>, %arg1: memref<f32>)
   // CHECK: %[[DESC07:.*]] = llvm.insertvalue %arg6, %[[DESC06]][4, 1]
 
   // Allocate on stack and store to comply with C calling convention.
-  // CHECK: %[[C1:.*]] = llvm.mlir.constant(1 : index)
   // CHECK: %[[DESC0_ALLOCA:.*]] = llvm.alloca %[[C1]] x !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   // CHECK: llvm.store %[[DESC07]], %[[DESC0_ALLOCA]]
 
@@ -33,7 +33,6 @@ func.func private @external(%arg0: memref<?x?xf32>, %arg1: memref<f32>)
   // CHECK: %[[DESC13:.*]] = llvm.insertvalue %arg9, %[[DESC12]][2] : !llvm.struct<(ptr, ptr, i64)>
 
   // Allocate on stack and store to comply with C calling convention.
-  // CHECK: %[[C1:.*]] = llvm.mlir.constant(1 : index)
   // CHECK: %[[DESC1_ALLOCA:.*]] = llvm.alloca %[[C1]] x !llvm.struct<(ptr, ptr, i64)>
   // CHECK: llvm.store %[[DESC13]], %[[DESC1_ALLOCA]]
 
@@ -116,16 +115,16 @@ func.func @other_callee(%arg0: memref<?xf32>, %arg1: index) attributes { llvm.em
 
 // CHECK-LABEL: llvm.func @return_var_memref_caller
 func.func @return_var_memref_caller(%arg0: memref<4x3xf32>) {
-  // CHECK: %[[CALL_RES:.*]] = llvm.call @return_var_memref
-  %0 = call @return_var_memref(%arg0) : (memref<4x3xf32>) -> memref<*xf32>
-
   // CHECK: %[[ONE:.*]] = llvm.mlir.constant(1 : index)
   // CHECK: %[[TWO:.*]] = llvm.mlir.constant(2 : index)
   // These sizes may depend on the data layout, not matching specific values.
+  // The index and pointer sizes coincide here, so they share one constant.
   // CHECK: %[[IDX_SIZE:.*]] = llvm.mlir.constant
 
-  // CHECK: %[[PTR_SIZE:.*]] = llvm.mlir.constant
-  // CHECK: %[[DOUBLE_PTR_SIZE:.*]] = llvm.mul %[[TWO]], %[[PTR_SIZE]]
+  // CHECK: %[[CALL_RES:.*]] = llvm.call @return_var_memref
+  %0 = call @return_var_memref(%arg0) : (memref<4x3xf32>) -> memref<*xf32>
+
+  // CHECK: %[[DOUBLE_PTR_SIZE:.*]] = llvm.mul %[[TWO]], %[[IDX_SIZE]]
   // CHECK: %[[RANK:.*]] = llvm.extractvalue %[[CALL_RES]][0] : !llvm.struct<(i64, ptr)>
   // CHECK: %[[DOUBLE_RANK:.*]] = llvm.mul %[[TWO]], %[[RANK]]
   // CHECK: %[[DOUBLE_RANK_INC:.*]] = llvm.add %[[DOUBLE_RANK]], %[[ONE]]
@@ -145,20 +144,19 @@ func.func @return_var_memref_caller(%arg0: memref<4x3xf32>) {
 // CHECK-LABEL: llvm.func @return_var_memref
 func.func @return_var_memref(%arg0: memref<4x3xf32>) -> memref<*xf32> attributes { llvm.emit_c_interface } {
   // Match the construction of the unranked descriptor.
-  // CHECK: %[[ALLOCA:.*]] = llvm.alloca
   // CHECK: %[[RANK:.*]] = llvm.mlir.constant(2 : index)
+  // CHECK: %[[ONE:.*]] = llvm.mlir.constant(1 : index)
+  // CHECK: %[[TWO:.*]] = llvm.mlir.constant(2 : index)
+  // These sizes may depend on the data layout, not matching specific values.
+  // The index and pointer sizes coincide here, so they share one constant.
+  // CHECK: %[[IDX_SIZE:.*]] = llvm.mlir.constant
+  // CHECK: %[[ALLOCA:.*]] = llvm.alloca
   // CHECK: %[[DESC_0:.*]] = llvm.mlir.poison : !llvm.struct<(i64, ptr)>
   // CHECK: %[[DESC_1:.*]] = llvm.insertvalue %[[RANK]], %[[DESC_0]][0]
   // CHECK: %[[DESC_2:.*]] = llvm.insertvalue %[[ALLOCA]], %[[DESC_1]][1]
   %0 = memref.cast %arg0: memref<4x3xf32> to memref<*xf32>
 
-  // CHECK: %[[ONE:.*]] = llvm.mlir.constant(1 : index)
-  // CHECK: %[[TWO:.*]] = llvm.mlir.constant(2 : index)
-  // These sizes may depend on the data layout, not matching specific values.
-  // CHECK: %[[IDX_SIZE:.*]] = llvm.mlir.constant
-
-  // CHECK: %[[PTR_SIZE:.*]] = llvm.mlir.constant
-  // CHECK: %[[DOUBLE_PTR_SIZE:.*]] = llvm.mul %[[TWO]], %[[PTR_SIZE]]
+  // CHECK: %[[DOUBLE_PTR_SIZE:.*]] = llvm.mul %[[TWO]], %[[IDX_SIZE]]
   // CHECK: %[[RANK_EXTR:.*]] = llvm.extractvalue %[[DESC_2]][0]
   // CHECK: %[[DOUBLE_RANK:.*]] = llvm.mul %[[TWO]], %[[RANK_EXTR]]
   // CHECK: %[[DOUBLE_RANK_INC:.*]] = llvm.add %[[DOUBLE_RANK]], %[[ONE]]
@@ -251,18 +249,17 @@ func.func @return_two_var_memref(%arg0: memref<4x3xf32>) -> (memref<*xf32>, memr
 // CHECK-SAME: -> !llvm.ptr
 func.func @bare_ptr_calling_conv(%arg0: memref<4x3xf32>, %arg1 : index, %arg2 : index, %arg3 : f32)
      -> (memref<4x3xf32>) attributes { llvm.bareptr } {
+  // CHECK: %[[C0:.*]] = llvm.mlir.constant(0 : index) : i64
+  // CHECK: %[[C4:.*]] = llvm.mlir.constant(4 : index) : i64
+  // CHECK: %[[C3:.*]] = llvm.mlir.constant(3 : index) : i64
+  // CHECK: %[[C1:.*]] = llvm.mlir.constant(1 : index) : i64
   // CHECK: %[[POISON_DESC:.*]] = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   // CHECK: %[[INSERT_ALLOCPTR:.*]] = llvm.insertvalue %[[ARG0]], %[[POISON_DESC]][0]
   // CHECK: %[[INSERT_ALIGNEDPTR:.*]] = llvm.insertvalue %[[ARG0]], %[[INSERT_ALLOCPTR]][1]
-  // CHECK: %[[C0:.*]] = llvm.mlir.constant(0 : index) : i64
   // CHECK: %[[INSERT_OFFSET:.*]] = llvm.insertvalue %[[C0]], %[[INSERT_ALIGNEDPTR]][2]
-  // CHECK: %[[C4:.*]] = llvm.mlir.constant(4 : index) : i64
   // CHECK: %[[INSERT_DIM0:.*]] = llvm.insertvalue %[[C4]], %[[INSERT_OFFSET]][3, 0]
-  // CHECK: %[[C3:.*]] = llvm.mlir.constant(3 : index) : i64
   // CHECK: %[[INSERT_STRIDE0:.*]] = llvm.insertvalue %[[C3]], %[[INSERT_DIM0]][4, 0]
-  // CHECK: %[[C3:.*]] = llvm.mlir.constant(3 : index) : i64
   // CHECK: %[[INSERT_DIM1:.*]] = llvm.insertvalue %[[C3]], %[[INSERT_STRIDE0]][3, 1]
-  // CHECK: %[[C1:.*]] = llvm.mlir.constant(1 : index) : i64
   // CHECK: %[[INSERT_STRIDE1:.*]] = llvm.insertvalue %[[C1]], %[[INSERT_DIM1]][4, 1]
 
   // CHECK: %[[ALIGNEDPTR:.*]] = llvm.extractvalue %[[INSERT_STRIDE1]][1]
@@ -280,18 +277,17 @@ func.func @bare_ptr_calling_conv(%arg0: memref<4x3xf32>, %arg1 : index, %arg2 : 
 // CHECK-SAME: -> !llvm.struct<(f32, ptr)>
 func.func @bare_ptr_calling_conv_multiresult(%arg0: memref<4x3xf32>, %arg1 : index, %arg2 : index, %arg3 : f32)
      -> (f32, memref<4x3xf32>) attributes { llvm.bareptr } {
+  // CHECK: %[[C0:.*]] = llvm.mlir.constant(0 : index) : i64
+  // CHECK: %[[C4:.*]] = llvm.mlir.constant(4 : index) : i64
+  // CHECK: %[[C3:.*]] = llvm.mlir.constant(3 : index) : i64
+  // CHECK: %[[C1:.*]] = llvm.mlir.constant(1 : index) : i64
   // CHECK: %[[POISON_DESC:.*]] = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   // CHECK: %[[INSERT_ALLOCPTR:.*]] = llvm.insertvalue %[[ARG0]], %[[POISON_DESC]][0]
   // CHECK: %[[INSERT_ALIGNEDPTR:.*]] = llvm.insertvalue %[[ARG0]], %[[INSERT_ALLOCPTR]][1]
-  // CHECK: %[[C0:.*]] = llvm.mlir.constant(0 : index) : i64
   // CHECK: %[[INSERT_OFFSET:.*]] = llvm.insertvalue %[[C0]], %[[INSERT_ALIGNEDPTR]][2]
-  // CHECK: %[[C4:.*]] = llvm.mlir.constant(4 : index) : i64
   // CHECK: %[[INSERT_DIM0:.*]] = llvm.insertvalue %[[C4]], %[[INSERT_OFFSET]][3, 0]
-  // CHECK: %[[C3:.*]] = llvm.mlir.constant(3 : index) : i64
   // CHECK: %[[INSERT_STRIDE0:.*]] = llvm.insertvalue %[[C3]], %[[INSERT_DIM0]][4, 0]
-  // CHECK: %[[C3:.*]] = llvm.mlir.constant(3 : index) : i64
   // CHECK: %[[INSERT_DIM1:.*]] = llvm.insertvalue %[[C3]], %[[INSERT_STRIDE0]][3, 1]
-  // CHECK: %[[C1:.*]] = llvm.mlir.constant(1 : index) : i64
   // CHECK: %[[INSERT_STRIDE1:.*]] = llvm.insertvalue %[[C1]], %[[INSERT_DIM1]][4, 1]
 
   // CHECK: %[[ALIGNEDPTR:.*]] = llvm.extractvalue %[[INSERT_STRIDE1]][1]

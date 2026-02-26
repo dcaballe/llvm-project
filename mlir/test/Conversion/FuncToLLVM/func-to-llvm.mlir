@@ -26,17 +26,17 @@ func.func private @body(index)
 // CHECK32-LABEL: func @simple_loop() {
 func.func @simple_loop() {
 ^bb0:
+// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(1 : index) : i64
+// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(42 : index) : i64
 // CHECK-NEXT:  llvm.br ^bb1
+// CHECK32-NEXT:  {{.*}} = llvm.mlir.constant(1 : index) : i32
+// CHECK32-NEXT:  {{.*}} = llvm.mlir.constant(42 : index) : i32
 // CHECK32-NEXT:  llvm.br ^bb1
   cf.br ^bb1
 
 // CHECK-NEXT: ^bb1:	// pred: ^bb0
-// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(1 : index) : i64
-// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(42 : index) : i64
 // CHECK-NEXT:  llvm.br ^bb2({{.*}} : i64)
 // CHECK32-NEXT: ^bb1:	// pred: ^bb0
-// CHECK32-NEXT:  {{.*}} = llvm.mlir.constant(1 : index) : i32
-// CHECK32-NEXT:  {{.*}} = llvm.mlir.constant(42 : index) : i32
 // CHECK32-NEXT:  llvm.br ^bb2({{.*}} : i32)
 ^bb1:	// pred: ^bb0
   %c1 = arith.constant 1 : index
@@ -55,12 +55,10 @@ func.func @simple_loop() {
 
 // CHECK:      ^bb3:	// pred: ^bb2
 // CHECK-NEXT:  llvm.call @body({{.*}}) : (i64) -> ()
-// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(1 : index) : i64
 // CHECK-NEXT:  {{.*}} = llvm.add {{.*}}, {{.*}} : i64
 // CHECK-NEXT:  llvm.br ^bb2({{.*}} : i64)
 // CHECK32:      ^bb3:	// pred: ^bb2
 // CHECK32-NEXT:  llvm.call @body({{.*}}) : (i32) -> ()
-// CHECK32-NEXT:  {{.*}} = llvm.mlir.constant(1 : index) : i32
 // CHECK32-NEXT:  {{.*}} = llvm.add {{.*}}, {{.*}} : i32
 // CHECK32-NEXT:  llvm.br ^bb2({{.*}} : i32)
 ^bb3:	// pred: ^bb2
@@ -115,9 +113,15 @@ func.func private @other(index, i32) -> i32
 
 // CHECK-LABEL: func @func_args(%arg0: i32, %arg1: i32) -> i32 {
 // CHECK-NEXT:  {{.*}} = llvm.mlir.constant(0 : i32) : i32
+// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(0 : index) : i64
+// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(42 : index) : i64
+// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(1 : index) : i64
 // CHECK-NEXT:  llvm.br ^bb1
 // CHECK32-LABEL: func @func_args(%arg0: i32, %arg1: i32) -> i32 {
 // CHECK32-NEXT:  {{.*}} = llvm.mlir.constant(0 : i32) : i32
+// CHECK32-NEXT:  {{.*}} = llvm.mlir.constant(0 : index) : i32
+// CHECK32-NEXT:  {{.*}} = llvm.mlir.constant(42 : index) : i32
+// CHECK32-NEXT:  {{.*}} = llvm.mlir.constant(1 : index) : i32
 // CHECK32-NEXT:  llvm.br ^bb1
 func.func @func_args(i32, i32) -> i32 {
 ^bb0(%arg0: i32, %arg1: i32):
@@ -125,12 +129,8 @@ func.func @func_args(i32, i32) -> i32 {
   cf.br ^bb1
 
 // CHECK-NEXT: ^bb1:	// pred: ^bb0
-// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(0 : index) : i64
-// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(42 : index) : i64
 // CHECK-NEXT:  llvm.br ^bb2({{.*}} : i64)
 // CHECK32-NEXT: ^bb1:	// pred: ^bb0
-// CHECK32-NEXT:  {{.*}} = llvm.mlir.constant(0 : index) : i32
-// CHECK32-NEXT:  {{.*}} = llvm.mlir.constant(42 : index) : i32
 // CHECK32-NEXT:  llvm.br ^bb2({{.*}} : i32)
 ^bb1:	// pred: ^bb0
   %c0 = arith.constant 0 : index
@@ -152,7 +152,6 @@ func.func @func_args(i32, i32) -> i32 {
 // CHECK-NEXT:  {{.*}} = llvm.call @other({{.*}}, %arg0) : (i64, i32) -> i32
 // CHECK-NEXT:  {{.*}} = llvm.call @other({{.*}}, {{.*}}) : (i64, i32) -> i32
 // CHECK-NEXT:  {{.*}} = llvm.call @other({{.*}}, %arg1) : (i64, i32) -> i32
-// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(1 : index) : i64
 // CHECK-NEXT:  {{.*}} = llvm.add {{.*}}, {{.*}} : i64
 // CHECK-NEXT:  llvm.br ^bb2({{.*}} : i64)
 // CHECK32-NEXT: ^bb3:	// pred: ^bb2
@@ -160,7 +159,6 @@ func.func @func_args(i32, i32) -> i32 {
 // CHECK32-NEXT:  {{.*}} = llvm.call @other({{.*}}, %arg0) : (i32, i32) -> i32
 // CHECK32-NEXT:  {{.*}} = llvm.call @other({{.*}}, {{.*}}) : (i32, i32) -> i32
 // CHECK32-NEXT:  {{.*}} = llvm.call @other({{.*}}, %arg1) : (i32, i32) -> i32
-// CHECK32-NEXT:  {{.*}} = llvm.mlir.constant(1 : index) : i32
 // CHECK32-NEXT:  {{.*}} = llvm.add {{.*}}, {{.*}} : i32
 // CHECK32-NEXT:  llvm.br ^bb2({{.*}} : i32)
 ^bb3:	// pred: ^bb2
@@ -173,11 +171,9 @@ func.func @func_args(i32, i32) -> i32 {
   cf.br ^bb2(%6 : index)
 
 // CHECK-NEXT: ^bb4:	// pred: ^bb2
-// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(0 : index) : i64
 // CHECK-NEXT:  {{.*}} = llvm.call @other({{.*}}, {{.*}}) : (i64, i32) -> i32
 // CHECK-NEXT:  llvm.return {{.*}} : i32
 // CHECK32-NEXT: ^bb4:	// pred: ^bb2
-// CHECK32-NEXT:  {{.*}} = llvm.mlir.constant(0 : index) : i32
 // CHECK32-NEXT:  {{.*}} = llvm.call @other({{.*}}, {{.*}}) : (i32, i32) -> i32
 // CHECK32-NEXT:  llvm.return {{.*}} : i32
 ^bb4:	// pred: ^bb2
@@ -199,14 +195,18 @@ func.func private @body2(index, index)
 func.func private @post(index)
 
 // CHECK-LABEL: func @imperfectly_nested_loops() {
+// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(0 : index) : i64
+// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(42 : index) : i64
+// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(7 : index) : i64
+// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(56 : index) : i64
+// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(2 : index) : i64
+// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(1 : index) : i64
 // CHECK-NEXT:  llvm.br ^bb1
 func.func @imperfectly_nested_loops() {
 ^bb0:
   cf.br ^bb1
 
 // CHECK-NEXT: ^bb1:	// pred: ^bb0
-// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(0 : index) : i64
-// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(42 : index) : i64
 // CHECK-NEXT:  llvm.br ^bb2({{.*}} : i64)
 ^bb1:	// pred: ^bb0
   %c0 = arith.constant 0 : index
@@ -228,8 +228,6 @@ func.func @imperfectly_nested_loops() {
   cf.br ^bb4
 
 // CHECK-NEXT: ^bb4:	// pred: ^bb3
-// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(7 : index) : i64
-// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(56 : index) : i64
 // CHECK-NEXT:  llvm.br ^bb5({{.*}} : i64)
 ^bb4:	// pred: ^bb3
   %c7 = arith.constant 7 : index
@@ -245,7 +243,6 @@ func.func @imperfectly_nested_loops() {
 
 // CHECK-NEXT: ^bb6:	// pred: ^bb5
 // CHECK-NEXT:  llvm.call @body2({{.*}}, {{.*}}) : (i64, i64) -> ()
-// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(2 : index) : i64
 // CHECK-NEXT:  {{.*}} = llvm.add {{.*}}, {{.*}} : i64
 // CHECK-NEXT:  llvm.br ^bb5({{.*}} : i64)
 ^bb6:	// pred: ^bb5
@@ -256,7 +253,6 @@ func.func @imperfectly_nested_loops() {
 
 // CHECK-NEXT: ^bb7:	// pred: ^bb5
 // CHECK-NEXT:  llvm.call @post({{.*}}) : (i64) -> ()
-// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(1 : index) : i64
 // CHECK-NEXT:  {{.*}} = llvm.add {{.*}}, {{.*}} : i64
 // CHECK-NEXT:  llvm.br ^bb2({{.*}} : i64)
 ^bb7:	// pred: ^bb5
@@ -279,10 +275,17 @@ func.func private @body3(index, index)
 
 // A complete function transformation check.
 // CHECK-LABEL: func @more_imperfectly_nested_loops() {
-// CHECK-NEXT:  llvm.br ^bb1
-// CHECK-NEXT:^bb1:	// pred: ^bb0
 // CHECK-NEXT:  {{.*}} = llvm.mlir.constant(0 : index) : i64
 // CHECK-NEXT:  {{.*}} = llvm.mlir.constant(42 : index) : i64
+// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(7 : index) : i64
+// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(56 : index) : i64
+// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(2 : index) : i64
+// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(18 : index) : i64
+// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(37 : index) : i64
+// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(3 : index) : i64
+// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(1 : index) : i64
+// CHECK-NEXT:  llvm.br ^bb1
+// CHECK-NEXT:^bb1:	// pred: ^bb0
 // CHECK-NEXT:  llvm.br ^bb2({{.*}} : i64)
 // CHECK-NEXT:^bb2({{.*}}: i64):	// 2 preds: ^bb1, ^bb11
 // CHECK-NEXT:  {{.*}} = llvm.icmp "slt" {{.*}}, {{.*}} : i64
@@ -291,35 +294,28 @@ func.func private @body3(index, index)
 // CHECK-NEXT:  llvm.call @pre({{.*}}) : (i64) -> ()
 // CHECK-NEXT:  llvm.br ^bb4
 // CHECK-NEXT:^bb4:	// pred: ^bb3
-// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(7 : index) : i64
-// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(56 : index) : i64
 // CHECK-NEXT:  llvm.br ^bb5({{.*}} : i64)
 // CHECK-NEXT:^bb5({{.*}}: i64):	// 2 preds: ^bb4, ^bb6
 // CHECK-NEXT:  {{.*}} = llvm.icmp "slt" {{.*}}, {{.*}} : i64
 // CHECK-NEXT:  llvm.cond_br {{.*}}, ^bb6, ^bb7
 // CHECK-NEXT:^bb6:	// pred: ^bb5
 // CHECK-NEXT:  llvm.call @body2({{.*}}, {{.*}}) : (i64, i64) -> ()
-// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(2 : index) : i64
 // CHECK-NEXT:  {{.*}} = llvm.add {{.*}}, {{.*}} : i64
 // CHECK-NEXT:  llvm.br ^bb5({{.*}} : i64)
 // CHECK-NEXT:^bb7:	// pred: ^bb5
 // CHECK-NEXT:  llvm.call @mid({{.*}}) : (i64) -> ()
 // CHECK-NEXT:  llvm.br ^bb8
 // CHECK-NEXT:^bb8:	// pred: ^bb7
-// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(18 : index) : i64
-// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(37 : index) : i64
 // CHECK-NEXT:  llvm.br ^bb9({{.*}} : i64)
 // CHECK-NEXT:^bb9({{.*}}: i64):	// 2 preds: ^bb8, ^bb10
 // CHECK-NEXT:  {{.*}} = llvm.icmp "slt" {{.*}}, {{.*}} : i64
 // CHECK-NEXT:  llvm.cond_br {{.*}}, ^bb10, ^bb11
 // CHECK-NEXT:^bb10:	// pred: ^bb9
 // CHECK-NEXT:  llvm.call @body3({{.*}}, {{.*}}) : (i64, i64) -> ()
-// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(3 : index) : i64
 // CHECK-NEXT:  {{.*}} = llvm.add {{.*}}, {{.*}} : i64
 // CHECK-NEXT:  llvm.br ^bb9({{.*}} : i64)
 // CHECK-NEXT:^bb11:	// pred: ^bb9
 // CHECK-NEXT:  llvm.call @post({{.*}}) : (i64) -> ()
-// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(1 : index) : i64
 // CHECK-NEXT:  {{.*}} = llvm.add {{.*}}, {{.*}} : i64
 // CHECK-NEXT:  llvm.br ^bb2({{.*}} : i64)
 // CHECK-NEXT:^bb12:	// pred: ^bb2
@@ -419,10 +415,16 @@ func.func @multireturn() -> (i64, f32, memref<42x?x10x?xf32>) {
 // CHECK32-LABEL: llvm.func @multireturn_caller() {
 func.func @multireturn_caller() {
 ^bb0:
+// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(42 : i64) : i64
+// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(4.200000e+01 : f32) : f32
+// CHECK-NEXT:  {{.*}} = llvm.mlir.constant(0 : index) : i64
 // CHECK-NEXT:  {{.*}} = llvm.call @multireturn() : () -> !llvm.struct<(i64, f32, struct<(ptr, ptr, i64, array<4 x i64>, array<4 x i64>)>)>
 // CHECK-NEXT:  {{.*}} = llvm.extractvalue {{.*}}[0] : !llvm.struct<(i64, f32, struct<(ptr, ptr, i64, array<4 x i64>, array<4 x i64>)>)>
 // CHECK-NEXT:  {{.*}} = llvm.extractvalue {{.*}}[1] : !llvm.struct<(i64, f32, struct<(ptr, ptr, i64, array<4 x i64>, array<4 x i64>)>)>
 // CHECK-NEXT:  {{.*}} = llvm.extractvalue {{.*}}[2] : !llvm.struct<(i64, f32, struct<(ptr, ptr, i64, array<4 x i64>, array<4 x i64>)>)>
+// CHECK32-NEXT:  {{.*}} = llvm.mlir.constant(42 : i64) : i64
+// CHECK32-NEXT:  {{.*}} = llvm.mlir.constant(4.200000e+01 : f32) : f32
+// CHECK32-NEXT:  {{.*}} = llvm.mlir.constant(0 : index) : i32
 // CHECK32-NEXT:  {{.*}} = llvm.call @multireturn() : () -> !llvm.struct<(i64, f32, struct<(ptr, ptr, i32, array<4 x i32>, array<4 x i32>)>)>
 // CHECK32-NEXT:  {{.*}} = llvm.extractvalue {{.*}}[0] : !llvm.struct<(i64, f32, struct<(ptr, ptr, i32, array<4 x i32>, array<4 x i32>)>)>
 // CHECK32-NEXT:  {{.*}} = llvm.extractvalue {{.*}}[1] : !llvm.struct<(i64, f32, struct<(ptr, ptr, i32, array<4 x i32>, array<4 x i32>)>)>
@@ -529,15 +531,15 @@ func.func @switchi8(%arg0 : i8) -> i32 {
   %c_42 = arith.constant 42 : i32
   func.return %c_42: i32
 }
-// CHECK:     llvm.switch %arg0 : i8, ^bb1 [
+// CHECK:     %[[E0:.+]] = llvm.mlir.constant(1 : i32) : i32
+// CHECK-NEXT:     %[[E1:.+]] = llvm.mlir.constant(42 : i32) : i32
+// CHECK-NEXT:     llvm.switch %arg0 : i8, ^bb1 [
 // CHECK-NEXT:       42: ^bb1,
 // CHECK-NEXT:       43: ^bb2
 // CHECK-NEXT:     ]
 // CHECK:   ^bb1:  // 2 preds: ^bb0, ^bb0
-// CHECK-NEXT:     %[[E0:.+]] = llvm.mlir.constant(1 : i32) : i32
 // CHECK-NEXT:     llvm.return %[[E0]] : i32
 // CHECK:   ^bb2:  // pred: ^bb0
-// CHECK-NEXT:     %[[E1:.+]] = llvm.mlir.constant(42 : i32) : i32
 // CHECK-NEXT:     llvm.return %[[E1]] : i32
 // CHECK-NEXT:   }
 

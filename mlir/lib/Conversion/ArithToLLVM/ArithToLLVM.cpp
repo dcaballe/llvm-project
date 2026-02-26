@@ -374,10 +374,13 @@ struct SelectOpOneToNLowering : public ConvertOpToLLVMPattern<arith::SelectOp> {
 LogicalResult
 ConstantOpLowering::matchAndRewrite(arith::ConstantOp op, OpAdaptor adaptor,
                                     ConversionPatternRewriter &rewriter) const {
-  return LLVM::detail::oneToOneRewrite(op, LLVM::ConstantOp::getOperationName(),
-                                       adaptor.getOperands(), op->getAttrs(),
-                                       /*propAttr=*/Attribute{},
-                                       *getTypeConverter(), rewriter);
+  auto resultType = getTypeConverter()->convertType(op.getType());
+  if (!resultType)
+    return failure();
+  rewriter.replaceOp(
+      op, rewriter.createOrFold<LLVM::ConstantOp>(op.getLoc(), resultType,
+                                                   op.getValue()));
+  return success();
 }
 
 //===----------------------------------------------------------------------===//
@@ -575,7 +578,7 @@ LogicalResult MulIExtendedOpLowering<ArithMulOp, IsSigned>::matchAndRewrite(
 
     // Split the 2*N-bit wide result into two N-bit values.
     Value low = LLVM::TruncOp::create(rewriter, loc, resultType, mulExt);
-    Value shiftVal = LLVM::ConstantOp::create(rewriter, loc, shiftValAttr);
+    Value shiftVal = rewriter.createOrFold<LLVM::ConstantOp>(loc, shiftValAttr);
     Value highExt = LLVM::LShrOp::create(rewriter, loc, mulExt, shiftVal);
     Value high = LLVM::TruncOp::create(rewriter, loc, resultType, highExt);
 

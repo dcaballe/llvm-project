@@ -84,20 +84,18 @@ func.func @row_bcast_dpp(%arg0: f64, %arg1: f64) -> f64 {
 
 func.func @test_dpp_f16(%arg0: f16, %arg1: f16) -> f16 {
   // CHECK-LABEL:  func @test_dpp_f16
-  // CHECK: llvm.bitcast %arg1 : f16 to i16
   // CHECK: llvm.mlir.undef : vector<2xi16>
   // CHECK: llvm.mlir.constant(0 : i32) : i32
-  // CHECK: llvm.insertelement %0, %1[%2 : i32] : vector<2xi16>
+  // CHECK: llvm.bitcast %arg1 : f16 to i16
+  // CHECK: llvm.insertelement %2, %0[%1 : i32] : vector<2xi16>
   // CHECK: llvm.bitcast %3 : vector<2xi16> to i32
   // CHECK: llvm.bitcast %arg0 : f16 to i16
-  // CHECK: llvm.mlir.undef : vector<2xi16>
-  // CHECK: llvm.mlir.constant(0 : i32) : i32
-  // CHECK: llvm.insertelement %5, %6[%7 : i32] : vector<2xi16>
-  // CHECK: llvm.bitcast %8 : vector<2xi16> to i32
-  // CHECK: rocdl.update.dpp %9, %4 with 273, 15, 3, false : i32
-  // CHECK: llvm.trunc %10 : i32 to i16
-  // CHECK: llvm.bitcast %11 : i16 to f16
-  // CHECK: return %12 : f16
+  // CHECK: llvm.insertelement %5, %0[%1 : i32] : vector<2xi16>
+  // CHECK: llvm.bitcast %6 : vector<2xi16> to i32
+  // CHECK: rocdl.update.dpp %7, %4 with 273, 15, 3, false : i32
+  // CHECK: llvm.trunc %8 : i32 to i16
+  // CHECK: llvm.bitcast %9 : i16 to f16
+  // CHECK: return %10 : f16
   %0 = amdgpu.dpp %arg0 %arg1 row_shr ( 0x1 : i32 ){ bank_mask = 0x3 : i32 } : f16
     return %0 : f16
 }
@@ -108,32 +106,28 @@ func.func @row_shl_dpp_i16(%arg0: i16, %arg1: i16) -> i16 {
   // CHECK: llvm.mlir.constant(0 : i32) : i32
   // CHECK: llvm.insertelement %arg1, %0[%1 : i32] : vector<2xi16>
   // CHECK: llvm.bitcast %2 : vector<2xi16> to i32
-  // CHECK: llvm.mlir.undef : vector<2xi16>
-  // CHECK: llvm.mlir.constant(0 : i32) : i32
-  // CHECK: llvm.insertelement %arg0, %4[%5 : i32] : vector<2xi16>
-  // CHECK: llvm.bitcast %6 : vector<2xi16> to i32
-  // CHECK: rocdl.update.dpp %7, %3 with 298, 10, 1, false : i32
-  // CHECK: llvm.trunc %8 : i32 to i16
-  // CHECK: return %9 : i16
+  // CHECK: llvm.insertelement %arg0, %0[%1 : i32] : vector<2xi16>
+  // CHECK: llvm.bitcast %4 : vector<2xi16> to i32
+  // CHECK: rocdl.update.dpp %5, %3 with 298, 10, 1, false : i32
+  // CHECK: llvm.trunc %6 : i32 to i16
+  // CHECK: return %7 : i16
   %0 = amdgpu.dpp %arg0 %arg1 row_ror ( 0xa : i32 ) { row_mask = 0xa : i32, bank_mask = 0x1 : i32 } : i16
     return %0 : i16
 }
 
 func.func @row_bcast_update_dpp_f16(%arg0: f16, %arg1: f16) -> f16 {
   // CHECK-LABEL: func @row_bcast_update_dpp_f16
+  // CHECK: llvm.mlir.undef : vector<2xi16>
+  // CHECK: llvm.mlir.constant(0 : i32) : i32
   // CHECK: llvm.bitcast %arg1 : f16 to i16
-  // CHECK: llvm.mlir.undef : vector<2xi16>
-  // CHECK: llvm.mlir.constant(0 : i32) : i32
-  // CHECK: llvm.insertelement %0, %1[%2 : i32] : vector<2xi16>
+  // CHECK: llvm.insertelement %2, %0[%1 : i32] : vector<2xi16>
   // CHECK: llvm.bitcast %arg0 : f16 to i16
-  // CHECK: llvm.mlir.undef : vector<2xi16>
-  // CHECK: llvm.mlir.constant(0 : i32) : i32
-  // CHECK  llvm.insertelement %5, %6[%7 : i32] : vector<2xi16>
-  // CHECK: llvm.bitcast %8 : vector<2xi16> to i32
-  // CHECK: rocdl.update.dpp %9, %4 with 322, 15, 15, true : i32
-  // CHECK: llvm.trunc %10 : i32 to i16
-  // CHECK: llvm.bitcast %11 : i16 to f16
-  // CHECK: return %12 : f16
+  // CHECK  llvm.insertelement %5, %0[%1 : i32] : vector<2xi16>
+  // CHECK: llvm.bitcast %6 : vector<2xi16> to i32
+  // CHECK: rocdl.update.dpp %7, %4 with 322, 15, 15, true : i32
+  // CHECK: llvm.trunc %8 : i32 to i16
+  // CHECK: llvm.bitcast %9 : i16 to f16
+  // CHECK: return %10 : f16
   %0 = amdgpu.dpp %arg0 %arg1 row_bcast_15 { bound_ctrl = true } : f16
     return %0 : f16
 }

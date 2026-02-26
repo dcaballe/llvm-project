@@ -13,8 +13,8 @@ module attributes {gpu.container_module, spirv.target_env = #spirv.target_env<#s
   //       CHECK:   spirv.ExecutionMode @__spv__foo_bar "LocalSize", 1, 1, 1
 
   // CHECK-LABEL: @main
+  //       CHECK:   %[[DEST:.*]] = llvm.mlir.addressof @__spv__foo_bar_arg_0_descriptor_set0_binding0 : !llvm.ptr
   //       CHECK:   %[[SRC:.*]] = llvm.extractvalue %{{.*}}[0] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
-  //  CHECK-NEXT:   %[[DEST:.*]] = llvm.mlir.addressof @__spv__foo_bar_arg_0_descriptor_set0_binding0 : !llvm.ptr
   //  CHECK-NEXT:   "llvm.intr.memcpy"(%[[DEST]], %[[SRC]], %[[SIZE:.*]]) <{isVolatile = false}> : (!llvm.ptr, !llvm.ptr, i64) -> ()
   //  CHECK-NEXT:   llvm.call @__spv__foo_bar() : () -> ()
   //  CHECK-NEXT:   "llvm.intr.memcpy"(%[[SRC]], %[[DEST]], %[[SIZE]]) <{isVolatile = false}> : (!llvm.ptr, !llvm.ptr, i64) -> ()

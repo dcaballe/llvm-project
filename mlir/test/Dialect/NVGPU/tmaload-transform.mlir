@@ -19,6 +19,7 @@ func.func @main() {
   //      CHECK: %[[c64:.*]] = arith.constant 64 : index
   //      CHECK: %[[c32:.*]] = arith.constant 32 : index
   //      CHECK: %[[c8_2:.*]] = arith.constant 8 : index
+  //      CHECK: %[[c0_6:.*]] = llvm.mlir.constant(false) : i1
   //      CHECK: %[[c10000000:.*]] = arith.constant 10000000 : index
   //      CHECK: %[[M1:.*]] = memref.cast %{{.*}} : memref<64x32xf32> to memref<*xf32>
   //      CHECK: %[[D1:.*]] = nvgpu.tma.create.descriptor %[[M1]] box[%[[c64]], %[[c32]]]
@@ -62,7 +63,6 @@ func.func @main() {
     //      CHECK:   nvgpu.mbarrier.arrive.expect_tx %[[B]][%{{.*}}], %[[c0_7]] : <memorySpace = #gpu.address_space<workgroup>
     //      CHECK: }
     //
-    //      CHECK: %[[c0_6:.*]] = llvm.mlir.constant(false) : i1 
     //      CHECK: nvgpu.mbarrier.try_wait.parity %[[B]][%{{.*}}], %[[c0_6]], %[[c10000000]] : <memorySpace = #gpu.address_space<workgroup>
 
     /// Both copies are matched and end up in the same async group.

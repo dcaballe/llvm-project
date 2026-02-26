@@ -144,9 +144,9 @@ llvm.mlir.global internal @_QFsEc() : i32 {
 
 // CHECK-LABEL: @atomic_update
 // CHECK: %[[GLOBAL_VAR:.*]] = llvm.mlir.addressof @_QFsEc : !llvm.ptr
+// CHECK: %[[CONST_1:.*]] = llvm.mlir.constant(1 : i32) : i32
 // CHECK: omp.atomic.update   %[[GLOBAL_VAR]] : !llvm.ptr {
 // CHECK: ^bb0(%[[IN_VAL:.*]]: i32):
-// CHECK:   %[[CONST_1:.*]] = llvm.mlir.constant(1 : i32) : i32
 // CHECK:   %[[OUT_VAL:.*]] = llvm.add %[[IN_VAL]], %[[CONST_1]]  : i32
 // CHECK:   omp.yield(%[[OUT_VAL]] : i32)
 // CHECK: }

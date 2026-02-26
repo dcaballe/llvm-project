@@ -59,8 +59,8 @@ Value ConvertToLLVMPattern::createIndexAttrConstant(OpBuilder &builder,
                                                     Location loc,
                                                     Type resultType,
                                                     int64_t value) {
-  return LLVM::ConstantOp::create(builder, loc, resultType,
-                                  builder.getIndexAttr(value));
+  return builder.createOrFold<LLVM::ConstantOp>(loc, resultType,
+                                                builder.getIndexAttr(value));
 }
 
 Value ConvertToLLVMPattern::getStridedElementPtr(
@@ -143,7 +143,7 @@ void ConvertToLLVMPattern::getMemRefDescriptorSizes(
     // Buffer size in bytes.
     Type elementType = typeConverter->convertType(memRefType.getElementType());
     auto elementPtrType = LLVM::LLVMPointerType::get(rewriter.getContext());
-    Value nullPtr = LLVM::ZeroOp::create(rewriter, loc, elementPtrType);
+    Value nullPtr = rewriter.createOrFold<LLVM::ZeroOp>(loc, elementPtrType);
     Value gepPtr = LLVM::GEPOp::create(rewriter, loc, elementPtrType,
                                        elementType, nullPtr, runningStride);
     size = LLVM::PtrToIntOp::create(rewriter, loc, getIndexType(), gepPtr);
@@ -161,7 +161,7 @@ Value ConvertToLLVMPattern::getSizeInBytes(
   // which is a common pattern of getting the size of a type in bytes.
   Type llvmType = typeConverter->convertType(type);
   auto convertedPtrType = LLVM::LLVMPointerType::get(rewriter.getContext());
-  auto nullPtr = LLVM::ZeroOp::create(rewriter, loc, convertedPtrType);
+  auto nullPtr = rewriter.createOrFold<LLVM::ZeroOp>(loc, convertedPtrType);
   auto gep = LLVM::GEPOp::create(rewriter, loc, convertedPtrType, llvmType,
                                  nullPtr, ArrayRef<LLVM::GEPArg>{1});
   return LLVM::PtrToIntOp::create(rewriter, loc, getIndexType(), gep);
@@ -415,7 +415,7 @@ static bool isFixedSizeAggregate(Type type, Type dstType) {
 static Value createI32Constant(OpBuilder &builder, Location loc,
                                int32_t value) {
   Type i32 = builder.getI32Type();
-  return LLVM::ConstantOp::create(builder, loc, i32, value);
+  return builder.createOrFold<LLVM::ConstantOp>(loc, i32, value);
 }
 
 /// Recursive implementation of decomposeValue. When
@@ -631,8 +631,8 @@ Value mlir::LLVM::getStridedElementPtr(OpBuilder &builder, Location loc,
       Value stride =
           ShapedType::isDynamic(strides[i])
               ? memRefDescriptor.stride(builder, loc, i)
-              : LLVM::ConstantOp::create(builder, loc, indexType,
-                                         builder.getIndexAttr(strides[i]));
+              : builder.createOrFold<LLVM::ConstantOp>(
+                    loc, indexType, builder.getIndexAttr(strides[i]));
       increment = LLVM::MulOp::create(builder, loc, increment, stride,
                                       intOverflowFlags);
     }

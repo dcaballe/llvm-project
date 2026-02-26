@@ -6,10 +6,10 @@
 // CHECK:      llvm.func @blockload2d(%[[ARG0:.*]]: !llvm.ptr<1>,
 // CHECK-SAME:   %[[ARG1:.*]]: i32, %[[ARG2:.*]]: i32, %[[ARG3:.*]]: i32, %[[ARG4:.*]]: i32, %[[ARG5:.*]]: i32)
 llvm.func @blockload2d(%a: !llvm.ptr<1>, %base_width_a: i32, %base_height_a: i32, %base_pitch_a: i32, %x: i32, %y: i32) -> vector<8xi16> {
-  // CHECK: %[[VAR5:.*]] = llvm.mlir.constant(8 : i32) : i32
   // CHECK: %[[VAR0:.*]] = llvm.mlir.undef : vector<2xi32>
   // CHECK: %[[VAR1:.*]] = llvm.mlir.constant(0 : i32) : i32
   // CHECK: %[[VAR2:.*]] = llvm.mlir.constant(1 : i32) : i32
+  // CHECK: %[[VAR5:.*]] = llvm.mlir.constant(8 : i32) : i32
   // CHECK: %[[VAR3:.*]] = llvm.insertelement %[[ARG4]], %[[VAR0]][%[[VAR1]] : i32] : vector<2xi32>
   // CHECK: %[[VAR4:.*]] = llvm.insertelement %[[ARG5]], %[[VAR3]][%[[VAR2]] : i32] : vector<2xi32>
   // CHECK: %[[VAR6:.*]] = llvm.alloca %[[VAR5]] x i16 : (i32) -> !llvm.ptr
@@ -49,10 +49,10 @@ llvm.func @blockload2d_8bit_32column(%a: !llvm.ptr<1>, %base_width_a: i32, %base
 // CHECK-SAME:   %[[ARG1:.*]]: i32, %[[ARG2:.*]]: i32, %[[ARG3:.*]]: i32, %[[ARG4:.*]]: i32, %[[ARG5:.*]]: i32)
 
 llvm.func @blockload2d_default_cache_control(%a: !llvm.ptr<1>, %base_width_a: i32, %base_height_a: i32, %base_pitch_a: i32, %x: i32, %y: i32) -> vector<8xi16> {
-  // CHECK: %[[VAR5:.*]] = llvm.mlir.constant(8 : i32) : i32
   // CHECK: %[[VAR0:.*]] = llvm.mlir.undef : vector<2xi32>
   // CHECK: %[[VAR1:.*]] = llvm.mlir.constant(0 : i32) : i32
   // CHECK: %[[VAR2:.*]] = llvm.mlir.constant(1 : i32) : i32
+  // CHECK: %[[VAR5:.*]] = llvm.mlir.constant(8 : i32) : i32
   // CHECK: %[[VAR3:.*]] = llvm.insertelement %[[ARG4]], %[[VAR0]][%[[VAR1]] : i32] : vector<2xi32>
   // CHECK: %[[VAR4:.*]] = llvm.insertelement %[[ARG5]], %[[VAR3]][%[[VAR2]] : i32] : vector<2xi32>
   // CHECK: %[[VAR6:.*]] = llvm.alloca %[[VAR5]] x i16 : (i32) -> !llvm.ptr
@@ -96,10 +96,10 @@ llvm.func @blockload2d_cache_control(%a: !llvm.ptr<1>, %base_width_a: i32, %base
 // CHECK:      llvm.func @blockload2d_v_blocks(%[[ARG0:.*]]: !llvm.ptr<1>,
 // CHECK-SAME:   %[[ARG1:.*]]: i32, %[[ARG2:.*]]: i32, %[[ARG3:.*]]: i32, %[[ARG4:.*]]: i32, %[[ARG5:.*]]: i32)
 llvm.func @blockload2d_v_blocks(%a: !llvm.ptr<1>, %base_width_a: i32, %base_height_a: i32, %base_pitch_a: i32, %x: i32, %y: i32) -> vector<16xi16> {
-  // CHECK: %[[VAR5:.*]] = llvm.mlir.constant(16 : i32) : i32
   // CHECK: %[[VAR0:.*]] = llvm.mlir.undef : vector<2xi32>
   // CHECK: %[[VAR1:.*]] = llvm.mlir.constant(0 : i32) : i32
   // CHECK: %[[VAR2:.*]] = llvm.mlir.constant(1 : i32) : i32
+  // CHECK: %[[VAR5:.*]] = llvm.mlir.constant(16 : i32) : i32
   // CHECK: %[[VAR3:.*]] = llvm.insertelement %[[ARG4]], %[[VAR0]][%[[VAR1]] : i32] : vector<2xi32>
   // CHECK: %[[VAR4:.*]] = llvm.insertelement %[[ARG5]], %[[VAR3]][%[[VAR2]] : i32] : vector<2xi32>
   // CHECK: %[[VAR6:.*]] = llvm.alloca %[[VAR5]] x i16 : (i32) -> !llvm.ptr
@@ -125,10 +125,10 @@ llvm.func @blockload2d_v_blocks(%a: !llvm.ptr<1>, %base_width_a: i32, %base_heig
 // CHECK:      llvm.func @blockload2d_pack_register(%[[ARG0:.*]]: !llvm.ptr<1>,
 // CHECK-SAME:   %[[ARG1:.*]]: i32, %[[ARG2:.*]]: i32, %[[ARG3:.*]]: i32, %[[ARG4:.*]]: i32, %[[ARG5:.*]]: i32)
 llvm.func @blockload2d_pack_register(%a: !llvm.ptr<1>, %base_width_a: i32, %base_height_a: i32, %base_pitch_a: i32, %x: i32, %y: i32) -> vector<8xi32> {
-  // CHECK: %[[VAR5:.*]] = llvm.mlir.constant(8 : i32) : i32
   // CHECK: %[[VAR0:.*]] = llvm.mlir.undef : vector<2xi32>
   // CHECK: %[[VAR1:.*]] = llvm.mlir.constant(0 : i32) : i32
   // CHECK: %[[VAR2:.*]] = llvm.mlir.constant(1 : i32) : i32
+  // CHECK: %[[VAR5:.*]] = llvm.mlir.constant(8 : i32) : i32
   // CHECK: %[[VAR3:.*]] = llvm.insertelement %[[ARG4]], %[[VAR0]][%[[VAR1]] : i32] : vector<2xi32>
   // CHECK: %[[VAR4:.*]] = llvm.insertelement %[[ARG5]], %[[VAR3]][%[[VAR2]] : i32] : vector<2xi32>
   // CHECK: %[[VAR6:.*]] = llvm.alloca %[[VAR5]] x i32 : (i32) -> !llvm.ptr
@@ -154,10 +154,10 @@ llvm.func @blockload2d_pack_register(%a: !llvm.ptr<1>, %base_width_a: i32, %base
 // CHECK:      llvm.func @blockload2d_transpose(%[[ARG0:.*]]: !llvm.ptr<1>,
 // CHECK-SAME:   %[[ARG1:.*]]: i32, %[[ARG2:.*]]: i32, %[[ARG3:.*]]: i32, %[[ARG4:.*]]: i32, %[[ARG5:.*]]: i32)
 llvm.func @blockload2d_transpose(%a: !llvm.ptr<1>, %base_width_a: i32, %base_height_a: i32, %base_pitch_a: i32, %x: i32, %y: i32) -> vector<8xi32> {
-  // CHECK: %[[VAR5:.*]] = llvm.mlir.constant(8 : i32) : i32
   // CHECK: %[[VAR0:.*]] = llvm.mlir.undef : vector<2xi32>
   // CHECK: %[[VAR1:.*]] = llvm.mlir.constant(0 : i32) : i32
   // CHECK: %[[VAR2:.*]] = llvm.mlir.constant(1 : i32) : i32
+  // CHECK: %[[VAR5:.*]] = llvm.mlir.constant(8 : i32) : i32
   // CHECK: %[[VAR3:.*]] = llvm.insertelement %[[ARG4]], %[[VAR0]][%[[VAR1]] : i32] : vector<2xi32>
   // CHECK: %[[VAR4:.*]] = llvm.insertelement %[[ARG5]], %[[VAR3]][%[[VAR2]] : i32] : vector<2xi32>
   // CHECK: %[[VAR6:.*]] = llvm.alloca %[[VAR5]] x i32 : (i32) -> !llvm.ptr
@@ -183,10 +183,10 @@ llvm.func @blockload2d_transpose(%a: !llvm.ptr<1>, %base_width_a: i32, %base_hei
 // CHECK: llvm.func @blockstore2d(%[[ARG0:.*]]: !llvm.ptr<1>,
 // CHECK-SAME: %[[ARG1:.*]]: i32, %[[ARG2:.*]]: i32, %[[ARG3:.*]]: i32, %[[ARG4:.*]]: i32, %[[ARG5:.*]]: i32, %[[ARG6:.*]]: vector<8xi32>) {
 llvm.func @blockstore2d(%c: !llvm.ptr<1>, %base_width_c: i32, %base_height_c: i32, %base_pitch_c: i32, %x: i32, %y: i32, %c_result_casted: vector<8xi32>) {
-  // CHECK: %[[VAR5:.*]] = llvm.mlir.constant(8 : i32) : i32
   // CHECK: %[[VAR0:.*]] = llvm.mlir.undef : vector<2xi32>
   // CHECK: %[[VAR1:.*]] = llvm.mlir.constant(0 : i32) : i32
   // CHECK: %[[VAR2:.*]] = llvm.mlir.constant(1 : i32) : i32
+  // CHECK: %[[VAR5:.*]] = llvm.mlir.constant(8 : i32) : i32
   // CHECK: %[[VAR3:.*]] = llvm.insertelement %[[ARG4]], %[[VAR0]][%[[VAR1]] : i32] : vector<2xi32>
   // CHECK: %[[VAR4:.*]] = llvm.insertelement %[[ARG5]], %[[VAR3]][%[[VAR2]] : i32] : vector<2xi32>
   // CHECK: %[[VAR6:.*]] = llvm.alloca %[[VAR5]] x i32 : (i32) -> !llvm.ptr

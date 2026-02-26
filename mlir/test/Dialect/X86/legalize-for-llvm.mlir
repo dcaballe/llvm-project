@@ -28,9 +28,9 @@ func.func @avx512_mask_compress(
   -> (vector<16xf32>, vector<16xf32>, vector<8xi64>)
 {
   // CHECK: llvm.mlir.constant(dense<0.000000e+00> : vector<16xf32>)
+  // CHECK: llvm.mlir.constant(dense<5.000000e+00> : vector<16xf32>)
   // CHECK: llvm.call_intrinsic "llvm.x86.avx512.mask.compress"
   %0 = x86.avx512.mask.compress %k1, %a1 : vector<16xf32>
-  // CHECK: llvm.mlir.constant(dense<5.000000e+00> : vector<16xf32>)
   // CHECK: llvm.call_intrinsic "llvm.x86.avx512.mask.compress"
   %1 = x86.avx512.mask.compress %k1, %a1
     {constant_src = dense<5.0> : vector<16xf32>} : vector<16xf32>

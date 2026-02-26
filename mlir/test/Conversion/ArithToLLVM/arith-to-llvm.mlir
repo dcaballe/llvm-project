@@ -43,23 +43,25 @@ func.func @vector_ops(%arg0: vector<4xf32>, %arg1: vector<4xi1>, %arg2: vector<4
 // CHECK-LABEL: @ops
 func.func @ops(f32, f32, i32, i32, f64) -> (f32, i32) {
 ^bb0(%arg0: f32, %arg1: f32, %arg2: i32, %arg3: i32, %arg4: f64):
+// The f64 constant used below is materialized at the top of the function.
+// CHECK: = llvm.mlir.constant(7.900000e-01 : f64) : f64
 // CHECK:  = llvm.fsub %arg0, %arg1 : f32
   %0 = arith.subf %arg0, %arg1: f32
 // CHECK: = llvm.sub %arg2, %arg3 : i32
   %1 = arith.subi %arg2, %arg3: i32
-// CHECK: = llvm.icmp "slt" %arg2, %1 : i32
+// CHECK: = llvm.icmp "slt" %arg2, %2 : i32
   %2 = arith.cmpi slt, %arg2, %1 : i32
-// CHECK: = llvm.icmp "sle" %arg2, %1 : i32
+// CHECK: = llvm.icmp "sle" %arg2, %2 : i32
   %3 = arith.cmpi sle, %arg2, %1 : i32
-// CHECK: = llvm.icmp "sgt" %arg2, %1 : i32
+// CHECK: = llvm.icmp "sgt" %arg2, %2 : i32
   %4 = arith.cmpi sgt, %arg2, %1 : i32
-// CHECK: = llvm.icmp "ult" %arg2, %1 : i32
+// CHECK: = llvm.icmp "ult" %arg2, %2 : i32
   %5 = arith.cmpi ult, %arg2, %1 : i32
-// CHECK: = llvm.icmp "ule" %arg2, %1 : i32
+// CHECK: = llvm.icmp "ule" %arg2, %2 : i32
   %6 = arith.cmpi ule, %arg2, %1 : i32
-// CHECK: = llvm.icmp "ugt" %arg2, %1 : i32
+// CHECK: = llvm.icmp "ugt" %arg2, %2 : i32
   %7 = arith.cmpi ugt, %arg2, %1 : i32
-// CHECK: = llvm.icmp "eq" %arg2, %1 : i32
+// CHECK: = llvm.icmp "eq" %arg2, %2 : i32
   %8 = arith.cmpi eq, %arg2, %1 : i32
 // CHECK: = llvm.sdiv %arg2, %arg3 : i32
   %9 = arith.divsi %arg2, %arg3 : i32
@@ -79,7 +81,6 @@ func.func @ops(f32, f32, i32, i32, f64) -> (f32, i32) {
   %16 = arith.ori %arg2, %arg3 : i32
 // CHECK: = llvm.xor %arg2, %arg3 : i32
   %17 = arith.xori %arg2, %arg3 : i32
-// CHECK: = llvm.mlir.constant(7.900000e-01 : f64) : f64
   %18 = arith.constant 7.9e-01 : f64
 // CHECK: = llvm.shl %arg2, %arg3 : i32
   %19 = arith.shli %arg2, %arg3 : i32
@@ -635,11 +636,11 @@ func.func @subui_extended_vector1d(%arg0: vector<3xi16>, %arg1: vector<3xi16>) -
 // CHECK-LABEL: @mulsi_extended_scalar
 // CHECK-SAME:    ([[ARG0:%.+]]: i32, [[ARG1:%.+]]: i32) -> (i32, i32)
 func.func @mulsi_extended_scalar(%arg0: i32, %arg1: i32) -> (i32, i32) {
+  // CHECK-NEXT: [[C32:%.+]]  = llvm.mlir.constant(32 : i64) : i64
   // CHECK-NEXT: [[LHS:%.+]]  = llvm.sext [[ARG0]] : i32 to i64
   // CHECK-NEXT: [[RHS:%.+]]  = llvm.sext [[ARG1]] : i32 to i64
   // CHECK-NEXT: [[MUL:%.+]]  = llvm.mul [[LHS]], [[RHS]] : i64
   // CHECK-NEXT: [[LOW:%.+]]  = llvm.trunc [[MUL]] : i64 to i32
-  // CHECK-NEXT: [[C32:%.+]]  = llvm.mlir.constant(32 : i64) : i64
   // CHECK-NEXT: [[SHL:%.+]]  = llvm.lshr [[MUL]], [[C32]] : i64
   // CHECK-NEXT: [[HIGH:%.+]] = llvm.trunc [[SHL]] : i64 to i32
   %low, %high = arith.mulsi_extended %arg0, %arg1 : i32
@@ -650,11 +651,11 @@ func.func @mulsi_extended_scalar(%arg0: i32, %arg1: i32) -> (i32, i32) {
 // CHECK-LABEL: @mulsi_extended_vector1d
 // CHECK-SAME:    ([[ARG0:%.+]]: vector<3xi64>, [[ARG1:%.+]]: vector<3xi64>) -> (vector<3xi64>, vector<3xi64>)
 func.func @mulsi_extended_vector1d(%arg0: vector<3xi64>, %arg1: vector<3xi64>) -> (vector<3xi64>, vector<3xi64>) {
+  // CHECK-NEXT: [[C64:%.+]]  = llvm.mlir.constant(dense<64> : vector<3xi128>) : vector<3xi128>
   // CHECK-NEXT: [[LHS:%.+]]  = llvm.sext [[ARG0]] : vector<3xi64> to vector<3xi128>
   // CHECK-NEXT: [[RHS:%.+]]  = llvm.sext [[ARG1]] : vector<3xi64> to vector<3xi128>
   // CHECK-NEXT: [[MUL:%.+]]  = llvm.mul [[LHS]], [[RHS]] : vector<3xi128>
   // CHECK-NEXT: [[LOW:%.+]]  = llvm.trunc [[MUL]] : vector<3xi128> to vector<3xi64>
-  // CHECK-NEXT: [[C64:%.+]]  = llvm.mlir.constant(dense<64> : vector<3xi128>) : vector<3xi128>
   // CHECK-NEXT: [[SHL:%.+]]  = llvm.lshr [[MUL]], [[C64]] : vector<3xi128>
   // CHECK-NEXT: [[HIGH:%.+]] = llvm.trunc [[SHL]] : vector<3xi128> to vector<3xi64>
   %low, %high = arith.mulsi_extended %arg0, %arg1 : vector<3xi64>
@@ -667,11 +668,11 @@ func.func @mulsi_extended_vector1d(%arg0: vector<3xi64>, %arg1: vector<3xi64>) -
 // CHECK-LABEL: @mului_extended_scalar
 // CHECK-SAME:    ([[ARG0:%.+]]: i32, [[ARG1:%.+]]: i32) -> (i32, i32)
 func.func @mului_extended_scalar(%arg0: i32, %arg1: i32) -> (i32, i32) {
+  // CHECK-NEXT: [[C32:%.+]]  = llvm.mlir.constant(32 : i64) : i64
   // CHECK-NEXT: [[LHS:%.+]]  = llvm.zext [[ARG0]] : i32 to i64
   // CHECK-NEXT: [[RHS:%.+]]  = llvm.zext [[ARG1]] : i32 to i64
   // CHECK-NEXT: [[MUL:%.+]]  = llvm.mul [[LHS]], [[RHS]] : i64
   // CHECK-NEXT: [[LOW:%.+]]  = llvm.trunc [[MUL]] : i64 to i32
-  // CHECK-NEXT: [[C32:%.+]]  = llvm.mlir.constant(32 : i64) : i64
   // CHECK-NEXT: [[SHL:%.+]]  = llvm.lshr [[MUL]], [[C32]] : i64
   // CHECK-NEXT: [[HIGH:%.+]] = llvm.trunc [[SHL]] : i64 to i32
   %low, %high = arith.mului_extended %arg0, %arg1 : i32
@@ -682,11 +683,11 @@ func.func @mului_extended_scalar(%arg0: i32, %arg1: i32) -> (i32, i32) {
 // CHECK-LABEL: @mului_extended_vector1d
 // CHECK-SAME:    ([[ARG0:%.+]]: vector<3xi64>, [[ARG1:%.+]]: vector<3xi64>) -> (vector<3xi64>, vector<3xi64>)
 func.func @mului_extended_vector1d(%arg0: vector<3xi64>, %arg1: vector<3xi64>) -> (vector<3xi64>, vector<3xi64>) {
+  // CHECK-NEXT: [[C64:%.+]]  = llvm.mlir.constant(dense<64> : vector<3xi128>) : vector<3xi128>
   // CHECK-NEXT: [[LHS:%.+]]  = llvm.zext [[ARG0]] : vector<3xi64> to vector<3xi128>
   // CHECK-NEXT: [[RHS:%.+]]  = llvm.zext [[ARG1]] : vector<3xi64> to vector<3xi128>
   // CHECK-NEXT: [[MUL:%.+]]  = llvm.mul [[LHS]], [[RHS]] : vector<3xi128>
   // CHECK-NEXT: [[LOW:%.+]]  = llvm.trunc [[MUL]] : vector<3xi128> to vector<3xi64>
-  // CHECK-NEXT: [[C64:%.+]]  = llvm.mlir.constant(dense<64> : vector<3xi128>) : vector<3xi128>
   // CHECK-NEXT: [[SHL:%.+]]  = llvm.lshr [[MUL]], [[C64]] : vector<3xi128>
   // CHECK-NEXT: [[HIGH:%.+]] = llvm.trunc [[SHL]] : vector<3xi128> to vector<3xi64>
   %low, %high = arith.mului_extended %arg0, %arg1 : vector<3xi64>

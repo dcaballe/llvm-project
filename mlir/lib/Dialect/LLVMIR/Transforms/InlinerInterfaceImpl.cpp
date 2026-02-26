@@ -120,6 +120,7 @@ handleInlinedAllocas(Operation *call,
   }
   builder.setInsertionPointToStart(callerEntryBlock);
   for (auto &[allocaOp, arraySize, shouldInsertLifetime] : allocasToMove) {
+    // The op itself is needed as the anchor the alloca is moved after.
     auto newConstant =
         LLVM::ConstantOp::create(builder, allocaOp->getLoc(),
                                  allocaOp.getArraySize().getType(), arraySize);
@@ -613,15 +614,14 @@ static Value handleByValArgumentInit(OpBuilder &builder, Location loc,
       scope = scope->getParentWithTrait<OpTrait::AutomaticAllocationScope>();
     Block *entryBlock = &scope->getRegion(0).front();
     builder.setInsertionPointToStart(entryBlock);
-    Value one = LLVM::ConstantOp::create(builder, loc, builder.getI64Type(),
-                                         builder.getI64IntegerAttr(1));
+    Value one = builder.createOrFold<LLVM::ConstantOp>(
+        loc, builder.getI64Type(), builder.getI64IntegerAttr(1));
     allocaOp = LLVM::AllocaOp::create(builder, loc, argument.getType(),
                                       elementType, one, targetAlignment);
   }
   // Copy the pointee to the newly allocated value.
-  Value copySize =
-      LLVM::ConstantOp::create(builder, loc, builder.getI64Type(),
-                               builder.getI64IntegerAttr(elementTypeSize));
+  Value copySize = builder.createOrFold<LLVM::ConstantOp>(
+      loc, builder.getI64Type(), builder.getI64IntegerAttr(elementTypeSize));
   // Preserve the alignment of the destination (alloca) in the memcpy's
   // arg_attrs.
   NamedAttribute dstAlignAttr =

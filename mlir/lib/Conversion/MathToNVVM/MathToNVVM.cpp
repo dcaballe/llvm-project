@@ -94,8 +94,8 @@ struct SincosOpLowering : public ConvertOpToLLVMPattern<math::SincosOp> {
           op->getParentWithTrait<mlir::OpTrait::AutomaticAllocationScope>();
       assert(scope && "Expected op to be inside automatic allocation scope");
       rewriter.setInsertionPointToStart(&scope->getRegion(0).front());
-      auto one = LLVM::ConstantOp::create(rewriter, loc, rewriter.getI32Type(),
-                                          rewriter.getI32IntegerAttr(1));
+      auto one = rewriter.createOrFold<LLVM::ConstantOp>(
+          loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr(1));
       sinPtr =
           LLVM::AllocaOp::create(rewriter, loc, ptrType, computeType, one, 0);
       cosPtr =

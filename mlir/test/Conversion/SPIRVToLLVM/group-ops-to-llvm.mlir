@@ -194,9 +194,8 @@ spirv.func @group_inclusive_scan_umax(%arg0: i32) -> i32 "None" {
 // CHECK-LABEL:   llvm.func @group_inclusive_scan_smax(
 // CHECK-SAME:                                         %[[VAL_0:.*]]: i32) -> i32 {
 // CHECK:           %[[VAL_1:.*]] = llvm.mlir.constant(2 : i32) : i32
-// CHECK:           %[[VAL_2:.*]] = llvm.mlir.constant(2 : i32) : i32
-// CHECK:           %[[VAL_3:.*]] = llvm.call spir_funccc @_Z17__spirv_GroupSMaxiij(%[[VAL_1]], %[[VAL_2]], %[[VAL_0]]) {convergent, no_unwind, will_return} : (i32, i32, i32) -> i32
-// CHECK:           llvm.return %[[VAL_3]] : i32
+// CHECK:           %[[VAL_2:.*]] = llvm.call spir_funccc @_Z17__spirv_GroupSMaxiij(%[[VAL_1]], %[[VAL_1]], %[[VAL_0]]) {convergent, no_unwind, will_return} : (i32, i32, i32) -> i32
+// CHECK:           llvm.return %[[VAL_2]] : i32
 // CHECK:         }
 spirv.func @group_inclusive_scan_smax(%arg0: i32) -> i32 "None" {
   %0 = spirv.GroupSMax <Workgroup> <ExclusiveScan> %arg0 : i32
@@ -206,9 +205,8 @@ spirv.func @group_inclusive_scan_smax(%arg0: i32) -> i32 "None" {
 // CHECK-LABEL:   llvm.func @group_exclusive_scan_iadd(
 // CHECK-SAME:                                         %[[VAL_0:.*]]: i32) -> i32 {
 // CHECK:           %[[VAL_1:.*]] = llvm.mlir.constant(2 : i32) : i32
-// CHECK:           %[[VAL_2:.*]] = llvm.mlir.constant(2 : i32) : i32
-// CHECK:           %[[VAL_3:.*]] = llvm.call spir_funccc @_Z17__spirv_GroupIAddiij(%[[VAL_1]], %[[VAL_2]], %[[VAL_0]]) {convergent, no_unwind, will_return} : (i32, i32, i32) -> i32
-// CHECK:           llvm.return %[[VAL_3]] : i32
+// CHECK:           %[[VAL_2:.*]] = llvm.call spir_funccc @_Z17__spirv_GroupIAddiij(%[[VAL_1]], %[[VAL_1]], %[[VAL_0]]) {convergent, no_unwind, will_return} : (i32, i32, i32) -> i32
+// CHECK:           llvm.return %[[VAL_2]] : i32
 // CHECK:         }
 spirv.func @group_exclusive_scan_iadd(%arg0: i32) -> i32 "None" {
   %0 = spirv.GroupIAdd <Workgroup> <ExclusiveScan> %arg0 : i32
@@ -218,9 +216,8 @@ spirv.func @group_exclusive_scan_iadd(%arg0: i32) -> i32 "None" {
 // CHECK-LABEL:   llvm.func @group_exclusive_scan_fadd(
 // CHECK-SAME:                                         %[[VAL_0:.*]]: f32) -> f32 {
 // CHECK:           %[[VAL_1:.*]] = llvm.mlir.constant(2 : i32) : i32
-// CHECK:           %[[VAL_2:.*]] = llvm.mlir.constant(2 : i32) : i32
-// CHECK:           %[[VAL_3:.*]] = llvm.call spir_funccc @_Z17__spirv_GroupFAddiif(%[[VAL_1]], %[[VAL_2]], %[[VAL_0]]) {convergent, no_unwind, will_return} : (i32, i32, f32) -> f32
-// CHECK:           llvm.return %[[VAL_3]] : f32
+// CHECK:           %[[VAL_2:.*]] = llvm.call spir_funccc @_Z17__spirv_GroupFAddiif(%[[VAL_1]], %[[VAL_1]], %[[VAL_0]]) {convergent, no_unwind, will_return} : (i32, i32, f32) -> f32
+// CHECK:           llvm.return %[[VAL_2]] : f32
 // CHECK:         }
 spirv.func @group_exclusive_scan_fadd(%arg0: f32) -> f32 "None" {
   %0 = spirv.GroupFAdd <Workgroup> <ExclusiveScan> %arg0 : f32
@@ -230,9 +227,8 @@ spirv.func @group_exclusive_scan_fadd(%arg0: f32) -> f32 "None" {
 // CHECK-LABEL:   llvm.func @group_exclusive_scan_fmin(
 // CHECK-SAME:                                         %[[VAL_0:.*]]: f32) -> f32 {
 // CHECK:           %[[VAL_1:.*]] = llvm.mlir.constant(2 : i32) : i32
-// CHECK:           %[[VAL_2:.*]] = llvm.mlir.constant(2 : i32) : i32
-// CHECK:           %[[VAL_3:.*]] = llvm.call spir_funccc @_Z17__spirv_GroupFMiniif(%[[VAL_1]], %[[VAL_2]], %[[VAL_0]]) {convergent, no_unwind, will_return} : (i32, i32, f32) -> f32
-// CHECK:           llvm.return %[[VAL_3]] : f32
+// CHECK:           %[[VAL_2:.*]] = llvm.call spir_funccc @_Z17__spirv_GroupFMiniif(%[[VAL_1]], %[[VAL_1]], %[[VAL_0]]) {convergent, no_unwind, will_return} : (i32, i32, f32) -> f32
+// CHECK:           llvm.return %[[VAL_2]] : f32
 // CHECK:         }
 spirv.func @group_exclusive_scan_fmin(%arg0: f32) -> f32 "None" {
   %0 = spirv.GroupFMin <Workgroup> <ExclusiveScan> %arg0 : f32
@@ -242,9 +238,8 @@ spirv.func @group_exclusive_scan_fmin(%arg0: f32) -> f32 "None" {
 // CHECK-LABEL:   llvm.func @group_exclusive_scan_umin(
 // CHECK-SAME:                                         %[[VAL_0:.*]]: i32) -> i32 {
 // CHECK:           %[[VAL_1:.*]] = llvm.mlir.constant(2 : i32) : i32
-// CHECK:           %[[VAL_2:.*]] = llvm.mlir.constant(2 : i32) : i32
-// CHECK:           %[[VAL_3:.*]] = llvm.call spir_funccc @_Z17__spirv_GroupUMiniij(%[[VAL_1]], %[[VAL_2]], %[[VAL_0]]) {convergent, no_unwind, will_return} : (i32, i32, i32) -> i32
-// CHECK:           llvm.return %[[VAL_3]] : i32
+// CHECK:           %[[VAL_2:.*]] = llvm.call spir_funccc @_Z17__spirv_GroupUMiniij(%[[VAL_1]], %[[VAL_1]], %[[VAL_0]]) {convergent, no_unwind, will_return} : (i32, i32, i32) -> i32
+// CHECK:           llvm.return %[[VAL_2]] : i32
 // CHECK:         }
 spirv.func @group_exclusive_scan_umin(%arg0: i32) -> i32 "None" {
   %0 = spirv.GroupUMin <Workgroup> <ExclusiveScan> %arg0 : i32
@@ -254,9 +249,8 @@ spirv.func @group_exclusive_scan_umin(%arg0: i32) -> i32 "None" {
 // CHECK-LABEL:   llvm.func @group_exclusive_scan_smin(
 // CHECK-SAME:                                         %[[VAL_0:.*]]: i32) -> i32 {
 // CHECK:           %[[VAL_1:.*]] = llvm.mlir.constant(2 : i32) : i32
-// CHECK:           %[[VAL_2:.*]] = llvm.mlir.constant(2 : i32) : i32
-// CHECK:           %[[VAL_3:.*]] = llvm.call spir_funccc @_Z17__spirv_GroupSMiniij(%[[VAL_1]], %[[VAL_2]], %[[VAL_0]]) {convergent, no_unwind, will_return} : (i32, i32, i32) -> i32
-// CHECK:           llvm.return %[[VAL_3]] : i32
+// CHECK:           %[[VAL_2:.*]] = llvm.call spir_funccc @_Z17__spirv_GroupSMiniij(%[[VAL_1]], %[[VAL_1]], %[[VAL_0]]) {convergent, no_unwind, will_return} : (i32, i32, i32) -> i32
+// CHECK:           llvm.return %[[VAL_2]] : i32
 // CHECK:         }
 spirv.func @group_exclusive_scan_smin(%arg0: i32) -> i32 "None" {
   %0 = spirv.GroupSMin <Workgroup> <ExclusiveScan> %arg0 : i32
@@ -266,9 +260,8 @@ spirv.func @group_exclusive_scan_smin(%arg0: i32) -> i32 "None" {
 // CHECK-LABEL:   llvm.func @group_exclusive_scan_fmax(
 // CHECK-SAME:                                         %[[VAL_0:.*]]: f32) -> f32 {
 // CHECK:           %[[VAL_1:.*]] = llvm.mlir.constant(2 : i32) : i32
-// CHECK:           %[[VAL_2:.*]] = llvm.mlir.constant(2 : i32) : i32
-// CHECK:           %[[VAL_3:.*]] = llvm.call spir_funccc @_Z17__spirv_GroupFMaxiif(%[[VAL_1]], %[[VAL_2]], %[[VAL_0]]) {convergent, no_unwind, will_return} : (i32, i32, f32) -> f32
-// CHECK:           llvm.return %[[VAL_3]] : f32
+// CHECK:           %[[VAL_2:.*]] = llvm.call spir_funccc @_Z17__spirv_GroupFMaxiif(%[[VAL_1]], %[[VAL_1]], %[[VAL_0]]) {convergent, no_unwind, will_return} : (i32, i32, f32) -> f32
+// CHECK:           llvm.return %[[VAL_2]] : f32
 // CHECK:         }
 spirv.func @group_exclusive_scan_fmax(%arg0: f32) -> f32 "None" {
   %0 = spirv.GroupFMax <Workgroup> <ExclusiveScan> %arg0 : f32
@@ -278,9 +271,8 @@ spirv.func @group_exclusive_scan_fmax(%arg0: f32) -> f32 "None" {
 // CHECK-LABEL:   llvm.func @group_exclusive_scan_umax(
 // CHECK-SAME:                                         %[[VAL_0:.*]]: i32) -> i32 {
 // CHECK:           %[[VAL_1:.*]] = llvm.mlir.constant(2 : i32) : i32
-// CHECK:           %[[VAL_2:.*]] = llvm.mlir.constant(2 : i32) : i32
-// CHECK:           %[[VAL_3:.*]] = llvm.call spir_funccc @_Z17__spirv_GroupUMaxiij(%[[VAL_1]], %[[VAL_2]], %[[VAL_0]]) {convergent, no_unwind, will_return} : (i32, i32, i32) -> i32
-// CHECK:           llvm.return %[[VAL_3]] : i32
+// CHECK:           %[[VAL_2:.*]] = llvm.call spir_funccc @_Z17__spirv_GroupUMaxiij(%[[VAL_1]], %[[VAL_1]], %[[VAL_0]]) {convergent, no_unwind, will_return} : (i32, i32, i32) -> i32
+// CHECK:           llvm.return %[[VAL_2]] : i32
 // CHECK:         }
 spirv.func @group_exclusive_scan_umax(%arg0: i32) -> i32 "None" {
   %0 = spirv.GroupUMax <Workgroup> <ExclusiveScan> %arg0 : i32
@@ -290,9 +282,8 @@ spirv.func @group_exclusive_scan_umax(%arg0: i32) -> i32 "None" {
 // CHECK-LABEL:   llvm.func @group_exclusive_scan_smax(
 // CHECK-SAME:                                         %[[VAL_0:.*]]: i32) -> i32 {
 // CHECK:           %[[VAL_1:.*]] = llvm.mlir.constant(2 : i32) : i32
-// CHECK:           %[[VAL_2:.*]] = llvm.mlir.constant(2 : i32) : i32
-// CHECK:           %[[VAL_3:.*]] = llvm.call spir_funccc @_Z17__spirv_GroupSMaxiij(%[[VAL_1]], %[[VAL_2]], %[[VAL_0]]) {convergent, no_unwind, will_return} : (i32, i32, i32) -> i32
-// CHECK:           llvm.return %[[VAL_3]] : i32
+// CHECK:           %[[VAL_2:.*]] = llvm.call spir_funccc @_Z17__spirv_GroupSMaxiij(%[[VAL_1]], %[[VAL_1]], %[[VAL_0]]) {convergent, no_unwind, will_return} : (i32, i32, i32) -> i32
+// CHECK:           llvm.return %[[VAL_2]] : i32
 // CHECK:         }
 spirv.func @group_exclusive_scan_smax(%arg0: i32) -> i32 "None" {
   %0 = spirv.GroupSMax <Workgroup> <ExclusiveScan> %arg0 : i32

@@ -93,11 +93,11 @@ func.func @load_0d(%memref : memref<200x100xf32>, %i : index, %j : index) -> vec
 }
 
 // ALL-LABEL: func @load_0d
+// ALL: %[[C100:.*]] = llvm.mlir.constant(100 : index) : i64
 // ALL: %[[J:.*]] = builtin.unrealized_conversion_cast %{{.*}} : index to i64
 // ALL: %[[I:.*]] = builtin.unrealized_conversion_cast %{{.*}} : index to i64
 // ALL: %[[CAST_MEMREF:.*]] = builtin.unrealized_conversion_cast %{{.*}} : memref<200x100xf32> to !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
 // ALL: %[[REF:.*]] = llvm.extractvalue %[[CAST_MEMREF]][1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
-// ALL: %[[C100:.*]] = llvm.mlir.constant(100 : index) : i64
 // ALL: %[[MUL:.*]] = llvm.mul %[[I]], %[[C100]]
 // ALL: %[[ADD:.*]] = llvm.add %[[MUL]], %[[J]]
 // DEFAULT: %[[ADDR:.*]] = llvm.getelementptr %[[REF]][%[[ADD]]] : (!llvm.ptr, i64) -> !llvm.ptr, f32
@@ -213,13 +213,13 @@ func.func @store_0d(%memref : memref<200x100xf32>, %i : index, %j : index) {
 }
 
 // ALL-LABEL: func @store_0d
+// ALL: %[[C100:.*]] = llvm.mlir.constant(100 : index) : i64
 // ALL: %[[J:.*]] = builtin.unrealized_conversion_cast %{{.*}} : index to i64
 // ALL: %[[I:.*]] = builtin.unrealized_conversion_cast %{{.*}} : index to i64
 // ALL: %[[CAST_MEMREF:.*]] = builtin.unrealized_conversion_cast %{{.*}} : memref<200x100xf32> to !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
 // ALL: %[[CST:.*]] = arith.constant dense<1.100000e+01> : vector<f32>
 // ALL: %[[VAL:.*]] = builtin.unrealized_conversion_cast %[[CST]] : vector<f32> to vector<1xf32>
 // ALL: %[[REF:.*]] = llvm.extractvalue %[[CAST_MEMREF]][1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
-// ALL: %[[C100:.*]] = llvm.mlir.constant(100 : index) : i64
 // ALL: %[[MUL:.*]] = llvm.mul %[[I]], %[[C100]]
 // ALL: %[[ADD:.*]] = llvm.add %[[MUL]], %[[J]]
 // DEFAULT: %[[ADDR:.*]] = llvm.getelementptr %[[REF]][%[[ADD]]] : (!llvm.ptr, i64) -> !llvm.ptr, f32

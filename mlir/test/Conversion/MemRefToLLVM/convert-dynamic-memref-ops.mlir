@@ -5,20 +5,20 @@
 // CHECK-LABEL: func @mixed_alloc(
 //       CHECK:   %[[Marg:.*]]: index, %[[Narg:.*]]: index)
 func.func @mixed_alloc(%arg0: index, %arg1: index) -> memref<?x42x?xf32> {
-//   CHECK-DAG:  %[[M:.*]] = builtin.unrealized_conversion_cast %[[Marg]]
-//   CHECK-DAG:  %[[N:.*]] = builtin.unrealized_conversion_cast %[[Narg]]
 //       CHECK:  %[[c42:.*]] = llvm.mlir.constant(42 : index) : i64
 //  CHECK-NEXT:  %[[one:.*]] = llvm.mlir.constant(1 : index) : i64
-//  CHECK-NEXT:  %[[st0:.*]] = llvm.mul %[[N]], %[[c42]] : i64
-//  CHECK-NEXT:  %[[sz:.*]] = llvm.mul %[[st0]], %[[M]] : i64
 //  CHECK-NEXT:  %[[null:.*]] = llvm.mlir.zero : !llvm.ptr
+//  CHECK-NEXT:  %[[off:.*]] = llvm.mlir.constant(0 : index) : i64
+//   CHECK-DAG:  %[[M:.*]] = builtin.unrealized_conversion_cast %[[Marg]]
+//   CHECK-DAG:  %[[N:.*]] = builtin.unrealized_conversion_cast %[[Narg]]
+//       CHECK:  %[[st0:.*]] = llvm.mul %[[N]], %[[c42]] : i64
+//  CHECK-NEXT:  %[[sz:.*]] = llvm.mul %[[st0]], %[[M]] : i64
 //  CHECK-NEXT:  %[[gep:.*]] = llvm.getelementptr %[[null]][%[[sz]]] : (!llvm.ptr, i64) -> !llvm.ptr, f32
 //  CHECK-NEXT:  %[[sz_bytes:.*]] = llvm.ptrtoint %[[gep]] : !llvm.ptr to i64
 //  CHECK-NEXT:  llvm.call @malloc(%[[sz_bytes]]) : (i64) -> !llvm.ptr
 //  CHECK-NEXT:  llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<3 x i64>, array<3 x i64>)>
 //  CHECK-NEXT:  llvm.insertvalue %{{.*}}, %{{.*}}[0] : !llvm.struct<(ptr, ptr, i64, array<3 x i64>, array<3 x i64>)>
 //  CHECK-NEXT:  llvm.insertvalue %{{.*}}, %{{.*}}[1] : !llvm.struct<(ptr, ptr, i64, array<3 x i64>, array<3 x i64>)>
-//  CHECK-NEXT:  %[[off:.*]] = llvm.mlir.constant(0 : index) : i64
 //  CHECK-NEXT:  llvm.insertvalue %[[off]], %{{.*}}[2] : !llvm.struct<(ptr, ptr, i64, array<3 x i64>, array<3 x i64>)>
 //  CHECK-NEXT:  llvm.insertvalue %[[M]], %{{.*}}[3, 0] : !llvm.struct<(ptr, ptr, i64, array<3 x i64>, array<3 x i64>)>
 //  CHECK-NEXT:  llvm.insertvalue %[[c42]], %{{.*}}[3, 1] : !llvm.struct<(ptr, ptr, i64, array<3 x i64>, array<3 x i64>)>
@@ -56,18 +56,18 @@ func.func @unranked_dealloc(%arg0: memref<*xf32>) {
 // CHECK-LABEL: func @dynamic_alloc(
 //       CHECK:   %[[Marg:.*]]: index, %[[Narg:.*]]: index)
 func.func @dynamic_alloc(%arg0: index, %arg1: index) -> memref<?x?xf32> {
+//       CHECK:  %[[one:.*]] = llvm.mlir.constant(1 : index) : i64
+//  CHECK-NEXT:  %[[null:.*]] = llvm.mlir.zero : !llvm.ptr
+//  CHECK-NEXT:  %[[off:.*]] = llvm.mlir.constant(0 : index) : i64
 //   CHECK-DAG:  %[[M:.*]] = builtin.unrealized_conversion_cast %[[Marg]]
 //   CHECK-DAG:  %[[N:.*]] = builtin.unrealized_conversion_cast %[[Narg]]
-//  CHECK-NEXT:  %[[one:.*]] = llvm.mlir.constant(1 : index) : i64
-//  CHECK-NEXT:  %[[sz:.*]] = llvm.mul %[[N]], %[[M]] : i64
-//  CHECK-NEXT:  %[[null:.*]] = llvm.mlir.zero : !llvm.ptr
+//       CHECK:  %[[sz:.*]] = llvm.mul %[[N]], %[[M]] : i64
 //  CHECK-NEXT:  %[[gep:.*]] = llvm.getelementptr %[[null]][%[[sz]]] : (!llvm.ptr, i64) -> !llvm.ptr, f32
 //  CHECK-NEXT:  %[[sz_bytes:.*]] = llvm.ptrtoint %[[gep]] : !llvm.ptr to i64
 //  CHECK-NEXT:  llvm.call @malloc(%[[sz_bytes]]) : (i64) -> !llvm.ptr
 //  CHECK-NEXT:  llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
 //  CHECK-NEXT:  llvm.insertvalue %{{.*}}, %{{.*}}[0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
 //  CHECK-NEXT:  llvm.insertvalue %{{.*}}, %{{.*}}[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
-//  CHECK-NEXT:  %[[off:.*]] = llvm.mlir.constant(0 : index) : i64
 //  CHECK-NEXT:  llvm.insertvalue %[[off]], %{{.*}}[2] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
 //  CHECK-NEXT:  llvm.insertvalue %[[M]], %{{.*}}[3, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
 //  CHECK-NEXT:  llvm.insertvalue %[[N]], %{{.*}}[3, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
@@ -82,15 +82,15 @@ func.func @dynamic_alloc(%arg0: index, %arg1: index) -> memref<?x?xf32> {
 // CHECK-LABEL: func @dynamic_alloca
 // CHECK: %[[Marg:.*]]: index, %[[Narg:.*]]: index)
 func.func @dynamic_alloca(%arg0: index, %arg1: index) -> memref<?x?xf32> {
+//       CHECK:  %[[st1:.*]] = llvm.mlir.constant(1 : index) : i64
+//  CHECK-NEXT:  %[[off:.*]] = llvm.mlir.constant(0 : index) : i64
 //   CHECK-DAG:  %[[M:.*]] = builtin.unrealized_conversion_cast %[[Marg]]
 //   CHECK-DAG:  %[[N:.*]] = builtin.unrealized_conversion_cast %[[Narg]]
-//  CHECK-NEXT:  %[[st1:.*]] = llvm.mlir.constant(1 : index) : i64
-//  CHECK-NEXT:  %[[num_elems:.*]] = llvm.mul %[[N]], %[[M]] : i64
+//       CHECK:  %[[num_elems:.*]] = llvm.mul %[[N]], %[[M]] : i64
 //  CHECK-NEXT:  %[[allocated:.*]] = llvm.alloca %[[num_elems]] x f32 : (i64) -> !llvm.ptr
 //  CHECK-NEXT:  llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
 //  CHECK-NEXT:  llvm.insertvalue %[[allocated]], %{{.*}}[0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
 //  CHECK-NEXT:  llvm.insertvalue %[[allocated]], %{{.*}}[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
-//  CHECK-NEXT:  %[[off:.*]] = llvm.mlir.constant(0 : index) : i64
 //  CHECK-NEXT:  llvm.insertvalue %[[off]], %{{.*}}[2] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
 //  CHECK-NEXT:  llvm.insertvalue %[[M]], %{{.*}}[3, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
 //  CHECK-NEXT:  llvm.insertvalue %[[N]], %{{.*}}[3, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
@@ -129,10 +129,14 @@ func.func @stdlib_aligned_alloc(%N : index) -> memref<32x18xf32> {
 // ALIGNED-ALLOC-NEXT:  %[[one:.*]] = llvm.mlir.constant(1 : index) : i64
 // ALIGNED-ALLOC-NEXT:  %[[num_elems:.*]] = llvm.mlir.constant(576 : index) : i64
 // ALIGNED-ALLOC-NEXT:  %[[null:.*]] = llvm.mlir.zero : !llvm.ptr
-// ALIGNED-ALLOC-NEXT:  %[[gep:.*]] = llvm.getelementptr %[[null]][%[[num_elems]]] : (!llvm.ptr, i64) -> !llvm.ptr, f32
+// The remaining alignments are materialized in the same block, and the 32-byte
+// alignment shares the constant with the leading dimension.
+// ALIGNED-ALLOC-DAG:   %[[c16:.*]] = llvm.mlir.constant(16 : index) : i64
+// ALIGNED-ALLOC-DAG:   %[[c8:.*]] = llvm.mlir.constant(8 : index) : i64
+// ALIGNED-ALLOC-DAG:   %[[c128:.*]] = llvm.mlir.constant(128 : index) : i64
+// ALIGNED-ALLOC:       %[[gep:.*]] = llvm.getelementptr %[[null]][%[[num_elems]]] : (!llvm.ptr, i64) -> !llvm.ptr, f32
 // ALIGNED-ALLOC-NEXT:  %[[bytes:.*]] = llvm.ptrtoint %[[gep]] : !llvm.ptr to i64
-// ALIGNED-ALLOC-NEXT:  %[[alignment:.*]] = llvm.mlir.constant(32 : index) : i64
-// ALIGNED-ALLOC-NEXT:  %[[allocated:.*]] = llvm.call @aligned_alloc(%[[alignment]], %[[bytes]]) : (i64, i64) -> !llvm.ptr
+// ALIGNED-ALLOC-NEXT:  %[[allocated:.*]] = llvm.call @aligned_alloc(%[[sz1]], %[[bytes]]) : (i64, i64) -> !llvm.ptr
   %0 = memref.alloc() {alignment = 32} : memref<32x18xf32>
   // Do another alloc just to test that we have a unique declaration for
   // aligned_alloc.
@@ -140,27 +144,21 @@ func.func @stdlib_aligned_alloc(%N : index) -> memref<32x18xf32> {
   %1 = memref.alloc() {alignment = 64} : memref<4096xf32>
 
   // Alignment is to element type boundaries (minimum 16 bytes).
-  // ALIGNED-ALLOC:  %[[c32:.*]] = llvm.mlir.constant(32 : index) : i64
-  // ALIGNED-ALLOC-NEXT:  llvm.call @aligned_alloc(%[[c32]]
+  // ALIGNED-ALLOC:  llvm.call @aligned_alloc(%[[sz1]]
   %2 = memref.alloc() : memref<4096xvector<8xf32>>
   // The minimum alignment is 16 bytes unless explicitly specified.
-  // ALIGNED-ALLOC:  %[[c16:.*]] = llvm.mlir.constant(16 : index) : i64
-  // ALIGNED-ALLOC-NEXT:  llvm.call @aligned_alloc(%[[c16]],
+  // ALIGNED-ALLOC:  llvm.call @aligned_alloc(%[[c16]],
   %3 = memref.alloc() : memref<4096xvector<2xf32>>
-  // ALIGNED-ALLOC:  %[[c8:.*]] = llvm.mlir.constant(8 : index) : i64
-  // ALIGNED-ALLOC-NEXT:  llvm.call @aligned_alloc(%[[c8]],
+  // ALIGNED-ALLOC:  llvm.call @aligned_alloc(%[[c8]],
   %4 = memref.alloc() {alignment = 8} : memref<1024xvector<4xf32>>
   // Bump the memref allocation size if its size is not a multiple of alignment.
-  // ALIGNED-ALLOC:       %[[c32:.*]] = llvm.mlir.constant(32 : index) : i64
-  // ALIGNED-ALLOC:       llvm.mlir.constant(1 : index) : i64
-  // ALIGNED-ALLOC-NEXT:  llvm.sub
+  // ALIGNED-ALLOC:       llvm.sub
   // ALIGNED-ALLOC-NEXT:  llvm.add
   // ALIGNED-ALLOC-NEXT:  llvm.urem
   // ALIGNED-ALLOC-NEXT:  %[[SIZE_ALIGNED:.*]] = llvm.sub
-  // ALIGNED-ALLOC-NEXT:  llvm.call @aligned_alloc(%[[c32]], %[[SIZE_ALIGNED]])
+  // ALIGNED-ALLOC-NEXT:  llvm.call @aligned_alloc(%[[sz1]], %[[SIZE_ALIGNED]])
   %5 = memref.alloc() {alignment = 32} : memref<100xf32>
   // Bump alignment to the next power of two if it isn't.
-  // ALIGNED-ALLOC:  %[[c128:.*]] = llvm.mlir.constant(128 : index) : i64
   // ALIGNED-ALLOC:  llvm.call @aligned_alloc(%[[c128]]
   %6 = memref.alloc(%N) : memref<?xvector<18xf32>>
   return %0 : memref<32x18xf32>
@@ -269,6 +267,12 @@ module attributes { dlti.dl_spec = #dlti.dl_spec<
     return %cast : memref<*xf32, 1>
   }
 }
+// The constants used below are materialized at the top of the function, and the
+// index and pointer sizes coincide here, so they share one constant.
+// CHECK: [[C1:%.*]] = llvm.mlir.constant(1 : index) : i64
+// CHECK: [[C2:%.*]] = llvm.mlir.constant(2 : index) : i64
+// CHECK: [[INDEX_SIZE:%.*]] = llvm.mlir.constant(8 : index) : i64
+// CHECK: [[SIZEOF_TWO_RESULT_PTRS:%.*]] = llvm.mlir.constant(16 : index) : i64
 // CHECK: [[INPUT:%.*]] = builtin.unrealized_conversion_cast %{{.*}} to !llvm.struct<(i64, ptr)>
 // CHECK: [[RANK:%.*]] = llvm.extractvalue [[INPUT]][0] : !llvm.struct<(i64, ptr)>
 // CHECK: [[SOURCE_DESC:%.*]] = llvm.extractvalue [[INPUT]][1]
@@ -276,11 +280,7 @@ module attributes { dlti.dl_spec = #dlti.dl_spec<
 // CHECK: [[RESULT_1:%.*]] = llvm.insertvalue [[RANK]], [[RESULT_0]][0] : !llvm.struct<(i64, ptr)>
 
 // Compute size in bytes to allocate result ranked descriptor
-// CHECK: [[C1:%.*]] = llvm.mlir.constant(1 : index) : i64
-// CHECK: [[C2:%.*]] = llvm.mlir.constant(2 : index) : i64
-// CHECK: [[INDEX_SIZE:%.*]] = llvm.mlir.constant(8 : index) : i64
-// CHECK: [[PTR_SIZE:%.*]] = llvm.mlir.constant(8 : index) : i64
-// CHECK: [[DOUBLE_PTR_SIZE:%.*]] = llvm.mul [[C2]], [[PTR_SIZE]]
+// CHECK: [[DOUBLE_PTR_SIZE:%.*]] = llvm.mul [[C2]], [[INDEX_SIZE]]
 // CHECK: [[DOUBLE_RANK:%.*]] = llvm.mul [[C2]], %{{.*}}
 // CHECK: [[NUM_INDEX_VALS:%.*]] = llvm.add [[DOUBLE_RANK]], [[C1]]
 // CHECK: [[INDEX_VALS_SIZE:%.*]] = llvm.mul [[NUM_INDEX_VALS]], [[INDEX_SIZE]]
@@ -302,7 +302,6 @@ module attributes { dlti.dl_spec = #dlti.dl_spec<
 
 // CHECK: [[SOURCE_OFFSET_GEP:%.*]] = llvm.getelementptr [[SOURCE_DESC]][2]
 // CHECK: [[RESULT_OFFSET_GEP:%.*]] = llvm.getelementptr [[RESULT_DESC]][2]
-// CHECK: [[SIZEOF_TWO_RESULT_PTRS:%.*]] = llvm.mlir.constant(16 : index) : i64
 // CHECK: [[COPY_SIZE:%.*]] = llvm.sub [[DESC_ALLOC_SIZE]], [[SIZEOF_TWO_RESULT_PTRS]]
 // CHECK: "llvm.intr.memcpy"([[RESULT_OFFSET_GEP]], [[SOURCE_OFFSET_GEP]], [[COPY_SIZE]]) <{isVolatile = false}>
 
@@ -406,6 +405,7 @@ func.func @memref_cast_unranked_to_ranked(%arg : memref<*xf32>) {
 // CHECK-LABEL: func @mixed_memref_dim
 func.func @mixed_memref_dim(%mixed : memref<42x?x?x13x?xf32>) {
 // CHECK: llvm.mlir.constant(42 : index) : i64
+// CHECK: llvm.mlir.constant(13 : index) : i64
   %c0 = arith.constant 0 : index
   %0 = memref.dim %mixed, %c0 : memref<42x?x?x13x?xf32>
 // CHECK: llvm.extractvalue %{{.*}}[3, 1] : !llvm.struct<(ptr, ptr, i64, array<5 x i64>, array<5 x i64>)>
@@ -414,7 +414,6 @@ func.func @mixed_memref_dim(%mixed : memref<42x?x?x13x?xf32>) {
 // CHECK: llvm.extractvalue %{{.*}}[3, 2] : !llvm.struct<(ptr, ptr, i64, array<5 x i64>, array<5 x i64>)>
   %c2 = arith.constant 2 : index
   %2 = memref.dim %mixed, %c2 : memref<42x?x?x13x?xf32>
-// CHECK: llvm.mlir.constant(13 : index) : i64
   %c3 = arith.constant 3 : index
   %3 = memref.dim %mixed, %c3 : memref<42x?x?x13x?xf32>
 // CHECK: llvm.extractvalue %{{.*}}[3, 4] : !llvm.struct<(ptr, ptr, i64, array<5 x i64>, array<5 x i64>)>
@@ -448,6 +447,10 @@ func.func @memref_reinterpret_cast_ranked_to_static_shape(%input : memref<2x3xf3
            : memref<2x3xf32> to memref<6x1xf32>
   return
 }
+// The unit size and both unit strides share one constant.
+// CHECK: [[OFFSET:%.*]] = llvm.mlir.constant(0 : index) : i64
+// CHECK: [[SIZE_0:%.*]] = llvm.mlir.constant(6 : index) : i64
+// CHECK: [[SIZE_1:%.*]] = llvm.mlir.constant(1 : index) : i64
 // CHECK: [[INPUT:%.*]] = builtin.unrealized_conversion_cast %{{.*}} :
 // CHECK: to [[TY:!.*]]
 // CHECK: [[OUT_0:%.*]] = llvm.mlir.poison : [[TY]]
@@ -455,16 +458,11 @@ func.func @memref_reinterpret_cast_ranked_to_static_shape(%input : memref<2x3xf3
 // CHECK: [[ALIGNED_PTR:%.*]] = llvm.extractvalue [[INPUT]][1] : [[TY]]
 // CHECK: [[OUT_1:%.*]] = llvm.insertvalue [[BASE_PTR]], [[OUT_0]][0] : [[TY]]
 // CHECK: [[OUT_2:%.*]] = llvm.insertvalue [[ALIGNED_PTR]], [[OUT_1]][1] : [[TY]]
-// CHECK: [[OFFSET:%.*]] = llvm.mlir.constant(0 : index) : i64
 // CHECK: [[OUT_3:%.*]] = llvm.insertvalue [[OFFSET]], [[OUT_2]][2] : [[TY]]
-// CHECK: [[SIZE_0:%.*]] = llvm.mlir.constant(6 : index) : i64
 // CHECK: [[OUT_4:%.*]] = llvm.insertvalue [[SIZE_0]], [[OUT_3]][3, 0] : [[TY]]
-// CHECK: [[SIZE_1:%.*]] = llvm.mlir.constant(1 : index) : i64
 // CHECK: [[OUT_5:%.*]] = llvm.insertvalue [[SIZE_1]], [[OUT_4]][4, 0] : [[TY]]
-// CHECK: [[STRIDE_0:%.*]] = llvm.mlir.constant(1 : index) : i64
-// CHECK: [[OUT_6:%.*]] = llvm.insertvalue [[STRIDE_0]], [[OUT_5]][3, 1] : [[TY]]
-// CHECK: [[STRIDE_1:%.*]] = llvm.mlir.constant(1 : index) : i64
-// CHECK: [[OUT_7:%.*]] = llvm.insertvalue [[STRIDE_1]], [[OUT_6]][4, 1] : [[TY]]
+// CHECK: [[OUT_6:%.*]] = llvm.insertvalue [[SIZE_1]], [[OUT_5]][3, 1] : [[TY]]
+// CHECK: [[OUT_7:%.*]] = llvm.insertvalue [[SIZE_1]], [[OUT_6]][4, 1] : [[TY]]
 
 // -----
 
@@ -513,18 +511,20 @@ func.func @memref_reshape(%input : memref<2x3xf32>, %shape : memref<?xindex>) {
                 : (memref<2x3xf32>, memref<?xindex>) -> memref<*xf32>
   return
 }
+// The constants used below are materialized at the top of the function, and the
+// index and pointer sizes coincide here, so they share one constant.
 // CHECK-DAG: [[INPUT:%.*]] = builtin.unrealized_conversion_cast %[[ARG0]] : {{.*}} to [[INPUT_TY:!.*]]
 // CHECK-DAG: [[SHAPE:%.*]] = builtin.unrealized_conversion_cast %[[ARG1]] : {{.*}} to [[SHAPE_TY:!.*]]
+// CHECK-DAG: [[C1:%.*]] = llvm.mlir.constant(1 : index) : i64
+// CHECK-DAG: [[C2:%.*]] = llvm.mlir.constant(2 : index) : i64
+// CHECK-DAG: [[INDEX_SIZE:%.*]] = llvm.mlir.constant(8 : index) : i64
+// CHECK-DAG: [[C0_:%.*]] = llvm.mlir.constant(0 : index) : i64
 // CHECK: [[RANK:%.*]] = llvm.extractvalue [[SHAPE]][3, 0] : [[SHAPE_TY]]
 // CHECK: [[UNRANKED_OUT_O:%.*]] = llvm.mlir.poison : !llvm.struct<(i64, ptr)>
 // CHECK: [[UNRANKED_OUT_1:%.*]] = llvm.insertvalue [[RANK]], [[UNRANKED_OUT_O]][0] : !llvm.struct<(i64, ptr)>
 
 // Compute size in bytes to allocate result ranked descriptor
-// CHECK: [[C1:%.*]] = llvm.mlir.constant(1 : index) : i64
-// CHECK: [[C2:%.*]] = llvm.mlir.constant(2 : index) : i64
-// CHECK: [[INDEX_SIZE:%.*]] = llvm.mlir.constant(8 : index) : i64
-// CHECK: [[PTR_SIZE:%.*]] = llvm.mlir.constant(8 : index) : i64
-// CHECK: [[DOUBLE_PTR_SIZE:%.*]] = llvm.mul [[C2]], [[PTR_SIZE]] : i64
+// CHECK: [[DOUBLE_PTR_SIZE:%.*]] = llvm.mul [[C2]], [[INDEX_SIZE]] : i64
 // CHECK: [[DESC_ALLOC_SIZE:%.*]] = llvm.add [[DOUBLE_PTR_SIZE]], %{{.*}}
 // CHECK: [[UNDERLYING_DESC:%.*]] = llvm.alloca [[DESC_ALLOC_SIZE]] x i8
 // CHECK: llvm.insertvalue [[UNDERLYING_DESC]], [[UNRANKED_OUT_1]][1]
@@ -543,12 +543,10 @@ func.func @memref_reshape(%input : memref<2x3xf32>, %shape : memref<?xindex>) {
 // CHECK: [[SIZES_PTR:%.*]] = llvm.getelementptr [[UNDERLYING_DESC]]{{\[}}0, 3]
 // CHECK: [[STRIDES_PTR:%.*]] = llvm.getelementptr [[SIZES_PTR]]{{\[}}[[RANK]]]
 // CHECK: [[SHAPE_IN_PTR:%.*]] = llvm.extractvalue [[SHAPE]][1] : [[SHAPE_TY]]
-// CHECK: [[C1_:%.*]] = llvm.mlir.constant(1 : index) : i64
-// CHECK: [[RANK_MIN_1:%.*]] = llvm.sub [[RANK]], [[C1_]] : i64
-// CHECK: llvm.br ^bb1([[RANK_MIN_1]], [[C1_]] : i64, i64)
+// CHECK: [[RANK_MIN_1:%.*]] = llvm.sub [[RANK]], [[C1]] : i64
+// CHECK: llvm.br ^bb1([[RANK_MIN_1]], [[C1]] : i64, i64)
 
 // CHECK: ^bb1([[DIM:%.*]]: i64, [[CUR_STRIDE:%.*]]: i64):
-// CHECK:   [[C0_:%.*]] = llvm.mlir.constant(0 : index) : i64
 // CHECK:   [[COND:%.*]] = llvm.icmp "sge" [[DIM]], [[C0_]] : i64
 // CHECK:   llvm.cond_br [[COND]], ^bb2, ^bb3
 
@@ -560,7 +558,7 @@ func.func @memref_reshape(%input : memref<2x3xf32>, %shape : memref<?xindex>) {
 // CHECK:   [[TARGET_STRIDE_PTR:%.*]] = llvm.getelementptr [[STRIDES_PTR]]{{\[}}[[DIM]]]
 // CHECK:   llvm.store [[CUR_STRIDE]], [[TARGET_STRIDE_PTR]] : i64, !llvm.ptr
 // CHECK:   [[UPDATE_STRIDE:%.*]] = llvm.mul [[CUR_STRIDE]], [[SIZE]] : i64
-// CHECK:   [[STRIDE_COND:%.*]] = llvm.sub [[DIM]], [[C1_]] : i64
+// CHECK:   [[STRIDE_COND:%.*]] = llvm.sub [[DIM]], [[C1]] : i64
 // CHECK:   llvm.br ^bb1([[STRIDE_COND]], [[UPDATE_STRIDE]] : i64, i64)
 
 // CHECK: ^bb3:
@@ -572,12 +570,13 @@ func.func @memref_reshape(%input : memref<2x3xf32>, %shape : memref<?xindex>) {
 func.func @memref_of_memref() {
   // Sizeof computation is as usual.
   // ALIGNED-ALLOC: %[[NULL:.*]] = llvm.mlir.zero
-  // ALIGNED-ALLOC: %[[PTR:.*]] = llvm.getelementptr
-  // ALIGNED-ALLOC: %[[SIZEOF:.*]] = llvm.ptrtoint
 
   // Static alignment should be computed as ceilPowerOf2(2 * sizeof(pointer) +
   // (1 + 2 * rank) * sizeof(index) = ceilPowerOf2(2 * 8 + 3 * 8) = 64.
   // ALIGNED-ALLOC: llvm.mlir.constant(64 : index)
+
+  // ALIGNED-ALLOC: %[[PTR:.*]] = llvm.getelementptr
+  // ALIGNED-ALLOC: %[[SIZEOF:.*]] = llvm.ptrtoint
 
   // Check that the types are converted as expected.
   // ALIGNED-ALLOC: llvm.call @aligned_alloc
@@ -594,12 +593,13 @@ module attributes { dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<index, 32>> } {
   func.func @memref_of_memref_32() {
     // Sizeof computation is as usual.
     // ALIGNED-ALLOC: %[[NULL:.*]] = llvm.mlir.zero
-    // ALIGNED-ALLOC: %[[PTR:.*]] = llvm.getelementptr
-    // ALIGNED-ALLOC: %[[SIZEOF:.*]] = llvm.ptrtoint
 
     // Static alignment should be computed as ceilPowerOf2(2 * sizeof(pointer) +
     // (1 + 2 * rank) * sizeof(index) = ceilPowerOf2(2 * 8 + 3 * 4) = 32.
     // ALIGNED-ALLOC: llvm.mlir.constant(32 : index)
+
+    // ALIGNED-ALLOC: %[[PTR:.*]] = llvm.getelementptr
+    // ALIGNED-ALLOC: %[[SIZEOF:.*]] = llvm.ptrtoint
 
     // Check that the types are converted as expected.
     // ALIGNED-ALLOC: llvm.call @aligned_alloc
@@ -617,12 +617,13 @@ module attributes { dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<index, 32>> } {
 func.func @memref_of_memref_of_memref() {
   // Sizeof computation is as usual, also check the type.
   // ALIGNED-ALLOC: %[[NULL:.*]] = llvm.mlir.zero : !llvm.ptr
-  // ALIGNED-ALLOC: %[[PTR:.*]] = llvm.getelementptr
-  // ALIGNED-ALLOC: %[[SIZEOF:.*]] = llvm.ptrtoint
 
   // Static alignment should be computed as ceilPowerOf2(2 * sizeof(pointer) +
   // (1 + 2 * rank) * sizeof(index) = ceilPowerOf2(2 * 8 + 3 * 8) = 64.
   // ALIGNED-ALLOC: llvm.mlir.constant(64 : index)
+
+  // ALIGNED-ALLOC: %[[PTR:.*]] = llvm.getelementptr
+  // ALIGNED-ALLOC: %[[SIZEOF:.*]] = llvm.ptrtoint
   // ALIGNED-ALLOC: llvm.call @aligned_alloc
   %0 = memref.alloc() : memref<1 x memref<2 x memref<3 x f32>>>
   return
@@ -634,12 +635,13 @@ func.func @memref_of_memref_of_memref() {
 func.func @ranked_unranked() {
   // ALIGNED-ALLOC: llvm.mlir.zero
   // ALIGNED-ALLOC-SAME: !llvm.ptr
-  // ALIGNED-ALLOC: llvm.getelementptr
-  // ALIGNED-ALLOC: llvm.ptrtoint
 
   // Static alignment should be computed as ceilPowerOf2(sizeof(index) +
   // sizeof(pointer)) = 16.
   // ALIGNED-ALLOC: llvm.mlir.constant(16 : index)
+
+  // ALIGNED-ALLOC: llvm.getelementptr
+  // ALIGNED-ALLOC: llvm.ptrtoint
   // ALIGNED-ALLOC: llvm.call @aligned_alloc
   %0 = memref.alloc() : memref<1 x memref<* x f32>>
   memref.cast %0 : memref<1 x memref<* x f32>> to memref<* x memref<* x f32>>

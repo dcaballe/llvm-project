@@ -4,11 +4,11 @@ module attributes {gpu.container_module} {
   // CHECK-LABEL: llvm.func @main
   // CHECK-SAME: %[[size:.*]]: i64
   func.func @main(%size : index) {
+    // CHECK: %[[isHostShared:.*]] = llvm.mlir.constant(0 : i8)
     // CHECK: %[[stream:.*]] = llvm.call @mgpuStreamCreate()
     %0 = gpu.wait async
     // CHECK: %[[gep:.*]] = llvm.getelementptr {{.*}}[%[[size]]]
     // CHECK: %[[size_bytes:.*]] = llvm.ptrtoint %[[gep]]
-    // CHECK: %[[isHostShared:.*]] = llvm.mlir.constant 
     // CHECK: llvm.call @mgpuMemAlloc(%[[size_bytes]], %[[stream]], %[[isHostShared]])
     %1, %2 = gpu.alloc async [%0] (%size) : memref<?xf32>
     // CHECK: %[[float_ptr:.*]] = llvm.extractvalue {{.*}}[0]
@@ -23,15 +23,14 @@ module attributes {gpu.container_module} {
   // CHECK-LABEL: llvm.func @alloc_dealloc_sync
   // CHECK-SAME: %[[size:.*]]: i64
   func.func @alloc_dealloc_sync(%size : index) {
+    // CHECK: %[[nullptr:.*]] = llvm.mlir.zero
+    // CHECK: %[[isHostShared:.*]] = llvm.mlir.constant(0 : i8)
     // CHECK: %[[gep:.*]] = llvm.getelementptr {{.*}}[%[[size]]]
     // CHECK: %[[size_bytes:.*]] = llvm.ptrtoint %[[gep]]
-    // CHECK: %[[nullptr:.*]] = llvm.mlir.zero
-    // CHECK: %[[isHostShared:.*]] = llvm.mlir.constant
     // CHECK: llvm.call @mgpuMemAlloc(%[[size_bytes]], %[[nullptr]], %[[isHostShared]])
     %0 = gpu.alloc (%size) : memref<?xf32>
     // CHECK: %[[float_ptr:.*]] = llvm.extractvalue {{.*}}[0]
-    // CHECK: %[[nullptr2:.*]] = llvm.mlir.zero
-    // CHECK: llvm.call @mgpuMemFree(%[[float_ptr]], %[[nullptr2]])
+    // CHECK: llvm.call @mgpuMemFree(%[[float_ptr]], %[[nullptr]])
     gpu.dealloc %0 : memref<?xf32>
     return
   }
@@ -39,10 +38,10 @@ module attributes {gpu.container_module} {
   // CHECK-LABEL: llvm.func @alloc_sync
   // CHECK-SAME: %[[size:.*]]: i64
   func.func @alloc_sync(%size : index) {
+    // CHECK: %[[nullptr:.*]] = llvm.mlir.zero
+    // CHECK: %[[isHostShared:.*]] = llvm.mlir.constant(1 : i8)
     // CHECK: %[[gep:.*]] = llvm.getelementptr {{.*}}[%[[size]]]
     // CHECK: %[[size_bytes:.*]] = llvm.ptrtoint %[[gep]]
-    // CHECK: %[[nullptr:.*]] = llvm.mlir.zero
-    // CHECK: %[[isHostShared:.*]] = llvm.mlir.constant 
     // CHECK: llvm.call @mgpuMemAlloc(%[[size_bytes]], %[[nullptr]], %[[isHostShared]])
     %0 = gpu.alloc host_shared (%size) : memref<?xf32>
     // CHECK: %[[stream:.*]] = llvm.call @mgpuStreamCreate()

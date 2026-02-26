@@ -7,6 +7,9 @@
 
 gpu.module @test_module {
   // CHECK-LABEL: func @gpu_index_ops()
+    // CHECK-DAG: %[[BD_C0:.*]] = llvm.mlir.constant(0 : i32) : i32
+    // CHECK-DAG: %[[BD_C1:.*]] = llvm.mlir.constant(1 : i32) : i32
+    // CHECK-DAG: %[[BD_C2:.*]] = llvm.mlir.constant(2 : i32) : i32
   // CHECK32-LABEL: func @gpu_index_ops()
   func.func @gpu_index_ops()
       -> (index, index, index, index, index, index,
@@ -24,9 +27,6 @@ gpu.module @test_module {
     // CHECK: = llvm.sext %{{.*}} : i32 to i64
     %tIdZ = gpu.thread_id z
 
-    // CHECK-DAG: %[[BD_C0:.*]] = llvm.mlir.constant(0 : i32) : i32
-    // CHECK-DAG: %[[BD_C1:.*]] = llvm.mlir.constant(1 : i32) : i32
-    // CHECK-DAG: %[[BD_C2:.*]] = llvm.mlir.constant(2 : i32) : i32
     // CHECK-DAG: llvm.call @__ockl_get_local_size(%[[BD_C0]]) : (i32) -> (i64 {llvm.range = #llvm.constant_range<i64, 1, 1025>})
     %bDimX = gpu.block_dim x
     // CHECK-DAG: llvm.call @__ockl_get_local_size(%[[BD_C1]]) : (i32) -> (i64 {llvm.range = #llvm.constant_range<i64, 1, 1025>})
@@ -44,14 +44,11 @@ gpu.module @test_module {
     // CHECK: = llvm.sext %{{.*}} : i32 to i64
     %bIdZ = gpu.block_id z
 
-    // CHECK-DAG: %[[GD_C0:.*]] = llvm.mlir.constant(0 : i32) : i32
-    // CHECK-DAG: %[[GD_C1:.*]] = llvm.mlir.constant(1 : i32) : i32
-    // CHECK-DAG: %[[GD_C2:.*]] = llvm.mlir.constant(2 : i32) : i32
-    // CHECK-DAG: llvm.call @__ockl_get_num_groups(%[[GD_C0]]) : (i32) -> i64
+    // CHECK-DAG: llvm.call @__ockl_get_num_groups(%[[BD_C0]]) : (i32) -> i64
     %gDimX = gpu.grid_dim x
-    // CHECK-DAG: llvm.call @__ockl_get_num_groups(%[[GD_C1]]) : (i32) -> i64
+    // CHECK-DAG: llvm.call @__ockl_get_num_groups(%[[BD_C1]]) : (i32) -> i64
     %gDimY = gpu.grid_dim y
-    // CHECK-DAG: llvm.call @__ockl_get_num_groups(%[[GD_C2]]) : (i32) -> i64
+    // CHECK-DAG: llvm.call @__ockl_get_num_groups(%[[BD_C2]]) : (i32) -> i64
     %gDimZ = gpu.grid_dim z
 
     // CHECK: = rocdl.mbcnt.lo %{{.*}}, %{{.*}} {res_attrs = [{llvm.noundef, llvm.range = #llvm.constant_range<i32, 0, 32>}]} : (i32, i32) -> i32
@@ -86,6 +83,13 @@ gpu.module @test_module {
       {known_block_size = array<i32: 8, 12, 16>,
        known_grid_size = array<i32: 20, 24, 28>} {
 
+    // CHECK: llvm.mlir.constant(8 : i64) : i64
+    // CHECK: llvm.mlir.constant(12 : i64) : i64
+    // CHECK: llvm.mlir.constant(16 : i64) : i64
+    // CHECK: llvm.mlir.constant(20 : i64) : i64
+    // CHECK: llvm.mlir.constant(24 : i64) : i64
+    // CHECK: llvm.mlir.constant(28 : i64) : i64
+
     // CHECK: rocdl.workitem.id.x range <i32, 0, 8> : i32
     %tIdX = gpu.thread_id x
     // CHECK: rocdl.workitem.id.y range <i32, 0, 12> : i32
@@ -100,18 +104,12 @@ gpu.module @test_module {
     // CHECK: rocdl.workgroup.id.z range <i32, 0, 28> : i32
     %bIdZ = gpu.block_id z
 
-    // CHECK: llvm.mlir.constant(8 : i64) : i64
     %bDimX = gpu.block_dim x
-    // CHECK: llvm.mlir.constant(12 : i64) : i64
     %bDimY = gpu.block_dim y
-    // CHECK: llvm.mlir.constant(16 : i64) : i64
     %bDimZ = gpu.block_dim z
 
-    // CHECK: llvm.mlir.constant(20 : i64) : i64
     %gDimX = gpu.grid_dim x
-    // CHECK: llvm.mlir.constant(24 : i64) : i64
     %gDimY = gpu.grid_dim y
-    // CHECK: llvm.mlir.constant(28 : i64) : i64
     %gDimZ = gpu.grid_dim z
 
     // "Usage" to make the ID calls not die
@@ -682,34 +680,33 @@ gpu.module @test_module {
 gpu.module @test_module {
   // CHECK-LABEL: func @gpu_shuffle()
   func.func @gpu_shuffle() -> (f32, f32, f32, f32) {
-    // CHECK: %[[#VALUE:]] = llvm.mlir.constant(1.000000e+00 : f32) : f32
     %arg0 = arith.constant 1.0 : f32
-    // CHECK: %[[#OFFSET:]] = llvm.mlir.constant(4 : i32) : i32
     %arg1 = arith.constant 4 : i32
-    // CHECK: %[[#WIDTH:]] = llvm.mlir.constant(23 : i32) : i32
     %arg2 = arith.constant 23 : i32
-    // CHECK: %[[#LANE_ID:]] = rocdl.mbcnt.hi
+    // CHECK: %[[#VALUE:]] = llvm.mlir.constant(1.000000e+00 : f32) : f32
+    // CHECK: %[[#OFFSET:]] = llvm.mlir.constant(4 : i32) : i32
+    // CHECK: %[[#WIDTH:]] = llvm.mlir.constant(23 : i32) : i32
+    // CHECK: llvm.mlir.constant(-1 : i32) : i32
     // CHECK: %[[#ZERO:]] = llvm.mlir.constant(0 : i32) : i32
+    // CHECK: %[[#TWO:]] = llvm.mlir.constant(2 : i32) : i32
+    // CHECK: %[[#LANE_ID:]] = rocdl.mbcnt.hi
     // CHECK: %[[#NEG_WIDTH:]] = llvm.sub %[[#ZERO]], %[[#WIDTH]] : i32
     // CHECK: %[[#ADD:]] = llvm.add %[[#LANE_ID]], %[[#WIDTH]] : i32
     // CHECK: %[[#WARP_OR_ZERO:]] = llvm.and %[[#ADD]], %[[#NEG_WIDTH]] : i32
     // CHECK: %[[#XOR:]] = llvm.xor %[[#LANE_ID]], %{{.*}} : i32
     // CHECK: %[[#CMP:]] = llvm.icmp "slt" %[[#XOR]], %[[#WARP_OR_ZERO]] : i32
     // CHECK: %[[#DST_LANE:]] = llvm.select %[[#CMP]], %[[#XOR]], %{{.*}} : i1, i32
-    // CHECK: %[[#TWO:]] = llvm.mlir.constant(2 : i32) : i32
     // CHECK: %[[#ALIGNED_DST_LANE:]] = llvm.shl %[[#DST_LANE]], %[[#TWO]] : i32
     // CHECK: %[[#CAST_VALUE:]] = llvm.bitcast %[[#VALUE]] : f32 to i32
     // CHECK: %[[#PERMUTE:]] = rocdl.ds_bpermute %[[#ALIGNED_DST_LANE]], %[[#CAST_VALUE]] : (i32, i32) -> i32
     // CHECK: %[[#CAST_SHFL_VALUE:]] = llvm.bitcast %[[#PERMUTE]] : i32 to f32
     %shfl, %pred = gpu.shuffle xor %arg0, %arg1, %arg2 : f32
     // CHECK: %[[#LANE_ID:]] = rocdl.mbcnt.hi
-    // CHECK: %[[#ZERO:]] = llvm.mlir.constant(0 : i32) : i32
     // CHECK: %[[#NEG_WIDTH:]] = llvm.sub %[[#ZERO]], %[[#WIDTH]] : i32
     // CHECK: %[[#ADD:]] = llvm.add %[[#LANE_ID]], %[[#WIDTH]] : i32
     // CHECK: %[[#WARP_OR_ZERO:]] = llvm.and %[[#ADD]], %[[#NEG_WIDTH]] : i32
     // CHECK: %[[#CMP:]] = llvm.icmp "slt" %[[#OFFSET]], %[[#WARP_OR_ZERO]] : i32
     // CHECK: %[[#DST_LANE:]] = llvm.select %[[#CMP]], %[[#OFFSET]], %{{.*}} : i1, i32
-    // CHECK: %[[#TWO:]] = llvm.mlir.constant(2 : i32) : i32
     // CHECK: %[[#ALIGNED_DST_LANE:]] = llvm.shl %[[#DST_LANE]], %[[#TWO]] : i32
     // CHECK: %[[#CAST_VALUE:]] = llvm.bitcast %[[#VALUE]] : f32 to i32
     // CHECK: %[[#PERMUTE:]] = rocdl.ds_bpermute %[[#ALIGNED_DST_LANE]], %[[#CAST_VALUE]] : (i32, i32) -> i32
@@ -717,28 +714,24 @@ gpu.module @test_module {
     %shfli, %predi = gpu.shuffle idx %arg0, %arg1, %arg2 : f32
     // *** UP mode shuffle ***
     // CHECK: %[[#LANE_ID:]] = rocdl.mbcnt.hi
-    // CHECK: %[[#ZERO:]] = llvm.mlir.constant(0 : i32) : i32
     // CHECK: %[[#NEG_WIDTH:]] = llvm.sub %[[#ZERO]], %[[#WIDTH]] : i32
     // CHECK: %[[#ADD:]] = llvm.add %[[#LANE_ID]], %[[#WIDTH]] : i32
     // CHECK: %[[#WARP_OR_ZERO:]] = llvm.and %[[#ADD]], %[[#NEG_WIDTH]] : i32
     // CHECK: %[[#UP:]] = llvm.sub %[[#LANE_ID]], %{{.*}} : i32
     // CHECK: %[[#CMP:]] = llvm.icmp "slt" %[[#UP]], %[[#WARP_OR_ZERO]] : i32
     // CHECK: %[[#DST_LANE:]] = llvm.select %[[#CMP]], %[[#UP]], %{{.*}} : i1, i32
-    // CHECK: %[[#TWO:]] = llvm.mlir.constant(2 : i32) : i32
     // CHECK: %[[#ALIGNED_DST_LANE:]] = llvm.shl %[[#DST_LANE]], %[[#TWO]] : i32
     // CHECK: %[[#CAST_VALUE:]] = llvm.bitcast %[[#VALUE]] : f32 to i32
     // CHECK: %[[#PERMUTE:]] = rocdl.ds_bpermute %[[#ALIGNED_DST_LANE]], %[[#CAST_VALUE]] : (i32, i32) -> i32
     // CHECK: %[[#CAST_SHFL_VALUE:]] = llvm.bitcast %[[#PERMUTE]] : i32 to f32
     %shflu, %predu = gpu.shuffle up  %arg0, %arg1, %arg2 : f32
     // CHECK: %[[#LANE_ID:]] = rocdl.mbcnt.hi
-    // CHECK: %[[#ZERO:]] = llvm.mlir.constant(0 : i32) : i32
     // CHECK: %[[#NEG_WIDTH:]] = llvm.sub %[[#ZERO]], %[[#WIDTH]] : i32
     // CHECK: %[[#ADD:]] = llvm.add %[[#LANE_ID]], %[[#WIDTH]] : i32
     // CHECK: %[[#WARP_OR_ZERO:]] = llvm.and %[[#ADD]], %[[#NEG_WIDTH]] : i32
     // CHECK: %[[#DOWN:]] = llvm.add %[[#LANE_ID]], %{{.*}} : i32
     // CHECK: %[[#CMP:]] = llvm.icmp "slt" %[[#DOWN]], %[[#WARP_OR_ZERO]] : i32
     // CHECK: %[[#DST_LANE:]] = llvm.select %[[#CMP]], %[[#DOWN]], %{{.*}} : i1, i32
-    // CHECK: %[[#TWO:]] = llvm.mlir.constant(2 : i32) : i32
     // CHECK: %[[#ALIGNED_DST_LANE:]] = llvm.shl %[[#DST_LANE]], %[[#TWO]] : i32
     // CHECK: %[[#CAST_VALUE:]] = llvm.bitcast %[[#VALUE]] : f32 to i32
     // CHECK: %[[#PERMUTE:]] = rocdl.ds_bpermute %[[#ALIGNED_DST_LANE]], %[[#CAST_VALUE]] : (i32, i32) -> i32
@@ -749,14 +742,14 @@ gpu.module @test_module {
 
   // CHECK-LABEL: func @gpu_shuffle_promote()
   func.func @gpu_shuffle_promote() -> (f32, f32, f32) {
-    // CHECK: %[[#VALUE:]] = llvm.mlir.constant(1.000000e+00 : f32) : f32
     %arg0 = arith.constant 1.0 : f32
     %arg1 = arith.constant 4 : i32
     %arg2 = arith.constant 16 : i32
     %arg3 = arith.constant 32 : i32
     %arg4 = arith.constant 64 : i32
-    // CHECK: %[[#CAST_VALUE:]] = llvm.bitcast %[[#VALUE]] : f32 to i32
+    // CHECK: %[[#VALUE:]] = llvm.mlir.constant(1.000000e+00 : f32) : f32
     // CHECK: %[[#MASK:]] = llvm.mlir.constant(4127 : i32) : i32
+    // CHECK: %[[#CAST_VALUE:]] = llvm.bitcast %[[#VALUE]] : f32 to i32
     // CHECK: %[[#PERMUTE:]] = rocdl.ds_swizzle %[[#CAST_VALUE]], %[[#MASK]] : (i32, i32) -> i32
     // CHECK: %[[#CAST_SHFL_VALUE:]] = llvm.bitcast %[[#PERMUTE]] : i32 to f32
     %shfl1, %pred1 = gpu.shuffle xor %arg0, %arg1, %arg4 : f32
@@ -782,17 +775,16 @@ gpu.module @test_module {
   // CHECK-LABEL: func @gpu_shuffle_vec
   //  CHECK-SAME: (%[[ARG:.*]]: vector<4xf16>, %{{.*}}: i32, %{{.*}}: i32)
   func.func @gpu_shuffle_vec(%arg0: vector<4xf16>, %arg1: i32, %arg2: i32) -> vector<4xf16> {
-    // CHECK: %[[CAST1:.*]] = llvm.bitcast %[[ARG]] : vector<4xf16> to vector<2xi32>
+    // CHECK: llvm.mlir.constant(-1 : i32) : i32
     // CHECK: %[[IDX0:.*]] = llvm.mlir.constant(0 : i32) : i32
-    // CHECK: %[[ELEM0:.*]] = llvm.extractelement %[[CAST1]][%[[IDX0]] : i32] : vector<2xi32>
     // CHECK: %[[IDX1:.*]] = llvm.mlir.constant(1 : i32) : i32
+    // CHECK: %[[CAST1:.*]] = llvm.bitcast %[[ARG]] : vector<4xf16> to vector<2xi32>
+    // CHECK: %[[ELEM0:.*]] = llvm.extractelement %[[CAST1]][%[[IDX0]] : i32] : vector<2xi32>
     // CHECK: %[[ELEM1:.*]] = llvm.extractelement %[[CAST1]][%[[IDX1]] : i32] : vector<2xi32>
     // CHECK: %[[PERM0:.*]] = rocdl.ds_bpermute %{{.*}}, %[[ELEM0]] : (i32, i32) -> i32
     // CHECK: %[[PERM1:.*]] = rocdl.ds_bpermute %{{.*}}, %[[ELEM1]] : (i32, i32) -> i32
     // CHECK: %[[V0:.*]] = llvm.mlir.poison : vector<2xi32>
-    // CHECK: %[[IDX0:.*]] = llvm.mlir.constant(0 : i32) : i32
     // CHECK: %[[V1:.*]] = llvm.insertelement %[[PERM0]], %[[V0]][%[[IDX0]] : i32] : vector<2xi32>
-    // CHECK: %[[IDX1:.*]] = llvm.mlir.constant(1 : i32) : i32
     // CHECK: %[[V2:.*]] = llvm.insertelement %[[PERM1]], %[[V1]][%[[IDX1]] : i32] : vector<2xi32>
     // CHECK: %[[RES:.*]] = llvm.bitcast %[[V2]] : vector<2xi32> to vector<4xf16>
     // CHECK: llvm.return %[[RES]] : vector<4xf16>
@@ -855,17 +847,15 @@ func.func @broadcast_i8(%arg0 : i8, %arg1 : i32) -> (i8, i8) {
 // CHECK-LABEL: func @broadcast_4xi16
 //  CHECK-SAME:   (%[[ARG:.*]]: vector<4xi16>)
 func.func @broadcast_4xi16(%arg0 : vector<4xi16>) -> vector<4xi16> {
-//       CHECK:   %[[BITCAST:.*]] = llvm.bitcast %[[ARG:.*]] : vector<4xi16> to vector<2xi32>
 //       CHECK:   %[[C0:.*]] = llvm.mlir.constant(0 : i32) : i32
-//       CHECK:   %[[ELEM0:.*]] = llvm.extractelement %[[BITCAST]][%[[C0]] : i32] : vector<2xi32>
 //       CHECK:   %[[C1:.*]] = llvm.mlir.constant(1 : i32) : i32
+//       CHECK:   %[[BITCAST:.*]] = llvm.bitcast %[[ARG:.*]] : vector<4xi16> to vector<2xi32>
+//       CHECK:   %[[ELEM0:.*]] = llvm.extractelement %[[BITCAST]][%[[C0]] : i32] : vector<2xi32>
 //       CHECK:   %[[ELEM1:.*]] = llvm.extractelement %[[BITCAST]][%[[C1]] : i32] : vector<2xi32>
 //       CHECK:   %[[RFL0:.*]] = rocdl.readfirstlane %[[ELEM0]] : i32
 //       CHECK:   %[[RFL1:.*]] = rocdl.readfirstlane %[[ELEM1]] : i32
 //       CHECK:   %[[POISON:.*]] = llvm.mlir.poison : vector<2xi32>
-//       CHECK:   %[[C0:.*]] = llvm.mlir.constant(0 : i32) : i32
 //       CHECK:   %[[INS0:.*]] = llvm.insertelement %[[RFL0]], %[[POISON]][%[[C0]] : i32] : vector<2xi32>
-//       CHECK:   %[[C1:.*]] = llvm.mlir.constant(1 : i32) : i32
 //       CHECK:   %[[INS1:.*]] = llvm.insertelement %[[RFL1]], %[[INS0]][%[[C1]] : i32] : vector<2xi32>
 //       CHECK:   %[[BITCAST2:.*]] = llvm.bitcast %[[INS1]] : vector<2xi32> to vector<4xi16>
 //       CHECK:   return %[[BITCAST2]] : vector<4xi16>
@@ -945,19 +935,17 @@ func.func @broadcast_memref(%arg0 : memref<?xi32>) -> memref<?xi32> {
 // CHECK-LABEL: func @broadcast_i48
 //  CHECK-SAME:   (%[[ARG:.*]]: i48)
 func.func @broadcast_i48(%arg0 : i48) -> i48 {
+//       CHECK:   %[[C0:.*]] = llvm.mlir.constant(0 : i32) : i32
+//       CHECK:   %[[C1:.*]] = llvm.mlir.constant(1 : i32) : i32
 //       CHECK:   %[[ZEXT:.*]] = llvm.zext %[[ARG]] : i48 to i64
 //       CHECK:   %[[BITCAST:.*]] = llvm.bitcast %[[ZEXT]] : i64 to vector<2xi32>
-//       CHECK:   %[[C0:.*]] = llvm.mlir.constant(0 : i32) : i32
 //       CHECK:   %[[ELEM0:.*]] = llvm.extractelement %[[BITCAST]][%[[C0]] : i32] : vector<2xi32>
-//       CHECK:   %[[C1:.*]] = llvm.mlir.constant(1 : i32) : i32
 //       CHECK:   %[[ELEM1:.*]] = llvm.extractelement %[[BITCAST]][%[[C1]] : i32] : vector<2xi32>
 //       CHECK:   %[[RFL0:.*]] = rocdl.readfirstlane %[[ELEM0]] : i32
 //       CHECK:   %[[RFL1:.*]] = rocdl.readfirstlane %[[ELEM1]] : i32
 //       CHECK:   %[[POISON:.*]] = llvm.mlir.poison : vector<2xi32>
-//       CHECK:   %[[C0_2:.*]] = llvm.mlir.constant(0 : i32) : i32
-//       CHECK:   %[[INS0:.*]] = llvm.insertelement %[[RFL0]], %[[POISON]][%[[C0_2]] : i32] : vector<2xi32>
-//       CHECK:   %[[C1_2:.*]] = llvm.mlir.constant(1 : i32) : i32
-//       CHECK:   %[[INS1:.*]] = llvm.insertelement %[[RFL1]], %[[INS0]][%[[C1_2]] : i32] : vector<2xi32>
+//       CHECK:   %[[INS0:.*]] = llvm.insertelement %[[RFL0]], %[[POISON]][%[[C0]] : i32] : vector<2xi32>
+//       CHECK:   %[[INS1:.*]] = llvm.insertelement %[[RFL1]], %[[INS0]][%[[C1]] : i32] : vector<2xi32>
 //       CHECK:   %[[CAST64:.*]] = llvm.bitcast %[[INS1]] : vector<2xi32> to i64
 //       CHECK:   %[[TRUNC:.*]] = llvm.trunc %[[CAST64]] : i64 to i48
 //       CHECK:   return %[[TRUNC]] : i48
@@ -968,20 +956,18 @@ func.func @broadcast_i48(%arg0 : i48) -> i48 {
 // CHECK-LABEL: func @broadcast_3xi16
 //  CHECK-SAME:   (%[[ARG:.*]]: vector<3xi16>)
 func.func @broadcast_3xi16(%arg0 : vector<3xi16>) -> vector<3xi16> {
+//       CHECK:   %[[C0:.*]] = llvm.mlir.constant(0 : i32) : i32
+//       CHECK:   %[[C1:.*]] = llvm.mlir.constant(1 : i32) : i32
 //       CHECK:   %[[BC1:.*]] = llvm.bitcast %[[ARG]] : vector<3xi16> to i48
 //       CHECK:   %[[ZEXT:.*]] = llvm.zext %[[BC1]] : i48 to i64
 //       CHECK:   %[[BC2:.*]] = llvm.bitcast %[[ZEXT]] : i64 to vector<2xi32>
-//       CHECK:   %[[C0:.*]] = llvm.mlir.constant(0 : i32) : i32
 //       CHECK:   %[[ELEM0:.*]] = llvm.extractelement %[[BC2]][%[[C0]] : i32] : vector<2xi32>
-//       CHECK:   %[[C1:.*]] = llvm.mlir.constant(1 : i32) : i32
 //       CHECK:   %[[ELEM1:.*]] = llvm.extractelement %[[BC2]][%[[C1]] : i32] : vector<2xi32>
 //       CHECK:   %[[RFL0:.*]] = rocdl.readfirstlane %[[ELEM0]] : i32
 //       CHECK:   %[[RFL1:.*]] = rocdl.readfirstlane %[[ELEM1]] : i32
 //       CHECK:   %[[POISON:.*]] = llvm.mlir.poison : vector<2xi32>
-//       CHECK:   %[[C0_2:.*]] = llvm.mlir.constant(0 : i32) : i32
-//       CHECK:   %[[INS0:.*]] = llvm.insertelement %[[RFL0]], %[[POISON]][%[[C0_2]] : i32] : vector<2xi32>
-//       CHECK:   %[[C1_2:.*]] = llvm.mlir.constant(1 : i32) : i32
-//       CHECK:   %[[INS1:.*]] = llvm.insertelement %[[RFL1]], %[[INS0]][%[[C1_2]] : i32] : vector<2xi32>
+//       CHECK:   %[[INS0:.*]] = llvm.insertelement %[[RFL0]], %[[POISON]][%[[C0]] : i32] : vector<2xi32>
+//       CHECK:   %[[INS1:.*]] = llvm.insertelement %[[RFL1]], %[[INS0]][%[[C1]] : i32] : vector<2xi32>
 //       CHECK:   %[[CAST64:.*]] = llvm.bitcast %[[INS1]] : vector<2xi32> to i64
 //       CHECK:   %[[TRUNC:.*]] = llvm.trunc %[[CAST64]] : i64 to i48
 //       CHECK:   %[[BCOUT:.*]] = llvm.bitcast %[[TRUNC]] : i48 to vector<3xi16>

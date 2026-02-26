@@ -71,11 +71,11 @@ SmallVector<Value> x86::avx512::MaskCompressOp::getIntrinsicOperands(
   if (adaptor.getSrc()) {
     src = adaptor.getSrc();
   } else if (adaptor.getConstantSrc()) {
-    src = LLVM::ConstantOp::create(rewriter, loc, opType,
-                                   adaptor.getConstantSrcAttr());
+    src = rewriter.createOrFold<LLVM::ConstantOp>(loc, opType,
+                                                  adaptor.getConstantSrcAttr());
   } else {
     auto zeroAttr = rewriter.getZeroAttr(opType);
-    src = LLVM::ConstantOp::create(rewriter, loc, opType, zeroAttr);
+    src = rewriter.createOrFold<LLVM::ConstantOp>(loc, opType, zeroAttr);
   }
 
   return SmallVector<Value>{adaptor.getA(), src, adaptor.getK()};
@@ -87,8 +87,8 @@ x86::avx::DotOp::getIntrinsicOperands(ArrayRef<Value> operands,
                                       RewriterBase &rewriter) {
   SmallVector<Value> intrinsicOperands(operands);
   // Dot product of all elements, broadcasted to all elements.
-  Value scale =
-      LLVM::ConstantOp::create(rewriter, getLoc(), rewriter.getI8Type(), 0xff);
+  Value scale = rewriter.createOrFold<LLVM::ConstantOp>(
+      getLoc(), rewriter.getI8Type(), 0xff);
   intrinsicOperands.push_back(scale);
 
   return intrinsicOperands;
@@ -155,8 +155,8 @@ static SmallVector<Value> getTileSizes(Location loc, x86::amx::TileType tType,
   auto mattr = rewriter.getI16IntegerAttr(tType.getDimSize(0));
   auto nattr = rewriter.getI16IntegerAttr(tType.getDimSize(1) * bytes);
   return SmallVector<Value>{
-      LLVM::ConstantOp::create(rewriter, loc, llvmInt16Type, mattr),
-      LLVM::ConstantOp::create(rewriter, loc, llvmInt16Type, nattr)};
+      rewriter.createOrFold<LLVM::ConstantOp>(loc, llvmInt16Type, mattr),
+      rewriter.createOrFold<LLVM::ConstantOp>(loc, llvmInt16Type, nattr)};
 }
 
 /// Returns stride expressed in number of bytes for the given `elementStride`
@@ -166,7 +166,8 @@ static Value computeStrideInBytes(Location loc, MemRefType mType,
   Type llvmInt64Type = rewriter.getIntegerType(64);
   unsigned bytes = mType.getElementType().getIntOrFloatBitWidth() / 8;
   auto attr = rewriter.getI64IntegerAttr(bytes);
-  Value scale = LLVM::ConstantOp::create(rewriter, loc, llvmInt64Type, attr);
+  Value scale =
+      rewriter.createOrFold<LLVM::ConstantOp>(loc, llvmInt64Type, attr);
   return LLVM::MulOp::create(rewriter, loc, llvmInt64Type, scale, elementStride)
       .getResult();
 }
@@ -190,8 +191,7 @@ static Value inferStride(Location loc, MemRefType mType, Value base,
   }
   // Use direct constant for static stride.
   auto attr = rewriter.getI64IntegerAttr(strides[preLast] * bytes);
-  return LLVM::ConstantOp::create(rewriter, loc, llvmInt64Type, attr)
-      .getResult();
+  return rewriter.createOrFold<LLVM::ConstantOp>(loc, llvmInt64Type, attr);
 }
 
 LogicalResult x86::amx::TileZeroOp::verify() {

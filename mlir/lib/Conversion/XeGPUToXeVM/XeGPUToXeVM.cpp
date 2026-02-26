@@ -1122,8 +1122,8 @@ class AtomicRMWToXeVMPattern : public OpConversionPattern<xegpu::AtomicRMWOp> {
     Value resVec = srcFlatVec;
     for (int i = 0; i < srcOrDstVecTy.getNumElements(); i++) {
       auto val = vector::ExtractOp::create(rewriter, loc, resVec, i);
-      Value idx = LLVM::ConstantOp::create(rewriter, loc, rewriter.getI64Type(),
-                                           rewriter.getIndexAttr(i));
+      Value idx = rewriter.createOrFold<LLVM::ConstantOp>(
+          loc, rewriter.getI64Type(), rewriter.getIndexAttr(i));
       Value currPtr =
           LLVM::GEPOp::create(rewriter, loc, ptrTypeLLVM,
                               srcOrDstVecTy.getElementType(), basePtrLLVM, idx);

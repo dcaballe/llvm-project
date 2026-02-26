@@ -99,8 +99,8 @@ void MemRefDescriptor::setAlignedPtr(OpBuilder &builder, Location loc,
 // integer attribute.
 static Value createIndexAttrConstant(OpBuilder &builder, Location loc,
                                      Type resultType, int64_t value) {
-  return LLVM::ConstantOp::create(builder, loc, resultType,
-                                  builder.getIndexAttr(value));
+  return builder.createOrFold<LLVM::ConstantOp>(loc, resultType,
+                                                builder.getIndexAttr(value));
 }
 
 /// Builds IR extracting the offset from the descriptor.

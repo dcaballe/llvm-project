@@ -223,15 +223,15 @@ struct ExpM1OpLowering
     ConvertFastMath<math::ExpM1Op, LLVM::FSubOp> subAttrs(op);
 
     if (!isa<LLVM::LLVMArrayType>(llvmOperandType)) {
-      LLVM::ConstantOp one;
+      Value one;
       if (LLVM::isCompatibleVectorType(llvmOperandType)) {
-        one = LLVM::ConstantOp::create(
-            rewriter, loc, llvmOperandType,
+        one = rewriter.createOrFold<LLVM::ConstantOp>(
+            loc, llvmOperandType,
             SplatElementsAttr::get(cast<ShapedType>(llvmOperandType),
                                    floatOne));
       } else {
-        one =
-            LLVM::ConstantOp::create(rewriter, loc, llvmOperandType, floatOne);
+        one = rewriter.createOrFold<LLVM::ConstantOp>(loc, llvmOperandType,
+                                                       floatOne);
       }
       auto exp = LLVM::ExpOp::create(rewriter, loc, adaptor.getOperand(),
                                      expAttrs.getAttrs());
@@ -251,8 +251,8 @@ struct ExpM1OpLowering
               mlir::VectorType::get({numElements.getKnownMinValue()}, floatType,
                                     {numElements.isScalable()}),
               floatOne);
-          auto one = LLVM::ConstantOp::create(rewriter, loc, llvm1DVectorTy,
-                                              splatAttr);
+          Value one = rewriter.createOrFold<LLVM::ConstantOp>(
+              loc, llvm1DVectorTy, splatAttr);
           auto exp = LLVM::ExpOp::create(rewriter, loc, llvm1DVectorTy,
                                          operands[0], expAttrs.getAttrs());
           return LLVM::FSubOp::create(rewriter, loc, llvm1DVectorTy,
@@ -288,14 +288,14 @@ struct Log1pOpLowering
     ConvertFastMath<math::Log1pOp, LLVM::LogOp> logAttrs(op);
 
     if (!isa<LLVM::LLVMArrayType>(llvmOperandType)) {
-      LLVM::ConstantOp one =
+      Value one =
           isa<VectorType>(llvmOperandType)
-              ? LLVM::ConstantOp::create(
-                    rewriter, loc, llvmOperandType,
+              ? rewriter.createOrFold<LLVM::ConstantOp>(
+                    loc, llvmOperandType,
                     SplatElementsAttr::get(cast<ShapedType>(llvmOperandType),
                                            floatOne))
-              : LLVM::ConstantOp::create(rewriter, loc, llvmOperandType,
-                                         floatOne);
+              : rewriter.createOrFold<LLVM::ConstantOp>(loc, llvmOperandType,
+                                                         floatOne);
 
       auto add = LLVM::FAddOp::create(rewriter, loc, llvmOperandType,
                                       ValueRange{one, adaptor.getOperand()},
@@ -316,8 +316,8 @@ struct Log1pOpLowering
               mlir::VectorType::get({numElements.getKnownMinValue()}, floatType,
                                     {numElements.isScalable()}),
               floatOne);
-          auto one = LLVM::ConstantOp::create(rewriter, loc, llvm1DVectorTy,
-                                              splatAttr);
+          Value one = rewriter.createOrFold<LLVM::ConstantOp>(
+              loc, llvm1DVectorTy, splatAttr);
           auto add = LLVM::FAddOp::create(rewriter, loc, llvm1DVectorTy,
                                           ValueRange{one, operands[0]},
                                           addAttrs.getAttrs());
@@ -353,15 +353,15 @@ struct RsqrtOpLowering
     ConvertFastMath<math::RsqrtOp, LLVM::FDivOp> divAttrs(op);
 
     if (!isa<LLVM::LLVMArrayType>(llvmOperandType)) {
-      LLVM::ConstantOp one;
+      Value one;
       if (isa<VectorType>(llvmOperandType)) {
-        one = LLVM::ConstantOp::create(
-            rewriter, loc, llvmOperandType,
+        one = rewriter.createOrFold<LLVM::ConstantOp>(
+            loc, llvmOperandType,
             SplatElementsAttr::get(cast<ShapedType>(llvmOperandType),
                                    floatOne));
       } else {
-        one =
-            LLVM::ConstantOp::create(rewriter, loc, llvmOperandType, floatOne);
+        one = rewriter.createOrFold<LLVM::ConstantOp>(loc, llvmOperandType,
+                                                       floatOne);
       }
       auto sqrt = LLVM::SqrtOp::create(rewriter, loc, adaptor.getOperand(),
                                        sqrtAttrs.getAttrs());
@@ -381,8 +381,8 @@ struct RsqrtOpLowering
               mlir::VectorType::get({numElements.getKnownMinValue()}, floatType,
                                     {numElements.isScalable()}),
               floatOne);
-          auto one = LLVM::ConstantOp::create(rewriter, loc, llvm1DVectorTy,
-                                              splatAttr);
+          Value one = rewriter.createOrFold<LLVM::ConstantOp>(
+              loc, llvm1DVectorTy, splatAttr);
           auto sqrt = LLVM::SqrtOp::create(rewriter, loc, llvm1DVectorTy,
                                            operands[0], sqrtAttrs.getAttrs());
           return LLVM::FDivOp::create(rewriter, loc, llvm1DVectorTy,

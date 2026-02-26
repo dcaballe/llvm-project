@@ -174,7 +174,7 @@ struct CreateMaskOpLowering
                                          "not SVE predicate-sized");
 
     auto loc = createMaskOp.getLoc();
-    auto zero = LLVM::ZeroOp::create(rewriter, loc, rewriter.getI64Type());
+    auto zero = rewriter.createOrFold<LLVM::ZeroOp>(loc, rewriter.getI64Type());
     rewriter.replaceOpWithNewOp<WhileLTIntrOp>(createMaskOp, maskType, zero,
                                                adaptor.getOperands()[0]);
     return success();

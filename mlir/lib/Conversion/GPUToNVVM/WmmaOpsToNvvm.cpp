@@ -128,8 +128,8 @@ struct WmmaLoadOpToNVVMLowering
         cast<MemRefType>(subgroupMmaLoadMatrixOp.getSrcMemref().getType()),
         adaptor.getSrcMemref(), adaptor.getIndices());
 
-    Value leadingDim = LLVM::ConstantOp::create(
-        rewriter, loc, rewriter.getI32Type(),
+    Value leadingDim = rewriter.createOrFold<LLVM::ConstantOp>(
+        loc, rewriter.getI32Type(),
         subgroupMmaLoadMatrixOp.getLeadDimensionAttr());
     rewriter.replaceOpWithNewOp<NVVM::WMMALoadOp>(
         op, resType, dataPtr, leadingDim, m, n, k, layout, eltype, frag);
@@ -183,8 +183,8 @@ struct WmmaStoreOpToNVVMLowering
         rewriter, loc,
         cast<MemRefType>(subgroupMmaStoreMatrixOp.getDstMemref().getType()),
         adaptor.getDstMemref(), adaptor.getIndices());
-    Value leadingDim = LLVM::ConstantOp::create(
-        rewriter, loc, rewriter.getI32Type(),
+    Value leadingDim = rewriter.createOrFold<LLVM::ConstantOp>(
+        loc, rewriter.getI32Type(),
         subgroupMmaStoreMatrixOp.getLeadDimensionAttr());
     rewriter.replaceOpWithNewOp<NVVM::WMMAStoreOp>(
         op, dataPtr, m, n, k, layout, eltype, storeOpOperands, leadingDim);
@@ -295,8 +295,8 @@ struct WmmaConstantOpToNVVMLowering
     if (auto vecType = dyn_cast<VectorType>(structType.getBody()[0])) {
       Value vecCst = LLVM::PoisonOp::create(rewriter, loc, vecType);
       for (int64_t vecEl = 0; vecEl < vecType.getNumElements(); vecEl++) {
-        Value idx = LLVM::ConstantOp::create(rewriter, loc,
-                                             rewriter.getI32Type(), vecEl);
+        Value idx = rewriter.createOrFold<LLVM::ConstantOp>(
+            loc, rewriter.getI32Type(), vecEl);
         vecCst = LLVM::InsertElementOp::create(rewriter, loc, vecType, vecCst,
                                                cst, idx);
       }
@@ -324,8 +324,8 @@ static Value createMinMaxF(OpBuilder &builder, Location loc, Value lhs,
   Value sel = LLVM::SelectOp::create(builder, loc, cmp, lhs, rhs);
   Value isNan = LLVM::FCmpOp::create(builder, loc, i1Type,
                                      LLVM::FCmpPredicate::uno, lhs, rhs);
-  Value nan = LLVM::ConstantOp::create(
-      builder, loc, lhs.getType(),
+  Value nan = builder.createOrFold<LLVM::ConstantOp>(
+      loc, lhs.getType(),
       builder.getFloatAttr(floatType,
                            APFloat::getQNaN(floatType.getFloatSemantics())));
   return LLVM::SelectOp::create(builder, loc, isNan, nan, sel);

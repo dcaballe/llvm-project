@@ -255,7 +255,7 @@ LogicalResult GetMetadataOpConversion::matchAndRewrite(
 
   // Create a new LLVM struct to hold the metadata
   Location loc = op.getLoc();
-  Value sV = LLVM::UndefOp::create(rewriter, loc, *mdTy);
+  Value sV = rewriter.createOrFold<LLVM::UndefOp>(loc, *mdTy);
 
   // First element is the allocated pointer.
   SmallVector<int64_t> pos{0};
@@ -372,10 +372,10 @@ LogicalResult TypeOffsetOpConversion::matchAndRewrite(
   auto ptrTy = LLVM::LLVMPointerType::get(getContext());
 
   // Create a GEP operation to compute the offset of the type.
-  auto offset =
-      LLVM::GEPOp::create(rewriter, op.getLoc(), ptrTy, type,
-                          LLVM::ZeroOp::create(rewriter, op.getLoc(), ptrTy),
-                          ArrayRef<LLVM::GEPArg>({LLVM::GEPArg(1)}));
+  auto offset = LLVM::GEPOp::create(
+      rewriter, op.getLoc(), ptrTy, type,
+      rewriter.createOrFold<LLVM::ZeroOp>(op.getLoc(), ptrTy),
+      ArrayRef<LLVM::GEPArg>({LLVM::GEPArg(1)}));
 
   // Replace the original op with a PtrToIntOp using the computed offset.
   rewriter.replaceOpWithNewOp<LLVM::PtrToIntOp>(op, rTy, offset.getRes());
@@ -406,8 +406,8 @@ LogicalResult ConstantOpConversion::matchAndRewrite(
                 value.getAbstractAttribute().getName());
   }
   Type intType = rewriter.getIntegerType(addrAttr.getValue().getBitWidth());
-  Value intConst = LLVM::ConstantOp::create(rewriter, op.getLoc(), intType,
-                                            addrAttr.getValue());
+  Value intConst = rewriter.createOrFold<LLVM::ConstantOp>(op.getLoc(), intType,
+                                                           addrAttr.getValue());
   rewriter.replaceOpWithNewOp<LLVM::IntToPtrOp>(op, resultType, intConst);
   return success();
 }

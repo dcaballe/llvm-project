@@ -126,23 +126,20 @@ func.func @mulf8E5M2(%arg0: memref<?x?xf8E5M2>, %arg1: memref<?x?xf32>) {
 
 /// Intrinsics require stride in number of bytes.
 // CHECK-LABEL: strides_implicit(
-// CHECK: %[[LOAD_STRIDE_1:.+]] = llvm.mlir.constant(32 : i64) : i64
-// CHECK: llvm.call_intrinsic "llvm.x86.tileloadd64.internal"(%{{.+}}, %{{.+}}, %{{.+}}, %[[LOAD_STRIDE_1]]
-// CHECK: %[[LOAD_STRIDE_2:.+]] = llvm.mlir.constant(128 : i64) : i64
-// CHECK: llvm.call_intrinsic "llvm.x86.tileloadd64.internal"(%{{.+}}, %{{.+}}, %{{.+}}, %[[LOAD_STRIDE_2]]
+// CHECK-DAG: %[[STRIDE_1:.+]] = llvm.mlir.constant(32 : i64) : i64
+// CHECK-DAG: %[[STRIDE_2:.+]] = llvm.mlir.constant(128 : i64) : i64
+// CHECK-DAG: %[[STRIDE_SCALE:.+]] = llvm.mlir.constant(4 : i64) : i64
+// CHECK: llvm.call_intrinsic "llvm.x86.tileloadd64.internal"(%{{.+}}, %{{.+}}, %{{.+}}, %[[STRIDE_1]]
+// CHECK: llvm.call_intrinsic "llvm.x86.tileloadd64.internal"(%{{.+}}, %{{.+}}, %{{.+}}, %[[STRIDE_2]]
 // CHECK: llvm.extractvalue %{{.+}}[4, 0]
 // CHECK: %[[LOAD_BUF_STRIDE:.+]] = llvm.extractvalue %{{.+}}[4, 0]
-// CHECK: %[[LOAD_STRIDE_SCALE:.+]] = llvm.mlir.constant(4 : i64) : i64
-// CHECK: %[[LOAD_STRIDE_3:.+]] = llvm.mul %[[LOAD_STRIDE_SCALE]], %[[LOAD_BUF_STRIDE]]
+// CHECK: %[[LOAD_STRIDE_3:.+]] = llvm.mul %[[STRIDE_SCALE]], %[[LOAD_BUF_STRIDE]]
 // CHECK: llvm.call_intrinsic "llvm.x86.tileloadd64.internal"(%{{.+}}, %{{.+}}, %{{.+}}, %[[LOAD_STRIDE_3]]
-// CHECK: %[[STORE_STRIDE_1:.+]] = llvm.mlir.constant(32 : i64) : i64
-// CHECK: llvm.call_intrinsic "llvm.x86.tilestored64.internal"(%{{.+}}, %{{.+}}, %{{.+}}, %[[STORE_STRIDE_1]]
-// CHECK: %[[STORE_STRIDE_2:.+]] = llvm.mlir.constant(128 : i64) : i64
-// CHECK: llvm.call_intrinsic "llvm.x86.tilestored64.internal"(%{{.+}}, %{{.+}}, %{{.+}}, %[[STORE_STRIDE_2]]
+// CHECK: llvm.call_intrinsic "llvm.x86.tilestored64.internal"(%{{.+}}, %{{.+}}, %{{.+}}, %[[STRIDE_1]]
+// CHECK: llvm.call_intrinsic "llvm.x86.tilestored64.internal"(%{{.+}}, %{{.+}}, %{{.+}}, %[[STRIDE_2]]
 // CHECK: llvm.extractvalue %{{.+}}[4, 0]
 // CHECK: %[[STORE_BUF_STRIDE:.+]] = llvm.extractvalue %{{.+}}[4, 0]
-// CHECK: %[[STORE_STRIDE_SCALE:.+]] = llvm.mlir.constant(4 : i64) : i64
-// CHECK: %[[STORE_STRIDE_3:.+]] = llvm.mul %[[STORE_STRIDE_SCALE]], %[[STORE_BUF_STRIDE]]
+// CHECK: %[[STORE_STRIDE_3:.+]] = llvm.mul %[[STRIDE_SCALE]], %[[STORE_BUF_STRIDE]]
 // CHECK: llvm.call_intrinsic "llvm.x86.tilestored64.internal"(%{{.+}}, %{{.+}}, %{{.+}}, %[[STORE_STRIDE_3]]
 func.func @strides_implicit(%arg0: memref<16x32xi8>,
     %arg1: memref<32x32xbf16, strided<[64, 1]>>,
@@ -160,26 +157,23 @@ func.func @strides_implicit(%arg0: memref<16x32xi8>,
 /// Intrinsics require stride in number of bytes.
 // CHECK-LABEL: strides_explicit(
 // CHECK-SAME:    %[[STRIDE:.+]]: index
+// CHECK-DAG: %[[STRIDE_SCALE_1:.+]] = llvm.mlir.constant(1 : i64) : i64
+// CHECK-DAG: %[[STRIDE_SCALE_2:.+]] = llvm.mlir.constant(2 : i64) : i64
+// CHECK-DAG: %[[STRIDE_SCALE_3:.+]] = llvm.mlir.constant(4 : i64) : i64
 // CHECK-DAG: %[[STRIDE_I64:.+]] = builtin.unrealized_conversion_cast %[[STRIDE]] : index to i64
 // CHECK-DAG: %[[C64:.+]] = arith.constant 64 : index
 // CHECK-DAG: %[[C64_I64:.+]] = builtin.unrealized_conversion_cast %[[C64]] : index to i64
-// CHECK: %[[LOAD_STRIDE_SCALE_1:.+]] = llvm.mlir.constant(1 : i64) : i64
-// CHECK: %[[LOAD_STRIDE_1:.+]] = llvm.mul %[[LOAD_STRIDE_SCALE_1]], %[[STRIDE_I64]]
+// CHECK: %[[LOAD_STRIDE_1:.+]] = llvm.mul %[[STRIDE_SCALE_1]], %[[STRIDE_I64]]
 // CHECK: llvm.call_intrinsic "llvm.x86.tileloadd64.internal"(%{{.+}}, %{{.+}}, %{{.+}}, %[[LOAD_STRIDE_1]]
-// CHECK: %[[LOAD_STRIDE_SCALE_2:.+]] = llvm.mlir.constant(2 : i64) : i64
-// CHECK: %[[LOAD_STRIDE_2:.+]] = llvm.mul %[[LOAD_STRIDE_SCALE_2]], %[[STRIDE_I64]]
+// CHECK: %[[LOAD_STRIDE_2:.+]] = llvm.mul %[[STRIDE_SCALE_2]], %[[STRIDE_I64]]
 // CHECK: llvm.call_intrinsic "llvm.x86.tileloadd64.internal"(%{{.+}}, %{{.+}}, %{{.+}}, %[[LOAD_STRIDE_2]]
-// CHECK: %[[LOAD_STRIDE_SCALE_3:.+]] = llvm.mlir.constant(4 : i64) : i64
-// CHECK: %[[LOAD_STRIDE_3:.+]] = llvm.mul %[[LOAD_STRIDE_SCALE_3]], %[[C64_I64]]
+// CHECK: %[[LOAD_STRIDE_3:.+]] = llvm.mul %[[STRIDE_SCALE_3]], %[[C64_I64]]
 // CHECK: llvm.call_intrinsic "llvm.x86.tileloadd64.internal"(%{{.+}}, %{{.+}}, %{{.+}}, %[[LOAD_STRIDE_3]]
-// CHECK: %[[STORE_STRIDE_SCALE_1:.+]] = llvm.mlir.constant(1 : i64) : i64
-// CHECK: %[[STORE_STRIDE_1:.+]] = llvm.mul %[[STORE_STRIDE_SCALE_1]], %[[STRIDE_I64]]
+// CHECK: %[[STORE_STRIDE_1:.+]] = llvm.mul %[[STRIDE_SCALE_1]], %[[STRIDE_I64]]
 // CHECK: llvm.call_intrinsic "llvm.x86.tilestored64.internal"(%{{.+}}, %{{.+}}, %{{.+}}, %[[STORE_STRIDE_1]]
-// CHECK: %[[STORE_STRIDE_SCALE_2:.+]] = llvm.mlir.constant(2 : i64) : i64
-// CHECK: %[[STORE_STRIDE_2:.+]] = llvm.mul %[[STORE_STRIDE_SCALE_2]], %[[STRIDE_I64]]
+// CHECK: %[[STORE_STRIDE_2:.+]] = llvm.mul %[[STRIDE_SCALE_2]], %[[STRIDE_I64]]
 // CHECK: llvm.call_intrinsic "llvm.x86.tilestored64.internal"(%{{.+}}, %{{.+}}, %{{.+}}, %[[STORE_STRIDE_2]]
-// CHECK: %[[STORE_STRIDE_SCALE_3:.+]] = llvm.mlir.constant(4 : i64) : i64
-// CHECK: %[[STORE_STRIDE_3:.+]] = llvm.mul %[[STORE_STRIDE_SCALE_3]], %[[C64_I64]]
+// CHECK: %[[STORE_STRIDE_3:.+]] = llvm.mul %[[STRIDE_SCALE_3]], %[[C64_I64]]
 // CHECK: llvm.call_intrinsic "llvm.x86.tilestored64.internal"(%{{.+}}, %{{.+}}, %{{.+}}, %[[STORE_STRIDE_3]]
 func.func @strides_explicit(%stride: index,
     %arg0: memref<?xi8>,

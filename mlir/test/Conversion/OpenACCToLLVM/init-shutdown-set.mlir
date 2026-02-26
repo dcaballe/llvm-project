@@ -10,20 +10,19 @@
 // CHECK: %[[IDENT:.*]] = llvm.mlir.addressof @[[ID:ident_[^ ]+]]
 // CHECK: %[[FLAGS:.*]] = llvm.mlir.constant(0 : i64) : i64
 // CHECK: %[[DEVNUM:.*]] = llvm.mlir.constant(2 : i64) : i64
+// CHECK: %[[CURRENT:.*]] = llvm.mlir.constant(-1 : i64) : i64
+// With the default mapping, host is 3.
+// CHECK: %[[HOST:.*]] = llvm.mlir.constant(3 : i64) : i64
 // CHECK: llvm.call @__tgt_acc_init(%[[IDENT]], %[[FLAGS]], %[[NVIDIA]], %[[DEVNUM]]) : (!llvm.ptr, i64, i64, i64) -> ()
 // CHECK: llvm.call @__tgt_acc_shutdown
 // Without a device number, the current device (-1) is used, once per device type.
-// CHECK: %[[NVIDIA2:.*]] = llvm.mlir.constant(5 : i64) : i64
-// CHECK: %[[CURRENT:.*]] = llvm.mlir.constant(-1 : i64) : i64
-// CHECK: llvm.call @__tgt_acc_init(%{{.*}}, %{{.*}}, %[[NVIDIA2]], %[[CURRENT]])
-// With the default mapping, host is 3.
-// CHECK: %[[HOST:.*]] = llvm.mlir.constant(3 : i64) : i64
+// CHECK: llvm.call @__tgt_acc_init(%{{.*}}, %{{.*}}, %[[NVIDIA]], %[[CURRENT]])
 // CHECK: llvm.call @__tgt_acc_init(%{{.*}}, %{{.*}}, %[[HOST]], %{{.*}})
 // CHECK: llvm.call @__tgt_acc_shutdown
 // CHECK: llvm.call @__tgt_acc_shutdown
-// Without device types, DeviceType::None maps to 0 under the default mapping.
-// CHECK: %[[NONE:.*]] = llvm.mlir.constant(0 : i64) : i64
-// CHECK: llvm.call @__tgt_acc_init(%{{.*}}, %{{.*}}, %[[NONE]], %{{.*}})
+// Without device types, DeviceType::None maps to 0 under the default mapping, so
+// it shares the flags constant.
+// CHECK: llvm.call @__tgt_acc_init(%{{.*}}, %{{.*}}, %[[FLAGS]], %{{.*}})
 // CHECK: llvm.call @__tgt_acc_shutdown
 // CHECK: llvm.call @__tgt_acc_init
 // CHECK: llvm.call @__tgt_acc_shutdown
@@ -46,8 +45,8 @@ module {
 // -----
 
 // CHECK-LABEL: llvm.func @test_set
-// CHECK: llvm.call @__tgt_acc_set_default_async
 // CHECK: %[[NVIDIA:.*]] = llvm.mlir.constant(5 : i64) : i64
+// CHECK: llvm.call @__tgt_acc_set_default_async
 // CHECK: llvm.call @__tgt_acc_set_device_num(%{{.*}}, %{{.*}}, %[[NVIDIA]], %{{.*}})
 
 module {
@@ -142,10 +141,10 @@ module {
 // CHECK-DAG: llvm.mlir.global internal constant @[[$LOC_A:loc_7_3_[0-9]+]](";a.mlir;test_distinct_files;7;3;;\00")
 // CHECK-DAG: llvm.mlir.global internal constant @[[$LOC_B:loc_7_3_[0-9]+]](";b.mlir;test_distinct_files;7;3;;\00")
 // CHECK-LABEL: llvm.func @test_distinct_files
-// CHECK: llvm.mlir.addressof @ident_[[$LOC_A]]
-// CHECK: llvm.call @__tgt_acc_init
-// CHECK: llvm.mlir.addressof @ident_[[$LOC_B]]
-// CHECK: llvm.call @__tgt_acc_shutdown
+// CHECK: %[[IDENT_A:.*]] = llvm.mlir.addressof @ident_[[$LOC_A]]
+// CHECK: %[[IDENT_B:.*]] = llvm.mlir.addressof @ident_[[$LOC_B]]
+// CHECK: llvm.call @__tgt_acc_init(%[[IDENT_A]],
+// CHECK: llvm.call @__tgt_acc_shutdown(%[[IDENT_B]],
 
 module {
   func.func @test_distinct_files() {

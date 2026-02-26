@@ -66,7 +66,6 @@ func.func @adjacent_loops(%arg0: index, %arg1: index, %arg2: index,
   // CHECK:   omp.terminator
   // CHECK: }
 
-  // CHECK: %[[FOUR:.+]] = llvm.mlir.constant(4 : i32) : i32
   // CHECK: omp.parallel num_threads(%[[FOUR]] : i32) {
   // CHECK: omp.wsloop {
   // CHECK: omp.loop_nest (%[[LVAR_AL2:.*]]) : index = (%arg1) to (%arg3) step (%arg5) {

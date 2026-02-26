@@ -324,8 +324,8 @@ spirv.func @fmod_vector(%arg0: vector<4xf32>, %arg1: vector<4xf32>) "None" {
 
 // CHECK-LABEL: @smod_scalar
 spirv.func @smod_scalar(%arg0: i32, %arg1: i32) "None" {
-  // CHECK: %[[REM:.*]] = llvm.srem %{{.*}}, %{{.*}} : i32
   // CHECK: %[[ZERO:.*]] = llvm.mlir.constant(0 : i32) : i32
+  // CHECK: %[[REM:.*]] = llvm.srem %{{.*}}, %{{.*}} : i32
   // CHECK: %[[NZ:.*]] = llvm.icmp "ne" %[[REM]], %[[ZERO]] : i32
   // CHECK: %[[RNEG:.*]] = llvm.icmp "slt" %[[REM]], %[[ZERO]] : i32
   // CHECK: %[[DNEG:.*]] = llvm.icmp "slt" %{{.*}}, %[[ZERO]] : i32
@@ -339,8 +339,8 @@ spirv.func @smod_scalar(%arg0: i32, %arg1: i32) "None" {
 
 // CHECK-LABEL: @smod_vector
 spirv.func @smod_vector(%arg0: vector<4xi32>, %arg1: vector<4xi32>) "None" {
-  // CHECK: %[[REM:.*]] = llvm.srem %{{.*}}, %{{.*}} : vector<4xi32>
   // CHECK: %[[ZERO:.*]] = llvm.mlir.constant(dense<0> : vector<4xi32>) : vector<4xi32>
+  // CHECK: %[[REM:.*]] = llvm.srem %{{.*}}, %{{.*}} : vector<4xi32>
   // CHECK: %[[NZ:.*]] = llvm.icmp "ne" %[[REM]], %[[ZERO]] : vector<4xi32>
   // CHECK: %[[ADD:.*]] = llvm.add %[[REM]], %{{.*}} : vector<4xi32>
   // CHECK: llvm.select %{{.*}}, %[[ADD]], %[[REM]] : vector<4xi1>, vector<4xi32>
@@ -357,12 +357,12 @@ spirv.func @smod_vector(%arg0: vector<4xi32>, %arg1: vector<4xi32>) "None" {
 spirv.func @vector_times_scalar(%vector: vector<4xf32>, %scalar: f32) "None" {
   // CHECK: %[[BCAST0:.*]] = llvm.mlir.poison : vector<4xf32>
   // CHECK: %[[ZERO:.*]] = llvm.mlir.constant(0 : i32) : i32
-  // CHECK: %[[BCAST1:.*]] = llvm.insertelement %[[SCALAR]], %[[BCAST0]][%[[ZERO]] : i32] : vector<4xf32>
   // CHECK: %[[ONE:.*]] = llvm.mlir.constant(1 : i32) : i32
-  // CHECK: %[[BCAST2:.*]] = llvm.insertelement %[[SCALAR]], %[[BCAST1]][%[[ONE]] : i32] : vector<4xf32>
   // CHECK: %[[TWO:.*]] = llvm.mlir.constant(2 : i32) : i32
-  // CHECK: %[[BCAST3:.*]] = llvm.insertelement %[[SCALAR]], %[[BCAST2]][%[[TWO]] : i32] : vector<4xf32>
   // CHECK: %[[THREE:.*]] = llvm.mlir.constant(3 : i32) : i32
+  // CHECK: %[[BCAST1:.*]] = llvm.insertelement %[[SCALAR]], %[[BCAST0]][%[[ZERO]] : i32] : vector<4xf32>
+  // CHECK: %[[BCAST2:.*]] = llvm.insertelement %[[SCALAR]], %[[BCAST1]][%[[ONE]] : i32] : vector<4xf32>
+  // CHECK: %[[BCAST3:.*]] = llvm.insertelement %[[SCALAR]], %[[BCAST2]][%[[TWO]] : i32] : vector<4xf32>
   // CHECK: %[[BCAST4:.*]] = llvm.insertelement %[[SCALAR]], %[[BCAST3]][%[[THREE]] : i32] : vector<4xf32>
   // CHECK: llvm.fmul %[[VECTOR]], %[[BCAST4]] : vector<4xf32>
   %0 = spirv.VectorTimesScalar %vector, %scalar : (vector<4xf32>, f32) -> vector<4xf32>

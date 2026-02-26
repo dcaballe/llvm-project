@@ -344,8 +344,8 @@ public:
 
     // Constants for initializing coroutine frame.
     auto constZero =
-        LLVM::ConstantOp::create(rewriter, loc, rewriter.getI32Type(), 0);
-    auto nullPtr = LLVM::ZeroOp::create(rewriter, loc, ptrType);
+        rewriter.createOrFold<LLVM::ConstantOp>(loc, rewriter.getI32Type(), 0);
+    auto nullPtr = rewriter.createOrFold<LLVM::ZeroOp>(loc, ptrType);
 
     // Get coroutine id: @llvm.coro.id.
     rewriter.replaceOpWithNewOp<LLVM::CoroIdOp>(
@@ -382,8 +382,8 @@ public:
     // requires the size parameter be an integral multiple of the alignment
     // parameter.
     auto makeConstant = [&](uint64_t c) {
-      return LLVM::ConstantOp::create(rewriter, op->getLoc(),
-                                      rewriter.getI64Type(), c);
+      return rewriter.createOrFold<LLVM::ConstantOp>(op->getLoc(),
+                                                     rewriter.getI64Type(), c);
     };
     coroSize = LLVM::AddOp::create(rewriter, op->getLoc(), coroSize, coroAlign);
     coroSize =
@@ -456,9 +456,8 @@ public:
   matchAndRewrite(CoroEndOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     // We are not in the block that is part of the unwind sequence.
-    auto constFalse =
-        LLVM::ConstantOp::create(rewriter, op->getLoc(), rewriter.getI1Type(),
-                                 rewriter.getBoolAttr(false));
+    auto constFalse = rewriter.createOrFold<LLVM::ConstantOp>(
+        op->getLoc(), rewriter.getI1Type(), rewriter.getBoolAttr(false));
     auto noneToken = LLVM::NoneTokenOp::create(rewriter, op->getLoc());
 
     // Mark the end of a coroutine: @llvm.coro.end.
@@ -535,8 +534,8 @@ public:
     auto loc = op->getLoc();
 
     // This is not a final suspension point.
-    auto constFalse = LLVM::ConstantOp::create(
-        rewriter, loc, rewriter.getI1Type(), rewriter.getBoolAttr(false));
+    auto constFalse = rewriter.createOrFold<LLVM::ConstantOp>(
+        loc, rewriter.getI1Type(), rewriter.getBoolAttr(false));
 
     // Suspend a coroutine: @llvm.coro.suspend
     auto coroState = adaptor.getState();
@@ -603,7 +602,7 @@ public:
 
         // %Size = getelementptr %T* null, int 1
         // %SizeI = ptrtoint %T* %Size to i64
-        auto nullPtr = LLVM::ZeroOp::create(rewriter, loc, storagePtrType);
+        auto nullPtr = rewriter.createOrFold<LLVM::ZeroOp>(loc, storagePtrType);
         auto gep =
             LLVM::GEPOp::create(rewriter, loc, storagePtrType, storedType,
                                 nullPtr, ArrayRef<LLVM::GEPArg>{1});
@@ -773,12 +772,12 @@ public:
 
     // A pointer to coroutine resume intrinsic wrapper.
     addResumeFunction(op->getParentOfType<ModuleOp>());
-    auto resumePtr = LLVM::AddressOfOp::create(
-        rewriter, op->getLoc(),
-        AsyncAPI::opaquePointerType(rewriter.getContext()), kResume);
+    auto resumePtr = rewriter.createOrFold<LLVM::AddressOfOp>(
+        op->getLoc(), AsyncAPI::opaquePointerType(rewriter.getContext()),
+        kResume);
 
     func::CallOp::create(rewriter, op->getLoc(), apiFuncName, TypeRange(),
-                         ValueRange({operand, handle, resumePtr.getRes()}));
+                         ValueRange({operand, handle, resumePtr}));
     rewriter.eraseOp(op);
 
     return success();
@@ -801,14 +800,14 @@ public:
                   ConversionPatternRewriter &rewriter) const override {
     // A pointer to coroutine resume intrinsic wrapper.
     addResumeFunction(op->getParentOfType<ModuleOp>());
-    auto resumePtr = LLVM::AddressOfOp::create(
-        rewriter, op->getLoc(),
-        AsyncAPI::opaquePointerType(rewriter.getContext()), kResume);
+    auto resumePtr = rewriter.createOrFold<LLVM::AddressOfOp>(
+        op->getLoc(), AsyncAPI::opaquePointerType(rewriter.getContext()),
+        kResume);
 
     // Call async runtime API to execute a coroutine in the managed thread.
     auto coroHdl = adaptor.getHandle();
-    rewriter.replaceOpWithNewOp<func::CallOp>(
-        op, TypeRange(), kExecute, ValueRange({coroHdl, resumePtr.getRes()}));
+    rewriter.replaceOpWithNewOp<func::CallOp>(op, TypeRange(), kExecute,
+                                              ValueRange({coroHdl, resumePtr}));
 
     return success();
   }

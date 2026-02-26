@@ -4,9 +4,9 @@ module attributes {gpu.container_module} {
 
   // CHECK: func @foo
   func.func @foo(%dst : memref<7xf32, 1>, %value : f32) {
+    // CHECK: %[[size_bytes:.*]] = llvm.mlir.constant
     // CHECK: %[[t0:.*]] = llvm.call @mgpuStreamCreate
     %t0 = gpu.wait async
-    // CHECK: %[[size_bytes:.*]] = llvm.mlir.constant
     // CHECK: %[[addr_cast:.*]] = llvm.addrspacecast
     // CHECK: llvm.call @mgpuMemset32(%[[addr_cast]], %{{.*}}, %[[size_bytes]], %[[t0]])
     %t1 = gpu.memset async [%t0] %dst, %value : memref<7xf32, 1>, f32
@@ -21,9 +21,9 @@ module attributes {gpu.container_module} {
 
   // CHECK: func @foo16
   func.func @foo16(%dst : memref<7xf16, 1>, %value : f16) {
+    // CHECK: %[[size_bytes:.*]] = llvm.mlir.constant
     // CHECK: %[[t0:.*]] = llvm.call @mgpuStreamCreate
     %t0 = gpu.wait async
-    // CHECK: %[[size_bytes:.*]] = llvm.mlir.constant
     // CHECK: %[[addr_cast:.*]] = llvm.addrspacecast
     // CHECK: llvm.call @mgpuMemset16(%[[addr_cast]], %{{.*}}, %[[size_bytes]], %[[t0]])
     %t1 = gpu.memset async [%t0] %dst, %value : memref<7xf16, 1>, f16

@@ -36,9 +36,10 @@ struct ConvertIndexCeilDivS : mlir::ConvertOpToLLVMPattern<CeilDivSOp> {
     Location loc = op.getLoc();
     Value n = adaptor.getLhs();
     Value m = adaptor.getRhs();
-    Value zero = LLVM::ConstantOp::create(rewriter, loc, n.getType(), 0);
-    Value posOne = LLVM::ConstantOp::create(rewriter, loc, n.getType(), 1);
-    Value negOne = LLVM::ConstantOp::create(rewriter, loc, n.getType(), -1);
+    Value zero = rewriter.createOrFold<LLVM::ConstantOp>(loc, n.getType(), 0);
+    Value posOne = rewriter.createOrFold<LLVM::ConstantOp>(loc, n.getType(), 1);
+    Value negOne =
+        rewriter.createOrFold<LLVM::ConstantOp>(loc, n.getType(), -1);
 
     // Compute `x`.
     Value mPos =
@@ -83,8 +84,8 @@ struct ConvertIndexCeilDivU : mlir::ConvertOpToLLVMPattern<CeilDivUOp> {
     Location loc = op.getLoc();
     Value n = adaptor.getLhs();
     Value m = adaptor.getRhs();
-    Value zero = LLVM::ConstantOp::create(rewriter, loc, n.getType(), 0);
-    Value one = LLVM::ConstantOp::create(rewriter, loc, n.getType(), 1);
+    Value zero = rewriter.createOrFold<LLVM::ConstantOp>(loc, n.getType(), 0);
+    Value one = rewriter.createOrFold<LLVM::ConstantOp>(loc, n.getType(), 1);
 
     // Compute the non-zero result.
     Value minusOne = LLVM::SubOp::create(rewriter, loc, n, one);
@@ -114,9 +115,10 @@ struct ConvertIndexFloorDivS : mlir::ConvertOpToLLVMPattern<FloorDivSOp> {
     Location loc = op.getLoc();
     Value n = adaptor.getLhs();
     Value m = adaptor.getRhs();
-    Value zero = LLVM::ConstantOp::create(rewriter, loc, n.getType(), 0);
-    Value posOne = LLVM::ConstantOp::create(rewriter, loc, n.getType(), 1);
-    Value negOne = LLVM::ConstantOp::create(rewriter, loc, n.getType(), -1);
+    Value zero = rewriter.createOrFold<LLVM::ConstantOp>(loc, n.getType(), 0);
+    Value posOne = rewriter.createOrFold<LLVM::ConstantOp>(loc, n.getType(), 1);
+    Value negOne =
+        rewriter.createOrFold<LLVM::ConstantOp>(loc, n.getType(), -1);
 
     // Compute `x`.
     Value mNeg =

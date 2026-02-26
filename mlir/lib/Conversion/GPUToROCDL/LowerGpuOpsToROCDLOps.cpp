@@ -122,8 +122,8 @@ static Value getKnownOrOcklDim(RewriterBase &rewriter,
 
   if (std::optional<uint32_t> knownDim =
           gpu::getKnownDimensionSizeAround(contextOp, indexKind, dim))
-    return LLVM::ConstantOp::create(rewriter, loc,
-                                    rewriter.getI64IntegerAttr(*knownDim));
+    return rewriter.createOrFold<LLVM::ConstantOp>(
+        loc, rewriter.getI64IntegerAttr(*knownDim));
 
   int32_t dimParam = static_cast<int32_t>(dim);
 
@@ -147,7 +147,8 @@ static Value getKnownOrOcklDim(RewriterBase &rewriter,
       getOrDefineFunction(moduleOp, loc, rewriter, functionName, fnType);
 
   // Create the call.
-  Value dimConst = LLVM::ConstantOp::create(rewriter, loc, i32Ty, dimParam);
+  Value dimConst =
+      rewriter.createOrFold<LLVM::ConstantOp>(loc, i32Ty, dimParam);
   auto callOp =
       LLVM::CallOp::create(rewriter, loc, funcOp, ValueRange{dimConst});
 
@@ -468,7 +469,7 @@ struct GPUShuffleOpLowering : public ConvertOpToLLVMPattern<gpu::ShuffleOp> {
 
     auto int32Type = IntegerType::get(rewriter.getContext(), 32);
     Value width = adaptor.getWidth();
-    Value zero = LLVM::ConstantOp::create(rewriter, loc, int32Type, 0);
+    Value zero = rewriter.createOrFold<LLVM::ConstantOp>(loc, int32Type, 0);
     Value negwidth = LLVM::SubOp::create(rewriter, loc, int32Type, zero, width);
     Value add = LLVM::AddOp::create(rewriter, loc, int32Type, srcLaneId, width);
     Value widthOrZeroIfOutside =
@@ -496,7 +497,7 @@ struct GPUShuffleOpLowering : public ConvertOpToLLVMPattern<gpu::ShuffleOp> {
         rewriter, loc, LLVM::ICmpPredicate::slt, dstLane, widthOrZeroIfOutside);
     Value selectDstLane = LLVM::SelectOp::create(rewriter, loc, isActiveSrcLane,
                                                  dstLane, srcLaneId);
-    Value two = LLVM::ConstantOp::create(rewriter, loc, int32Type, 2);
+    Value two = rewriter.createOrFold<LLVM::ConstantOp>(loc, int32Type, 2);
     Value dwordAlignedDstLane =
         LLVM::ShlOp::create(rewriter, loc, int32Type, selectDstLane, two);
 
@@ -706,12 +707,13 @@ struct GPUInitializeNamedBarrierOpLowering final
 
     // Get address of the global.
     rewriter.setInsertionPoint(op);
-    auto addrOf = LLVM::AddressOfOp::create(rewriter, loc, ptrTy, globalName);
+    auto addrOf =
+        rewriter.createOrFold<LLVM::AddressOfOp>(loc, ptrTy, globalName);
 
     // Initialize the barrier.
     ROCDL::BarrierInitOp::create(rewriter, loc, addrOf, count);
 
-    rewriter.replaceOp(op, addrOf.getResult());
+    rewriter.replaceOp(op, addrOf);
     return success();
   }
 };

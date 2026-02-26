@@ -387,8 +387,8 @@ static Value createMetadataStringPtr(ConversionPatternRewriter &rewriter,
       if (auto strAttr =
               dyn_cast_or_null<StringAttr>(existingGlobal.getValueOrNull())) {
         if (strAttr.getValue() == strRef) {
-          return LLVM::AddressOfOp::create(rewriter, loc, as1PtrTy,
-                                           existingGlobal.getSymName());
+          return rewriter.createOrFold<LLVM::AddressOfOp>(
+              loc, as1PtrTy, existingGlobal.getSymName());
         }
       }
     }
@@ -417,7 +417,7 @@ static Value createMetadataStringPtr(ConversionPatternRewriter &rewriter,
   }
   // InsertionGuard restores the original insertion point here.
 
-  return LLVM::AddressOfOp::create(rewriter, loc, as1PtrTy, globalName);
+  return rewriter.createOrFold<LLVM::AddressOfOp>(loc, as1PtrTy, globalName);
 }
 
 /// Annotate a pointer value with cache control metadata by emitting chained
@@ -456,8 +456,8 @@ static Value annotatePtrWithCacheControl(ConversionPatternRewriter &rewriter,
   // Create shared constants for all annotations on this pointer.
   Value fileStr =
       createMetadataStringPtr(rewriter, moduleOp, loc, "", ".str.file");
-  Value lineVal = LLVM::ConstantOp::create(rewriter, loc, i32Ty, 0);
-  Value nullAS1 = LLVM::ZeroOp::create(rewriter, loc, as1PtrTy);
+  Value lineVal = rewriter.createOrFold<LLVM::ConstantOp>(loc, i32Ty, 0);
+  Value nullAS1 = rewriter.createOrFold<LLVM::ZeroOp>(loc, as1PtrTy);
 
   // Chain: each annotation takes the result of the previous one as its
   // pointer operand.
@@ -675,7 +675,7 @@ class PrefetchToOCLPattern : public OpConversionPattern<PrefetchOp> {
 
     const std::string fnName{"_Z8prefetchPU3AS1Kcm"};
     Value one =
-        LLVM::ConstantOp::create(rewriter, loc, rewriter.getI64Type(), 1);
+        rewriter.createOrFold<LLVM::ConstantOp>(loc, rewriter.getI64Type(), 1);
     SmallVector<Value> args{op.getPtr(), one};
 
     // Annotate pointer with cache control before passing to the call.
@@ -736,11 +736,11 @@ class MemfenceToOCLPattern : public OpConversionPattern<MemfenceOp> {
           op, "Fence only supports workgroup and device memory scopes.");
     }
     Type i32Type = rewriter.getI32Type();
-    Value acqRel = LLVM::ConstantOp::create(rewriter, loc, i32Type, 4);
+    Value acqRel = rewriter.createOrFold<LLVM::ConstantOp>(loc, i32Type, 4);
     Value memScopeConst =
-        LLVM::ConstantOp::create(rewriter, loc, i32Type, memScope);
+        rewriter.createOrFold<LLVM::ConstantOp>(loc, i32Type, memScope);
     Value addrSpaceConst =
-        LLVM::ConstantOp::create(rewriter, loc, i32Type, addrSpace);
+        rewriter.createOrFold<LLVM::ConstantOp>(loc, i32Type, addrSpace);
     SmallVector<Value> args{addrSpaceConst, acqRel, memScopeConst};
     SmallVector<Type> argTypes{3, i32Type};
     createDeviceFunctionCall(rewriter, mangle(fnName, argTypes),
@@ -775,9 +775,9 @@ class LoadStorePrefetchToOCLPattern : public OpConversionPattern<OpType> {
 
     auto i32Type = rewriter.getI32Type();
     Value byteCoord =
-        LLVM::UndefOp::create(rewriter, loc, VectorType::get(2, i32Type));
-    Value zero = LLVM::ConstantOp::create(rewriter, loc, i32Type, 0);
-    Value one = LLVM::ConstantOp::create(rewriter, loc, i32Type, 1);
+        rewriter.createOrFold<LLVM::UndefOp>(loc, VectorType::get(2, i32Type));
+    Value zero = rewriter.createOrFold<LLVM::ConstantOp>(loc, i32Type, 0);
+    Value one = rewriter.createOrFold<LLVM::ConstantOp>(loc, i32Type, 1);
     byteCoord = LLVM::InsertElementOp::create(
         rewriter, loc, VectorType::get(2, i32Type), byteCoord, op.getX(), zero);
     byteCoord = LLVM::InsertElementOp::create(
@@ -822,7 +822,7 @@ class LoadStorePrefetchToOCLPattern : public OpConversionPattern<OpType> {
         vecNumElems = vecNumElems / 2;
       }
       Value numElems =
-          LLVM::ConstantOp::create(rewriter, loc, i32Type, vecNumElems);
+          rewriter.createOrFold<LLVM::ConstantOp>(loc, i32Type, vecNumElems);
       auto dstOrSrcPtr = LLVM::AllocaOp::create(
           rewriter, loc, LLVM::LLVMPointerType::get(rewriter.getContext()),
           vecElemType, numElems);
@@ -1071,8 +1071,8 @@ class LaunchConfigOpToOCLPattern : public OpConversionPattern<OpType> {
     Location loc = op->getLoc();
     auto [baseName, dim] = getConfig(op);
     Type dimTy = rewriter.getI32Type();
-    Value dimVal = LLVM::ConstantOp::create(rewriter, loc, dimTy,
-                                            static_cast<int64_t>(dim));
+    Value dimVal = rewriter.createOrFold<LLVM::ConstantOp>(
+        loc, dimTy, static_cast<int64_t>(dim));
     std::string func = mangle(baseName, {dimTy}, {true});
     Type resTy = op.getType();
     auto call =
@@ -1211,32 +1211,32 @@ class TruncfToOCLPattern : public OpConversionPattern<TruncfOp> {
         return dnscl;
       };
 
-      Value zero = LLVM::ConstantOp::create(rewriter, op.getLoc(),
-                                            rewriter.getI32Type(), 0);
-      Value one = LLVM::ConstantOp::create(rewriter, op.getLoc(),
-                                           rewriter.getI32Type(), 1);
-      Value two = LLVM::ConstantOp::create(rewriter, op.getLoc(),
-                                           rewriter.getI32Type(), 2);
-      Value three = LLVM::ConstantOp::create(rewriter, op.getLoc(),
-                                             rewriter.getI32Type(), 3);
+      Value zero = rewriter.createOrFold<LLVM::ConstantOp>(
+          op.getLoc(), rewriter.getI32Type(), 0);
+      Value one = rewriter.createOrFold<LLVM::ConstantOp>(
+          op.getLoc(), rewriter.getI32Type(), 1);
+      Value two = rewriter.createOrFold<LLVM::ConstantOp>(
+          op.getLoc(), rewriter.getI32Type(), 2);
+      Value three = rewriter.createOrFold<LLVM::ConstantOp>(
+          op.getLoc(), rewriter.getI32Type(), 3);
       Value even = genDnscl(cast, zero, two, one, zero);
       Value odd = genDnscl(cast, one, three, one, two);
       Value firstHalf = LLVM::OrOp::create(rewriter, op.getLoc(), even, odd);
-      Value four = LLVM::ConstantOp::create(rewriter, op.getLoc(),
-                                            rewriter.getI32Type(), 4);
-      Value five = LLVM::ConstantOp::create(rewriter, op.getLoc(),
-                                            rewriter.getI32Type(), 5);
-      Value six = LLVM::ConstantOp::create(rewriter, op.getLoc(),
-                                           rewriter.getI32Type(), 6);
-      Value seven = LLVM::ConstantOp::create(rewriter, op.getLoc(),
-                                             rewriter.getI32Type(), 7);
+      Value four = rewriter.createOrFold<LLVM::ConstantOp>(
+          op.getLoc(), rewriter.getI32Type(), 4);
+      Value five = rewriter.createOrFold<LLVM::ConstantOp>(
+          op.getLoc(), rewriter.getI32Type(), 5);
+      Value six = rewriter.createOrFold<LLVM::ConstantOp>(
+          op.getLoc(), rewriter.getI32Type(), 6);
+      Value seven = rewriter.createOrFold<LLVM::ConstantOp>(
+          op.getLoc(), rewriter.getI32Type(), 7);
       even = genDnscl(cast, four, six, one, zero);
       odd = genDnscl(cast, five, seven, one, two);
       Value secondHalf = LLVM::OrOp::create(rewriter, op.getLoc(), even, odd);
       // Create vector<2xi32> from two i32 values and then bitcast to
       // vector<8xi8> to match the dst type.
-      Value combined = LLVM::UndefOp::create(
-          rewriter, op.getLoc(), VectorType::get(2, rewriter.getI32Type()));
+      Value combined = rewriter.createOrFold<LLVM::UndefOp>(
+          op.getLoc(), VectorType::get(2, rewriter.getI32Type()));
       combined = LLVM::InsertElementOp::create(rewriter, op.getLoc(), combined,
                                                firstHalf, zero)
                      ->getResult(0);
@@ -1351,8 +1351,8 @@ class ExtfToOCLPattern : public OpConversionPattern<ExtfOp> {
       constexpr int kLutE2M1ToBF16 = 5;
       int lutIndex =
           (dstEtype == ExtfDstElemTypes::F16) ? kLutE2M1ToF16 : kLutE2M1ToBF16;
-      Value lutIdx = LLVM::ConstantOp::create(rewriter, op.getLoc(),
-                                              rewriter.getI32Type(), lutIndex);
+      Value lutIdx = rewriter.createOrFold<LLVM::ConstantOp>(
+          op.getLoc(), rewriter.getI32Type(), lutIndex);
       Type lutTy = VectorType::get(16, rewriter.getI32Type());
       Value lut =
           createDeviceFunctionCall(rewriter, "__builtin_IB_shfl_idx4_lut",

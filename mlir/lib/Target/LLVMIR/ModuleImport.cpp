@@ -1916,7 +1916,8 @@ FailureOr<Value> ModuleImport::convertConstant(llvm::Constant *constant) {
     assert(targetExtType.hasProperty(LLVMTargetExtType::HasZeroInit) &&
            "target extension type does not support zero-initialization");
     // Create llvm.mlir.zero operation to represent zero-initialization of
-    // target extension type.
+    // target extension type. Must be a fresh op, `convertConstantExpr` anchors
+    // the constant insertion point on it.
     return LLVM::ZeroOp::create(builder, loc, targetExtType).getRes();
   }
 
@@ -2464,8 +2465,8 @@ LogicalResult ModuleImport::convertInstruction(llvm::Instruction *inst) {
         // IR). Build the indirect call by passing an empty `callee` operand and
         // insert into `operands` to include the indirect call target.
         FlatSymbolRefAttr calleeSym = convertCalleeName(callInst);
-        Value indirectCallVal = LLVM::AddressOfOp::create(
-            builder, loc, LLVM::LLVMPointerType::get(context), calleeSym);
+        Value indirectCallVal = builder.createOrFold<LLVM::AddressOfOp>(
+            loc, LLVM::LLVMPointerType::get(context), calleeSym);
         operands->insert(operands->begin(), indirectCallVal);
       } else {
         // Regular direct call using callee name.
@@ -2556,8 +2557,8 @@ LogicalResult ModuleImport::convertInstruction(llvm::Instruction *inst) {
       // IR). Build the indirect invoke by passing an empty `callee` operand and
       // insert into `operands` to include the indirect invoke target.
       FlatSymbolRefAttr calleeSym = convertCalleeName(invokeInst);
-      Value indirectInvokeVal = LLVM::AddressOfOp::create(
-          builder, loc, LLVM::LLVMPointerType::get(context), calleeSym);
+      Value indirectInvokeVal = builder.createOrFold<LLVM::AddressOfOp>(
+          loc, LLVM::LLVMPointerType::get(context), calleeSym);
       operands->insert(operands->begin(), indirectInvokeVal);
     } else {
       // Regular direct invoke using callee name.

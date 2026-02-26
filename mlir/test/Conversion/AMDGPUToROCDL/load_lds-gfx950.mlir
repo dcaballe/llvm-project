@@ -8,6 +8,8 @@ func.func @fat_buffer_load_to_rocdl_f96(%global : memref<128x72xf32, #amdgpu.add
   %c12 = arith.constant 12 : index
   %c32 = arith.constant 32 : index
   %alloc = memref.alloc() : memref<64x64xf32, #gpu.address_space<workgroup>>
+  // GFX950: %[[C72:.*]] = llvm.mlir.constant(72 : index) : i64
+  // GFX950: %[[C64:.*]] = llvm.mlir.constant(64 : index) : i64
   // GFX950: %[[BUFFER_DESC:.*]] = builtin.unrealized_conversion_cast %[[ARG0]]
 
   // GFX950: %[[C0:.*]] = arith.constant 0 : index
@@ -21,14 +23,12 @@ func.func @fat_buffer_load_to_rocdl_f96(%global : memref<128x72xf32, #amdgpu.add
   // GFX950: %[[LDS_DESC:.*]] = builtin.unrealized_conversion_cast
   // GFX950: %[[GLOBAL_BASE:.*]] = llvm.extractvalue %[[BUFFER_DESC]][1]
 
-  // GFX950: %[[C72:.*]] = llvm.mlir.constant(72 : index) : i64
   // GFX950: %[[MUL:.*]] = llvm.mul %[[IC12]], %[[C72]] : i64
   // GFX950: %[[SRC_OFFSET:.*]] = llvm.add %[[MUL]], %[[IC0]] : i64
 
   // GFX950: %[[GLOBAL_PTR:.*]] = llvm.getelementptr %[[GLOBAL_BASE]][%[[SRC_OFFSET]]]
   // GFX950: %[[LDS_BASE:.*]] = llvm.extractvalue %[[LDS_DESC]][1]
 
-  // GFX950: %[[C64:.*]] = llvm.mlir.constant(64 : index) : i64
   // GFX950: %[[MUL_2:.*]] = llvm.mul %[[IC32]], %[[C64]] : i64
   // GFX950: %[[DST_OFFSET:.*]] = llvm.add %[[MUL_2]], %[[IC0]] : i64
 
@@ -49,6 +49,8 @@ func.func @fat_buffer_load_to_rocdl_f128(%global : memref<128x72xf32, #amdgpu.ad
   %c12 = arith.constant 12 : index
   %c32 = arith.constant 32 : index
   %alloc = memref.alloc() : memref<64x64xf32, #gpu.address_space<workgroup>>
+  // GFX950: %[[C72:.*]] = llvm.mlir.constant(72 : index) : i64
+  // GFX950: %[[C64:.*]] = llvm.mlir.constant(64 : index) : i64
   // GFX950: %[[BUFFER_DESC:.*]] = builtin.unrealized_conversion_cast %[[ARG0]]
 
   // GFX950: %[[C0:.*]] = arith.constant 0 : index
@@ -62,14 +64,12 @@ func.func @fat_buffer_load_to_rocdl_f128(%global : memref<128x72xf32, #amdgpu.ad
   // GFX950: %[[LDS_DESC:.*]] = builtin.unrealized_conversion_cast
   // GFX950: %[[GLOBAL_BASE:.*]] = llvm.extractvalue %[[BUFFER_DESC]][1]
 
-  // GFX950: %[[C72:.*]] = llvm.mlir.constant(72 : index) : i64
   // GFX950: %[[MUL:.*]] = llvm.mul %[[IC12]], %[[C72]] : i64
   // GFX950: %[[SRC_OFFSET:.*]] = llvm.add %[[MUL]], %[[IC0]] : i64
 
   // GFX950: %[[GLOBAL_PTR:.*]] = llvm.getelementptr %[[GLOBAL_BASE]][%[[SRC_OFFSET]]]
   // GFX950: %[[LDS_BASE:.*]] = llvm.extractvalue %[[LDS_DESC]][1]
 
-  // GFX950: %[[C64:.*]] = llvm.mlir.constant(64 : index) : i64
   // GFX950: %[[MUL_2:.*]] = llvm.mul %[[IC32]], %[[C64]] : i64
   // GFX950: %[[DST_OFFSET:.*]] = llvm.add %[[MUL_2]], %[[IC0]] : i64
 

@@ -38,6 +38,8 @@ llvm::SmallVector<MemorySlot> LLVM::AllocaOp::getPromotableSlots() {
 
 Value LLVM::AllocaOp::getDefaultValue(const MemorySlot &slot,
                                       OpBuilder &builder) {
+  // Must be a fresh op, `handlePromotionComplete` erases it when it ends up
+  // unused.
   return LLVM::UndefOp::create(builder, getLoc(), slot.elemType);
 }
 
@@ -272,8 +274,8 @@ static Value createExtractAndCast(OpBuilder &builder, Location loc,
   // Truncate the integer if the size of the target is less than the value.
   if (isBigEndian(dataLayout)) {
     uint64_t shiftAmount = srcTypeSize - targetTypeSize;
-    auto shiftConstant = LLVM::ConstantOp::create(
-        builder, loc, builder.getIntegerAttr(srcType, shiftAmount));
+    auto shiftConstant = builder.createOrFold<LLVM::ConstantOp>(
+        loc, builder.getIntegerAttr(srcType, shiftAmount));
     replacement =
         builder.createOrFold<LLVM::LShrOp>(loc, srcValue, shiftConstant);
   }
@@ -322,9 +324,8 @@ static Value createInsertAndCast(OpBuilder &builder, Location loc,
     // On big endian systems, a store to the base pointer overwrites the most
     // significant bits. To accomodate for this, the stored value needs to be
     // shifted into the according position.
-    Value bigEndianShift = LLVM::ConstantOp::create(
-        builder, loc,
-        builder.getIntegerAttr(defAsInt.getType(), sizeDifference));
+    Value bigEndianShift = builder.createOrFold<LLVM::ConstantOp>(
+        loc, builder.getIntegerAttr(defAsInt.getType(), sizeDifference));
     valueAsInt =
         builder.createOrFold<LLVM::ShlOp>(loc, valueAsInt, bigEndianShift);
   }
@@ -344,8 +345,8 @@ static Value createInsertAndCast(OpBuilder &builder, Location loc,
   }
 
   // Mask out the affected bits ...
-  Value mask = LLVM::ConstantOp::create(
-      builder, loc, builder.getIntegerAttr(defAsInt.getType(), maskValue));
+  Value mask = builder.createOrFold<LLVM::ConstantOp>(
+      loc, builder.getIntegerAttr(defAsInt.getType(), maskValue));
   Value masked = builder.createOrFold<LLVM::AndOp>(loc, defAsInt, mask);
 
   // ... and combine the result with the new value.
@@ -989,11 +990,9 @@ void createMemsetIntr(OpBuilder &builder, LLVM::MemsetOp toReplace,
                       IntegerAttr memsetLenAttr, uint64_t newMemsetSize,
                       DenseMap<Attribute, MemorySlot> &subslots,
                       Attribute index) {
-  Value newMemsetSizeValue =
-      LLVM::ConstantOp::create(
-          builder, toReplace.getLen().getLoc(),
-          IntegerAttr::get(memsetLenAttr.getType(), newMemsetSize))
-          .getResult();
+  Value newMemsetSizeValue = builder.createOrFold<LLVM::ConstantOp>(
+      toReplace.getLen().getLoc(),
+      IntegerAttr::get(memsetLenAttr.getType(), newMemsetSize));
 
   LLVM::MemsetOp::create(builder, toReplace.getLoc(), subslots.at(index).ptr,
                          toReplace.getVal(), newMemsetSizeValue,
@@ -1080,8 +1079,8 @@ static Value memsetGetStored(MemsetIntr op, const MemorySlot &slot,
       APInt memsetVal(/*numBits=*/width, /*val=*/0);
       for (unsigned loBit = 0; loBit < width; loBit += 8)
         memsetVal.insertBits(constantPattern.getValue(), loBit);
-      return LLVM::ConstantOp::create(builder, op.getLoc(),
-                                      IntegerAttr::get(intType, memsetVal));
+      return builder.createOrFold<LLVM::ConstantOp>(
+          op.getLoc(), IntegerAttr::get(intType, memsetVal));
     }
 
     // If the output is a single byte, we can return the pattern directly.
@@ -1094,8 +1093,8 @@ static Value memsetGetStored(MemsetIntr op, const MemorySlot &slot,
     Value currentValue =
         LLVM::ZExtOp::create(builder, op.getLoc(), intType, op.getVal());
     while (coveredBits < width) {
-      Value shiftBy =
-          LLVM::ConstantOp::create(builder, op.getLoc(), intType, coveredBits);
+      Value shiftBy = builder.createOrFold<LLVM::ConstantOp>(
+          op.getLoc(), intType, coveredBits);
       Value shifted =
           LLVM::ShlOp::create(builder, op.getLoc(), currentValue, shiftBy);
       currentValue =
@@ -1370,10 +1369,9 @@ template <class MemcpyLike>
 void createMemcpyLikeToReplace(OpBuilder &builder, const DataLayout &layout,
                                MemcpyLike toReplace, Value dst, Value src,
                                Type toCpy, bool isVolatile) {
-  Value memcpySize =
-      LLVM::ConstantOp::create(builder, toReplace.getLoc(),
-                               IntegerAttr::get(toReplace.getLen().getType(),
-                                                layout.getTypeSize(toCpy)));
+  Value memcpySize = builder.createOrFold<LLVM::ConstantOp>(
+      toReplace.getLoc(), IntegerAttr::get(toReplace.getLen().getType(),
+                                           layout.getTypeSize(toCpy)));
   MemcpyLike::create(builder, toReplace.getLoc(), dst, src, memcpySize,
                      isVolatile);
 }

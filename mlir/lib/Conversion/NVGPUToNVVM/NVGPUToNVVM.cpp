@@ -112,8 +112,8 @@ static Value convertIntrinsicResult(Location loc, Type intrinsicResultType,
   Type f32x1Ty = VectorType::get(1, f32Ty);
 
   auto makeConst = [&](int32_t index) -> Value {
-    return LLVM::ConstantOp::create(rewriter, loc, IntegerType::get(ctx, 32),
-                                    rewriter.getI32IntegerAttr(index));
+    return rewriter.createOrFold<LLVM::ConstantOp>(
+        loc, IntegerType::get(ctx, 32), rewriter.getI32IntegerAttr(index));
   };
 
   if (arrayType) {
@@ -212,7 +212,7 @@ static SmallVector<Value> unpackOperandVector(ImplicitLocOpBuilder &b,
            idx < innerSize; idx++) {
         result.push_back(LLVM::ExtractElementOp::create(
             b, toUse,
-            LLVM::ConstantOp::create(b, i64Ty, b.getI64IntegerAttr(idx))));
+            b.createOrFold<LLVM::ConstantOp>(i64Ty, b.getI64IntegerAttr(idx))));
       }
       continue;
     }
@@ -690,10 +690,10 @@ struct NVGPUAsyncCopyLowering
       // memory) of CpAsyncOp is read only for SrcElements number of elements.
       // The rest of the DstElements in the destination (shared memory) are
       // filled with zeros.
-      Value c3I32 =
-          LLVM::ConstantOp::create(b, b.getI32Type(), b.getI32IntegerAttr(3));
-      Value bitwidth = LLVM::ConstantOp::create(
-          b, b.getI32Type(),
+      Value c3I32 = b.createOrFold<LLVM::ConstantOp>(b.getI32Type(),
+                                                     b.getI32IntegerAttr(3));
+      Value bitwidth = b.createOrFold<LLVM::ConstantOp>(
+          b.getI32Type(),
           b.getI32IntegerAttr(srcMemrefType.getElementTypeBitWidth()));
       Value srcElementsI32 = LLVM::TruncOp::create(b, b.getI32Type(), srcBytes);
       srcBytes = LLVM::LShrOp::create(
@@ -712,9 +712,8 @@ struct NVGPUAsyncCopyLowering
         srcBytes);
 
     // Drop the result token.
-    Value zero =
-        LLVM::ConstantOp::create(b, IntegerType::get(op.getContext(), 32),
-                                 rewriter.getI32IntegerAttr(0));
+    Value zero = b.createOrFold<LLVM::ConstantOp>(
+        IntegerType::get(op.getContext(), 32), rewriter.getI32IntegerAttr(0));
     rewriter.replaceOp(op, zero);
     return success();
   }
@@ -730,9 +729,9 @@ struct NVGPUAsyncCreateGroupLowering
                   ConversionPatternRewriter &rewriter) const override {
     NVVM::CpAsyncCommitGroupOp::create(rewriter, op.getLoc());
     // Drop the result token.
-    Value zero = LLVM::ConstantOp::create(rewriter, op->getLoc(),
-                                          IntegerType::get(op.getContext(), 32),
-                                          rewriter.getI32IntegerAttr(0));
+    Value zero = rewriter.createOrFold<LLVM::ConstantOp>(
+        op->getLoc(), IntegerType::get(op.getContext(), 32),
+        rewriter.getI32IntegerAttr(0));
     rewriter.replaceOp(op, zero);
     return success();
   }
@@ -1040,7 +1039,7 @@ struct NVGPUGenerateWarpgroupDescriptorLowering
 
     auto ti64 = b.getIntegerType(64);
     auto makeConst = [&](uint64_t index) -> Value {
-      return LLVM::ConstantOp::create(b, ti64, b.getI64IntegerAttr(index));
+      return b.createOrFold<LLVM::ConstantOp>(ti64, b.getI64IntegerAttr(index));
     };
     auto shiftLeft = [&](Value value, unsigned shift) -> Value {
       return LLVM::ShlOp::create(b, ti64, value, makeConst(shift));
@@ -1093,8 +1092,8 @@ struct NVGPUGenerateWarpgroupDescriptorLowering
 };
 
 static Value makeI64Const(ImplicitLocOpBuilder &b, int32_t index) {
-  return LLVM::ConstantOp::create(b, b.getIntegerType(64),
-                                  b.getI32IntegerAttr(index));
+  return b.createOrFold<LLVM::ConstantOp>(b.getIntegerType(64),
+                                          b.getI32IntegerAttr(index));
 }
 
 /// Returns a Value that holds data type enum that is expected by CUDA driver.
@@ -1530,7 +1529,7 @@ struct NVGPUWarpgroupMmaStoreOpLowering
     Type i32 = b.getI32Type();
 
     auto makeConst = [&](int32_t index) -> Value {
-      return LLVM::ConstantOp::create(b, i32, b.getI32IntegerAttr(index));
+      return b.createOrFold<LLVM::ConstantOp>(i32, b.getI32IntegerAttr(index));
     };
     Value c1 = makeConst(1);
     Value c2 = makeConst(2);
@@ -1622,7 +1621,8 @@ struct NVGPUWarpgroupMmaInitAccumulatorOpLowering
     Type elemType = cast<LLVM::LLVMStructType>(packStructType.getBody().front())
                         .getBody()
                         .front();
-    Value zero = LLVM::ConstantOp::create(b, elemType, b.getZeroAttr(elemType));
+    Value zero =
+        b.createOrFold<LLVM::ConstantOp>(elemType, b.getZeroAttr(elemType));
     Value packStruct = LLVM::PoisonOp::create(b, packStructType);
     SmallVector<Value> innerStructs;
     // Unpack the structs and set all values to zero
@@ -1654,8 +1654,8 @@ struct NVGPUTmaFenceOpLowering
     MLIRContext *ctx = op.getContext();
     ImplicitLocOpBuilder b(op->getLoc(), rewriter);
     auto i32Ty = b.getI32Type();
-    Value tensormapSize =
-        LLVM::ConstantOp::create(b, i32Ty, rewriter.getI32IntegerAttr(128));
+    Value tensormapSize = b.createOrFold<LLVM::ConstantOp>(
+        i32Ty, rewriter.getI32IntegerAttr(128));
 
     auto memscope =
         NVVM::MemScopeKindAttr::get(ctx, ::mlir::NVVM::MemScopeKind::SYS);
@@ -1695,7 +1695,8 @@ struct NVGPURcpOpLowering : public ConvertOpToLLVMPattern<nvgpu::RcpOp> {
       Value ret1DVec = LLVM::PoisonOp::create(b, llvm1DVectorTy);
       int numElems = llvm::cast<VectorType>(llvm1DVectorTy).getNumElements();
       for (int i = 0; i < numElems; i++) {
-        Value idx = LLVM::ConstantOp::create(b, i64Ty, b.getI64IntegerAttr(i));
+        Value idx =
+            b.createOrFold<LLVM::ConstantOp>(i64Ty, b.getI64IntegerAttr(i));
         Value elem = LLVM::ExtractElementOp::create(b, inVec, idx);
         Value dst = NVVM::RcpApproxFtzF32Op::create(b, f32Ty, elem);
         ret1DVec = LLVM::InsertElementOp::create(b, ret1DVec, dst, idx);
@@ -1816,7 +1817,7 @@ static Value extractElement(ImplicitLocOpBuilder &b, Value srcVec, int idx) {
          "extractElement: index out of bounds");
   IntegerType i64Ty = b.getI64Type();
   return b.create<LLVM::ExtractElementOp>(
-      srcVec, b.create<LLVM::ConstantOp>(i64Ty, b.getI64IntegerAttr(idx)));
+      srcVec, b.createOrFold<LLVM::ConstantOp>(i64Ty, b.getI64IntegerAttr(idx)));
 }
 
 /// Extract a pair of f32 values from an i32 vector at the given base index.
@@ -1976,7 +1977,7 @@ static LogicalResult lowerTruncf(nvgpu::TruncfOp op,
   Value srcI32Vec =
       b.create<LLVM::BitcastOp>(VectorType::get(srcI32Elems, i32Ty), input);
   Value dstI32Vec =
-      b.create<LLVM::UndefOp>(VectorType::get(dstI32Elems, i32Ty));
+      b.createOrFold<LLVM::UndefOp>(VectorType::get(dstI32Elems, i32Ty));
 
   // STEP 2: look up the conversion op from the (srcType, dstType) table.
   auto convEntry = lookupConvOp(kFPTruncTable, srcElemType, dstElemType);
@@ -2000,7 +2001,7 @@ static LogicalResult lowerTruncf(nvgpu::TruncfOp op,
   for (int srcIdx = 0, dstIdx = 0; dstIdx < dstI32Elems;
        srcIdx += srcStep, dstIdx++) {
     Value dstIdxConst =
-        b.create<LLVM::ConstantOp>(i64Ty, b.getI64IntegerAttr(dstIdx));
+        b.createOrFold<LLVM::ConstantOp>(i64Ty, b.getI64IntegerAttr(dstIdx));
     Value dstValue;
 
     if (numConvsPerI32 == 1) {
@@ -2012,7 +2013,7 @@ static LogicalResult lowerTruncf(nvgpu::TruncfOp op,
       // f8/f6/f4 destinations: pack sub-results via vector insert + bitcast.
       auto subResultType = IntegerType::get(ctx, resultBW);
       auto subVecTy = VectorType::get(numConvsPerI32, subResultType);
-      Value subVec = b.create<LLVM::UndefOp>(subVecTy);
+      Value subVec = b.createOrFold<LLVM::UndefOp>(subVecTy);
 
       int insertIdx = numConvsPerI32 - 1;
       int curStep = srcStep;
@@ -2024,7 +2025,7 @@ static LogicalResult lowerTruncf(nvgpu::TruncfOp op,
             /*randomBits=*/Value());
         subVec = b.create<LLVM::InsertElementOp>(
             subVec, subResult,
-            b.create<LLVM::ConstantOp>(i64Ty, b.getI64IntegerAttr(insertIdx)));
+            b.createOrFold<LLVM::ConstantOp>(i64Ty, b.getI64IntegerAttr(insertIdx)));
         insertIdx--;
       }
 
@@ -2201,7 +2202,7 @@ static LogicalResult lowerExtf(nvgpu::ExtfOp op, nvgpu::ExtfOp::Adaptor adaptor,
   Value srcI32Vec =
       b.create<LLVM::BitcastOp>(VectorType::get(srcI32Elems, i32Ty), inputVec);
   Value dstI32Vec =
-      b.create<LLVM::UndefOp>(VectorType::get(dstI32Elems, i32Ty));
+      b.createOrFold<LLVM::UndefOp>(VectorType::get(dstI32Elems, i32Ty));
 
   // STEP 2: look up the conversion op from the (srcType, dstType) table.
   auto convEntry = lookupConvOp(kFPExtTable, srcElemType, intermediateDstElem);
@@ -2215,7 +2216,7 @@ static LogicalResult lowerExtf(nvgpu::ExtfOp op, nvgpu::ExtfOp::Adaptor adaptor,
   for (int srcIdx = 0, dstIdx = 0; srcIdx < srcI32Elems; srcIdx++) {
     Value srcI32 = b.create<LLVM::ExtractElementOp>(
         srcI32Vec,
-        b.create<LLVM::ConstantOp>(i64Ty, b.getI64IntegerAttr(srcIdx)));
+        b.createOrFold<LLVM::ConstantOp>(i64Ty, b.getI64IntegerAttr(srcIdx)));
 
     if (effectiveSrcBW == 8) {
       // f8/f6: one i32 holds 4 bytes -> split into 2 pairs of i16 -> 2 convs.
@@ -2224,14 +2225,14 @@ static LogicalResult lowerExtf(nvgpu::ExtfOp op, nvgpu::ExtfOp::Adaptor adaptor,
       for (int half = 0; half < 2; half++) {
         Value halfI16 = b.create<LLVM::ExtractElementOp>(
             i16Vec,
-            b.create<LLVM::ConstantOp>(i64Ty, b.getI64IntegerAttr(half)));
+            b.createOrFold<LLVM::ConstantOp>(i64Ty, b.getI64IntegerAttr(half)));
         Value src =
             b.create<LLVM::BitcastOp>(VectorType::get(2, i8Ty), halfI16);
         Value dstValue =
             createExtConversion(b, ctx, convOp, src, reluBoolAttr,
                                 actualSrcFloatType, extScaleFactor);
         Value dstIdxConst =
-            b.create<LLVM::ConstantOp>(i64Ty, b.getI64IntegerAttr(dstIdx));
+            b.createOrFold<LLVM::ConstantOp>(i64Ty, b.getI64IntegerAttr(dstIdx));
         dstI32Vec =
             b.create<LLVM::InsertElementOp>(dstI32Vec, dstValue, dstIdxConst);
         dstIdx++;
@@ -2242,12 +2243,12 @@ static LogicalResult lowerExtf(nvgpu::ExtfOp op, nvgpu::ExtfOp::Adaptor adaptor,
       for (int byteIdx = 0; byteIdx < 4; byteIdx++) {
         Value src = b.create<LLVM::ExtractElementOp>(
             i8Vec,
-            b.create<LLVM::ConstantOp>(i64Ty, b.getI64IntegerAttr(byteIdx)));
+            b.createOrFold<LLVM::ConstantOp>(i64Ty, b.getI64IntegerAttr(byteIdx)));
         Value dstValue =
             createExtConversion(b, ctx, convOp, src, reluBoolAttr,
                                 actualSrcFloatType, extScaleFactor);
         Value dstIdxConst =
-            b.create<LLVM::ConstantOp>(i64Ty, b.getI64IntegerAttr(dstIdx));
+            b.createOrFold<LLVM::ConstantOp>(i64Ty, b.getI64IntegerAttr(dstIdx));
         dstI32Vec =
             b.create<LLVM::InsertElementOp>(dstI32Vec, dstValue, dstIdxConst);
         dstIdx++;

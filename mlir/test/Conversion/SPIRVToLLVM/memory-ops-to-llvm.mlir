@@ -184,8 +184,7 @@ spirv.func @variable_scalar() "None" {
   // CHECK: %[[SIZE1:.*]] = llvm.mlir.constant(1 : i32) : i32
   // CHECK: llvm.alloca %[[SIZE1]] x f32 : (i32) -> !llvm.ptr
   %0 = spirv.Variable : !spirv.ptr<f32, Function>
-  // CHECK: %[[SIZE2:.*]] = llvm.mlir.constant(1 : i32) : i32
-  // CHECK: llvm.alloca %[[SIZE2]] x i8 : (i32) -> !llvm.ptr
+  // CHECK: llvm.alloca %[[SIZE1]] x i8 : (i32) -> !llvm.ptr
   %1 = spirv.Variable : !spirv.ptr<i8, Function>
   spirv.Return
 }

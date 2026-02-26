@@ -100,8 +100,8 @@ getAlignedAllocFn(OpBuilder &b, const LLVMTypeConverter *typeConverter,
 ///   aligned = bumped - bumped % alignment
 static Value createAligned(ConversionPatternRewriter &rewriter, Location loc,
                            Value input, Value alignment) {
-  Value one = LLVM::ConstantOp::create(rewriter, loc, alignment.getType(),
-                                       rewriter.getIndexAttr(1));
+  Value one = rewriter.createOrFold<LLVM::ConstantOp>(
+      loc, alignment.getType(), rewriter.getIndexAttr(1));
   Value bump = LLVM::SubOp::create(rewriter, loc, alignment, one);
   Value bumped = LLVM::AddOp::create(rewriter, loc, input, bump);
   Value mod = LLVM::URemOp::create(rewriter, loc, bumped, alignment);
@@ -467,7 +467,7 @@ struct AssumeAlignmentOpLowering
     // This is more direct than ptrtoint-based checks, is explicitly supported,
     // and works with non-integral address spaces.
     Value trueCond =
-        LLVM::ConstantOp::create(rewriter, loc, rewriter.getBoolAttr(true));
+        rewriter.createOrFold<LLVM::ConstantOp>(loc, rewriter.getBoolAttr(true));
     Value alignmentConst =
         createIndexAttrConstant(rewriter, loc, getIndexType(), alignment);
     LLVM::AssumeOp::create(rewriter, loc, trueCond, LLVM::AssumeAlignTag(), ptr,
@@ -505,8 +505,8 @@ struct DistinctObjectsOpLowering
       ptrs.push_back(ptr);
     }
 
-    auto cond =
-        LLVM::ConstantOp::create(rewriter, loc, rewriter.getI1Type(), 1);
+    Value cond =
+        rewriter.createOrFold<LLVM::ConstantOp>(loc, rewriter.getI1Type(), 1);
     // Generate separate_storage assumptions for each pair of pointers.
     for (auto i : llvm::seq<size_t>(ptrs.size() - 1)) {
       for (auto j : llvm::seq<size_t>(i + 1, ptrs.size())) {
@@ -888,7 +888,7 @@ public:
     if (!isExternal && isUninitialized) {
       rewriter.createBlock(&newGlobal.getInitializerRegion());
       Value undef[] = {
-          LLVM::UndefOp::create(rewriter, newGlobal.getLoc(), arrayTy)};
+          rewriter.createOrFold<LLVM::UndefOp>(newGlobal.getLoc(), arrayTy)};
       LLVM::ReturnOp::create(rewriter, newGlobal.getLoc(), undef);
     }
     return success();
@@ -934,7 +934,7 @@ struct GetGlobalMemrefOpLowering
     Type arrayTy = convertGlobalMemrefTypeToLLVM(type, *getTypeConverter());
     auto ptrTy = LLVM::LLVMPointerType::get(rewriter.getContext(), memSpace);
     auto addressOf =
-        LLVM::AddressOfOp::create(rewriter, loc, ptrTy, op.getName());
+        rewriter.createOrFold<LLVM::AddressOfOp>(loc, ptrTy, op.getName());
 
     // Get the address of the first element in the array by creating a GEP with
     // the address of the GV as the base, and (rank + 1) number of 0 indices.
@@ -1103,8 +1103,8 @@ struct MemRefCastOpLowering : public ConvertOpToLLVMPattern<memref::CastOp> {
           loc, adaptor.getSource(), rewriter);
 
       // rank = ConstantOp srcRank
-      auto rankVal = LLVM::ConstantOp::create(rewriter, loc, getIndexType(),
-                                              rewriter.getIndexAttr(rank));
+      Value rankVal = rewriter.createOrFold<LLVM::ConstantOp>(
+          loc, getIndexType(), rewriter.getIndexAttr(rank));
       // poison = PoisonOp
       UnrankedMemRefDescriptor memRefDesc =
           UnrankedMemRefDescriptor::poison(rewriter, loc, targetStructType);
@@ -1157,8 +1157,8 @@ public:
     MemRefDescriptor srcDesc(adaptor.getSource());
 
     // Compute number of elements.
-    Value numElements = LLVM::ConstantOp::create(rewriter, loc, getIndexType(),
-                                                 rewriter.getIndexAttr(1));
+    Value numElements = rewriter.createOrFold<LLVM::ConstantOp>(
+        loc, getIndexType(), rewriter.getIndexAttr(1));
     for (int pos = 0; pos < srcType.getRank(); ++pos) {
       auto size = srcDesc.size(rewriter, loc, pos);
       numElements = LLVM::MulOp::create(rewriter, loc, numElements, size);
@@ -1198,8 +1198,8 @@ public:
 
     // First make sure we have an unranked memref descriptor representation.
     auto makeUnranked = [&, this](Value ranked, MemRefType type) {
-      auto rank = LLVM::ConstantOp::create(rewriter, loc, getIndexType(),
-                                           type.getRank());
+      Value rank = rewriter.createOrFold<LLVM::ConstantOp>(
+          loc, getIndexType(), type.getRank());
       auto *typeConverter = getTypeConverter();
       auto ptr =
           typeConverter->promoteOneMemRefDescriptor(loc, ranked, rewriter);
@@ -1223,8 +1223,8 @@ public:
                          : adaptor.getTarget();
 
     // Now promote the unranked descriptors to the stack.
-    auto one = LLVM::ConstantOp::create(rewriter, loc, getIndexType(),
-                                        rewriter.getIndexAttr(1));
+    Value one = rewriter.createOrFold<LLVM::ConstantOp>(
+        loc, getIndexType(), rewriter.getIndexAttr(1));
     auto promote = [&](Value desc) {
       auto ptrType = LLVM::LLVMPointerType::get(rewriter.getContext());
       auto allocated =
@@ -1373,8 +1373,8 @@ struct MemorySpaceCastOpLowering
       int64_t bytesToSkip =
           2 * llvm::divideCeil(
                   getTypeConverter()->getPointerBitwidth(resultAddrSpace), 8);
-      Value bytesToSkipConst = LLVM::ConstantOp::create(
-          rewriter, loc, getIndexType(), rewriter.getIndexAttr(bytesToSkip));
+      Value bytesToSkipConst = rewriter.createOrFold<LLVM::ConstantOp>(
+          loc, getIndexType(), rewriter.getIndexAttr(bytesToSkip));
       Value copySize =
           LLVM::SubOp::create(rewriter, loc, getIndexType(),
                               resultUnderlyingSize, bytesToSkipConst);

@@ -147,7 +147,8 @@ struct GPUBarrierConversion final : ConvertOpToLLVMPattern<gpu::BarrierOp> {
       memFenceFlag = localMemFenceFlag | globalMemFenceFlag;
     }
     Location loc = op->getLoc();
-    Value flag = LLVM::ConstantOp::create(rewriter, loc, flagTy, memFenceFlag);
+    Value flag =
+        rewriter.createOrFold<LLVM::ConstantOp>(loc, flagTy, memFenceFlag);
     rewriter.replaceOp(op, createSPIRVBuiltinCall(loc, rewriter, func, flag));
     return success();
   }
@@ -188,8 +189,8 @@ struct LaunchConfigConversion : ConvertToLLVMPattern {
 
     Location loc = op->getLoc();
     gpu::Dimension dim = getDimension(op);
-    Value dimVal = LLVM::ConstantOp::create(rewriter, loc, dimTy,
-                                            static_cast<int64_t>(dim));
+    Value dimVal = rewriter.createOrFold<LLVM::ConstantOp>(
+        loc, dimTy, static_cast<int64_t>(dim));
     rewriter.replaceOp(op, createSPIRVBuiltinCall(loc, rewriter, func, dimVal));
     return success();
   }
@@ -374,8 +375,8 @@ struct GPUShuffleConversion final : ConvertOpToLLVMPattern<gpu::ShuffleOp> {
     Value resultOrConversion =
         bitcastOrTruncAfterShuffle(result, op.getType(0), loc, rewriter);
 
-    Value trueVal =
-        LLVM::ConstantOp::create(rewriter, loc, rewriter.getI1Type(), true);
+    Value trueVal = rewriter.createOrFold<LLVM::ConstantOp>(
+        loc, rewriter.getI1Type(), true);
     rewriter.replaceOp(op, {resultOrConversion, trueVal});
     return success();
   }

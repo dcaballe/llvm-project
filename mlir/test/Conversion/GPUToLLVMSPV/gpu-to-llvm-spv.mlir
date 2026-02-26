@@ -45,6 +45,8 @@ gpu.module @builtins {
   // CHECK-LABEL: gpu_block_id
   func.func @gpu_block_id() -> (index, index, index) {
     // CHECK:         [[C0:%.*]] = llvm.mlir.constant(0 : i32) : i32
+    // CHECK:         [[C1:%.*]] = llvm.mlir.constant(1 : i32) : i32
+    // CHECK:         [[C2:%.*]] = llvm.mlir.constant(2 : i32) : i32
     // CHECK:         llvm.call spir_funccc @_Z12get_group_idj([[C0]]) {
     // CHECK-SAME-DAG:  memory_effects = #llvm.memory_effects<other = none, argMem = none, inaccessibleMem = none>
     // CHECK-SAME-DAG:  no_unwind
@@ -53,7 +55,6 @@ gpu.module @builtins {
     // CHECK-64-SAME: } : (i32) -> i64
     // CHECK-32-SAME: } : (i32) -> i32
     %block_id_x = gpu.block_id x
-    // CHECK:         [[C1:%.*]] = llvm.mlir.constant(1 : i32) : i32
     // CHECK:         llvm.call spir_funccc @_Z12get_group_idj([[C1]]) {
     // CHECK-SAME-DAG:  memory_effects = #llvm.memory_effects<other = none, argMem = none, inaccessibleMem = none>
     // CHECK-SAME-DAG:  no_unwind
@@ -62,7 +63,6 @@ gpu.module @builtins {
     // CHECK-64-SAME: } : (i32) -> i64
     // CHECK-32-SAME: } : (i32) -> i32
     %block_id_y = gpu.block_id y
-    // CHECK:         [[C2:%.*]] = llvm.mlir.constant(2 : i32) : i32
     // CHECK:         llvm.call spir_funccc @_Z12get_group_idj([[C2]]) {
     // CHECK-SAME-DAG:  memory_effects = #llvm.memory_effects<other = none, argMem = none, inaccessibleMem = none>
     // CHECK-SAME-DAG:  no_unwind
@@ -77,6 +77,8 @@ gpu.module @builtins {
   // CHECK-LABEL: gpu_global_id
   func.func @gpu_global_id() -> (index, index, index) {
     // CHECK:         [[C0:%.*]] = llvm.mlir.constant(0 : i32) : i32
+    // CHECK:         [[C1:%.*]] = llvm.mlir.constant(1 : i32) : i32
+    // CHECK:         [[C2:%.*]] = llvm.mlir.constant(2 : i32) : i32
     // CHECK:         llvm.call spir_funccc @_Z13get_global_idj([[C0]]) {
     // CHECK-SAME-DAG:  memory_effects = #llvm.memory_effects<other = none, argMem = none, inaccessibleMem = none>
     // CHECK-SAME-DAG:  no_unwind
@@ -85,7 +87,6 @@ gpu.module @builtins {
     // CHECK-64-SAME: } : (i32) -> i64
     // CHECK-32-SAME: } : (i32) -> i32
     %global_id_x = gpu.global_id x
-    // CHECK:         [[C1:%.*]] = llvm.mlir.constant(1 : i32) : i32
     // CHECK:         llvm.call spir_funccc @_Z13get_global_idj([[C1]]) {
     // CHECK-SAME-DAG:  memory_effects = #llvm.memory_effects<other = none, argMem = none, inaccessibleMem = none>
     // CHECK-SAME-DAG:  no_unwind
@@ -94,7 +95,6 @@ gpu.module @builtins {
     // CHECK-64-SAME: } : (i32) -> i64
     // CHECK-32-SAME: } : (i32) -> i32
     %global_id_y = gpu.global_id y
-    // CHECK:         [[C2:%.*]] = llvm.mlir.constant(2 : i32) : i32
     // CHECK:         llvm.call spir_funccc @_Z13get_global_idj([[C2]]) {
     // CHECK-SAME-DAG:  memory_effects = #llvm.memory_effects<other = none, argMem = none, inaccessibleMem = none>
     // CHECK-SAME-DAG:  no_unwind
@@ -109,6 +109,8 @@ gpu.module @builtins {
   // CHECK-LABEL: gpu_block_dim
   func.func @gpu_block_dim() -> (index, index, index) {
     // CHECK:         [[C0:%.*]] = llvm.mlir.constant(0 : i32) : i32
+    // CHECK:         [[C1:%.*]] = llvm.mlir.constant(1 : i32) : i32
+    // CHECK:         [[C2:%.*]] = llvm.mlir.constant(2 : i32) : i32
     // CHECK:         llvm.call spir_funccc @_Z14get_local_sizej([[C0]]) {
     // CHECK-SAME-DAG:  memory_effects = #llvm.memory_effects<other = none, argMem = none, inaccessibleMem = none>
     // CHECK-SAME-DAG:  no_unwind
@@ -117,7 +119,6 @@ gpu.module @builtins {
     // CHECK-64-SAME: } : (i32) -> i64
     // CHECK-32-SAME: } : (i32) -> i32
     %block_dim_x = gpu.block_dim x
-    // CHECK:         [[C1:%.*]] = llvm.mlir.constant(1 : i32) : i32
     // CHECK:         llvm.call spir_funccc @_Z14get_local_sizej([[C1]]) {
     // CHECK-SAME-DAG:  memory_effects = #llvm.memory_effects<other = none, argMem = none, inaccessibleMem = none>
     // CHECK-SAME-DAG:  no_unwind
@@ -126,7 +127,6 @@ gpu.module @builtins {
     // CHECK-64-SAME: } : (i32) -> i64
     // CHECK-32-SAME: } : (i32) -> i32
     %block_dim_y = gpu.block_dim y
-    // CHECK:         [[C2:%.*]] = llvm.mlir.constant(2 : i32) : i32
     // CHECK:         llvm.call spir_funccc @_Z14get_local_sizej([[C2]]) {
     // CHECK-SAME-DAG:  memory_effects = #llvm.memory_effects<other = none, argMem = none, inaccessibleMem = none>
     // CHECK-SAME-DAG:  no_unwind
@@ -141,6 +141,8 @@ gpu.module @builtins {
   // CHECK-LABEL: gpu_thread_id
   func.func @gpu_thread_id() -> (index, index, index) {
     // CHECK:         [[C0:%.*]] = llvm.mlir.constant(0 : i32) : i32
+    // CHECK:         [[C1:%.*]] = llvm.mlir.constant(1 : i32) : i32
+    // CHECK:         [[C2:%.*]] = llvm.mlir.constant(2 : i32) : i32
     // CHECK:         llvm.call spir_funccc @_Z12get_local_idj([[C0]]) {
     // CHECK-SAME-DAG:  memory_effects = #llvm.memory_effects<other = none, argMem = none, inaccessibleMem = none>
     // CHECK-SAME-DAG:  no_unwind
@@ -149,7 +151,6 @@ gpu.module @builtins {
     // CHECK-64-SAME: } : (i32) -> i64
     // CHECK-32-SAME: } : (i32) -> i32
     %thread_id_x = gpu.thread_id x
-    // CHECK:         [[C1:%.*]] = llvm.mlir.constant(1 : i32) : i32
     // CHECK:         llvm.call spir_funccc @_Z12get_local_idj([[C1]]) {
     // CHECK-SAME-DAG:  memory_effects = #llvm.memory_effects<other = none, argMem = none, inaccessibleMem = none>
     // CHECK-SAME-DAG:  no_unwind
@@ -158,7 +159,6 @@ gpu.module @builtins {
     // CHECK-64-SAME: } : (i32) -> i64
     // CHECK-32-SAME: } : (i32) -> i32
     %thread_id_y = gpu.thread_id y
-    // CHECK:         [[C2:%.*]] = llvm.mlir.constant(2 : i32) : i32
     // CHECK:         llvm.call spir_funccc @_Z12get_local_idj([[C2]]) {
     // CHECK-SAME-DAG:  memory_effects = #llvm.memory_effects<other = none, argMem = none, inaccessibleMem = none>
     // CHECK-SAME-DAG:  no_unwind
@@ -173,6 +173,8 @@ gpu.module @builtins {
   // CHECK-LABEL: gpu_grid_dim
   func.func @gpu_grid_dim() -> (index, index, index) {
     // CHECK:         [[C0:%.*]] = llvm.mlir.constant(0 : i32) : i32
+    // CHECK:         [[C1:%.*]] = llvm.mlir.constant(1 : i32) : i32
+    // CHECK:         [[C2:%.*]] = llvm.mlir.constant(2 : i32) : i32
     // CHECK:         llvm.call spir_funccc @_Z14get_num_groupsj([[C0]]) {
     // CHECK-SAME-DAG:  memory_effects = #llvm.memory_effects<other = none, argMem = none, inaccessibleMem = none>
     // CHECK-SAME-DAG:  no_unwind
@@ -181,7 +183,6 @@ gpu.module @builtins {
     // CHECK-64-SAME: } : (i32) -> i64
     // CHECK-32-SAME: } : (i32) -> i32
     %grid_dim_x = gpu.grid_dim x
-    // CHECK:         [[C1:%.*]] = llvm.mlir.constant(1 : i32) : i32
     // CHECK:         llvm.call spir_funccc @_Z14get_num_groupsj([[C1]]) {
     // CHECK-SAME-DAG:  memory_effects = #llvm.memory_effects<other = none, argMem = none, inaccessibleMem = none>
     // CHECK-SAME-DAG:  no_unwind
@@ -190,7 +191,6 @@ gpu.module @builtins {
     // CHECK-64-SAME: } : (i32) -> i64
     // CHECK-32-SAME: } : (i32) -> i32
     %grid_dim_y = gpu.grid_dim y
-    // CHECK:         [[C2:%.*]] = llvm.mlir.constant(2 : i32) : i32
     // CHECK:         llvm.call spir_funccc @_Z14get_num_groupsj([[C2]]) {
     // CHECK-SAME-DAG:  memory_effects = #llvm.memory_effects<other = none, argMem = none, inaccessibleMem = none>
     // CHECK-SAME-DAG:  no_unwind
@@ -216,6 +216,9 @@ gpu.module @barriers {
   // CHECK-LABEL: gpu_barrier
   func.func @gpu_barrier() {
     // CHECK:         [[GLOBAL_AND_LOCAL_FLAG:%.*]] = llvm.mlir.constant(3 : i32) : i32
+    // CHECK:         [[LOCAL_FLAG:%.*]] = llvm.mlir.constant(1 : i32) : i32
+    // CHECK:         [[GLOBAL_FLAG:%.*]] = llvm.mlir.constant(2 : i32) : i32
+    // CHECK:         [[NONE_FLAG:%.*]] = llvm.mlir.constant(0 : i32) : i32
     // CHECK:         llvm.call spir_funccc @_Z7barrierj([[GLOBAL_AND_LOCAL_FLAG]]) {
     // CHECK-SAME-DAG:  no_unwind
     // CHECK-SAME-DAG:  convergent
@@ -223,24 +226,18 @@ gpu.module @barriers {
     // CHECK-NOT:       memory_effects = #llvm.memory_effects
     // CHECK-SAME:    } : (i32) -> ()
     gpu.barrier
-    // CHECK:         [[GLOBAL_AND_LOCAL_FLAG2:%.*]] = llvm.mlir.constant(3 : i32) : i32
-    // CHECK:         llvm.call spir_funccc @_Z7barrierj([[GLOBAL_AND_LOCAL_FLAG2]])
+    // CHECK:         llvm.call spir_funccc @_Z7barrierj([[GLOBAL_AND_LOCAL_FLAG]])
     gpu.barrier memfence [#gpu.address_space<global>, #gpu.address_space<workgroup>]
-    // CHECK:         [[LOCAL_FLAG:%.*]] = llvm.mlir.constant(1 : i32) : i32
     // CHECK:         llvm.call spir_funccc @_Z7barrierj([[LOCAL_FLAG]])
     gpu.barrier memfence [#gpu.address_space<workgroup>]
-    // CHECK:         [[GLOBAL_FLAG:%.*]] = llvm.mlir.constant(2 : i32) : i32
     // CHECK:         llvm.call spir_funccc @_Z7barrierj([[GLOBAL_FLAG]])
     gpu.barrier memfence [#gpu.address_space<global>]
-    // CHECK:         [[NONE_FLAG:%.*]] = llvm.mlir.constant(0 : i32) : i32
     // CHECK:         llvm.call spir_funccc @_Z7barrierj([[NONE_FLAG]])
     gpu.barrier memfence []
-    // CHECK:         [[NONE_FLAG2:%.*]] = llvm.mlir.constant(0 : i32) : i32
-    // CHECK:         llvm.call spir_funccc @_Z7barrierj([[NONE_FLAG2]])
+    // CHECK:         llvm.call spir_funccc @_Z7barrierj([[NONE_FLAG]])
     gpu.barrier memfence [#gpu.address_space<private>]
     // Constant memory is read-only, no fencing needed (same as private)
-    // CHECK:         [[NONE_FLAG3:%.*]] = llvm.mlir.constant(0 : i32) : i32
-    // CHECK:         llvm.call spir_funccc @_Z7barrierj([[NONE_FLAG3]])
+    // CHECK:         llvm.call spir_funccc @_Z7barrierj([[NONE_FLAG]])
     gpu.barrier memfence [#gpu.address_space<constant>]
     return
   }
@@ -311,28 +308,20 @@ gpu.module @shuffles {
                           %i1_val: i1,
                           %offset: i32) attributes {intel_reqd_sub_group_size = 16 : i32} {
     %width = arith.constant 16 : i32
+    // CHECK:         llvm.mlir.constant(true) : i1
     // CHECK:         llvm.call spir_funccc @_Z17sub_group_shufflecj(%[[I8_VAL]], %[[OFFSET]])
-    // CHECK:         llvm.mlir.constant(true) : i1
     // CHECK:         llvm.call spir_funccc @_Z21sub_group_shuffle_xorsj(%[[I16_VAL]], %[[OFFSET]])
-    // CHECK:         llvm.mlir.constant(true) : i1
     // CHECK:         llvm.call spir_funccc @_Z17sub_group_shuffleij(%[[I32_VAL]], %[[OFFSET]])
-    // CHECK:         llvm.mlir.constant(true) : i1
     // CHECK:         llvm.call spir_funccc @_Z21sub_group_shuffle_xorlj(%[[I64_VAL]], %[[OFFSET]])
-    // CHECK:         llvm.mlir.constant(true) : i1
     // CHECK:         llvm.call spir_funccc @_Z20sub_group_shuffle_upDhj(%[[F16_VAL]], %[[OFFSET]])
-    // CHECK:         llvm.mlir.constant(true) : i1
     // CHECK:         llvm.call spir_funccc @_Z20sub_group_shuffle_upfj(%[[F32_VAL]], %[[OFFSET]])
-    // CHECK:         llvm.mlir.constant(true) : i1
     // CHECK:         llvm.call spir_funccc @_Z22sub_group_shuffle_downdj(%[[F64_VAL]], %[[OFFSET]])
-    // CHECK:         llvm.mlir.constant(true) : i1
     // CHECK:         %[[BF16_INBC:.*]] = llvm.bitcast %[[BF16_VAL]] : bf16 to i16
     // CHECK:         %[[BF16_CALL:.*]] = llvm.call spir_funccc @_Z22sub_group_shuffle_downsj(%[[BF16_INBC]], %[[OFFSET]])
     // CHECK:         llvm.bitcast %[[BF16_CALL]] : i16 to bf16
-    // CHECK:         llvm.mlir.constant(true) : i1
     // CHECK:         %[[I1_ZEXT:.*]] = llvm.zext %[[I1_VAL]] : i1 to i8
-    // CHECK:         %[[I1_CALL:.*]] = llvm.call spir_funccc @_Z21sub_group_shuffle_xorcj(%18, %arg9)
+    // CHECK:         %[[I1_CALL:.*]] = llvm.call spir_funccc @_Z21sub_group_shuffle_xorcj(%[[I1_ZEXT]], %arg9)
     // CHECK:         llvm.trunc %[[I1_CALL:.*]] : i8 to i1
-    // CHECK:         llvm.mlir.constant(true) : i1
     %shuffleResult0, %valid0 = gpu.shuffle idx %i8_val, %offset, %width : i8
     %shuffleResult1, %valid1 = gpu.shuffle xor %i16_val, %offset, %width : i16
     %shuffleResult2, %valid2 = gpu.shuffle idx %i32_val, %offset, %width : i32
@@ -354,8 +343,8 @@ gpu.module @shuffles {
 // CHECK-LABEL: llvm.func @gpu_shuffles(
 // CHECK-SAME: %[[ARG0:.*]]: i32, %[[ARG1:.*]]: i32
 // CHECK: %[[C16:.*]] = arith.constant 16 : i32
-// CHECK: %[[SHUF:.*]] = llvm.call spir_funccc @_Z17sub_group_shuffleij(%[[ARG0]], %[[ARG1]]) {convergent, no_unwind, will_return} : (i32, i32) -> i32
 // CHECK: %[[TRUE:.*]] = llvm.mlir.constant(true) : i1
+// CHECK: %[[SHUF:.*]] = llvm.call spir_funccc @_Z17sub_group_shuffleij(%[[ARG0]], %[[ARG1]]) {convergent, no_unwind, will_return} : (i32, i32) -> i32
 // CHECK: llvm.return
 gpu.module @shuffles_without_intel_reqd_sub_group_size_attribute {
   llvm.func @gpu_shuffles(%val: i32, %id: i32) {
@@ -449,6 +438,7 @@ gpu.module @kernels {
 // Private attribution is converted to an llvm.alloca
 
 // CHECK:           %[[VAL_2:.*]] = llvm.mlir.constant(32 : i64) : i64
+// CHECK:           %[[VAL_14:.*]] = llvm.mlir.constant(16 : i64) : i64
 // CHECK:           %[[VAL_3:.*]] = llvm.alloca %[[VAL_2]] x f32 : (i64) -> !llvm.ptr
 
 // MemRef descriptor built from allocated pointer
@@ -461,7 +451,6 @@ gpu.module @kernels {
 
 // Same code as above
 
-// CHECK:           %[[VAL_14:.*]] = llvm.mlir.constant(16 : i64) : i64
 // CHECK:           %[[VAL_15:.*]] = llvm.alloca %[[VAL_14]] x i16 : (i64) -> !llvm.ptr
 
 // CHECK-64:        %[[VAL_16:.*]] = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
@@ -513,9 +502,8 @@ gpu.module @kernels {
 // CHECK:           %[[VAL_79:.*]] = llvm.mlir.constant(32 : i64) : i64
 // CHECK:           %[[VAL_80:.*]] = llvm.alloca %[[VAL_79]] x i32 : (i64) -> !llvm.ptr
 
-// CHECK:           %[[VAL_91:.*]] = llvm.mlir.constant(32 : i64) : i64
-// CHECK-64:        %[[VAL_92:.*]] = llvm.alloca %[[VAL_91]] x i64 : (i64) -> !llvm.ptr
-// CHECK-32:        %[[VAL_92:.*]] = llvm.alloca %[[VAL_91]] x i32 : (i64) -> !llvm.ptr
+// CHECK-64:        %[[VAL_92:.*]] = llvm.alloca %[[VAL_79]] x i64 : (i64) -> !llvm.ptr
+// CHECK-32:        %[[VAL_92:.*]] = llvm.alloca %[[VAL_79]] x i32 : (i64) -> !llvm.ptr
   gpu.func @kernel_with_both_attributions()
       workgroup(%arg4: memref<8xf32, #gpu.address_space<workgroup>>, %arg5: memref<16xindex, #gpu.address_space<workgroup>>)
       private(%arg6: memref<32xi32, #gpu.address_space<private>>, %arg7: memref<32xindex, #gpu.address_space<private>>)

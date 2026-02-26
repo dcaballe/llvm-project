@@ -37,9 +37,8 @@ spirv.func @non_uniform_iadd(%arg0: i32) -> i32 "None" {
 // CHECK-SAME:                                %[[VAL_0:.*]]: f32) -> f32 {
 // CHECK:           %[[VAL_1:.*]] = llvm.mlir.constant(16 : i32) : i32
 // CHECK:           %[[VAL_2:.*]] = llvm.mlir.constant(3 : i32) : i32
-// CHECK:           %[[VAL_3:.*]] = llvm.mlir.constant(3 : i32) : i32
-// CHECK:           %[[VAL_4:.*]] = llvm.call spir_funccc @_Z27__spirv_GroupNonUniformFAddiifj(%[[VAL_2]], %[[VAL_3]], %[[VAL_0]], %[[VAL_1]]) {convergent, no_unwind, will_return} : (i32, i32, f32, i32) -> f32
-// CHECK:           llvm.return %[[VAL_4]] : f32
+// CHECK:           %[[VAL_3:.*]] = llvm.call spir_funccc @_Z27__spirv_GroupNonUniformFAddiifj(%[[VAL_2]], %[[VAL_2]], %[[VAL_0]], %[[VAL_1]]) {convergent, no_unwind, will_return} : (i32, i32, f32, i32) -> f32
+// CHECK:           llvm.return %[[VAL_3]] : f32
 // CHECK:         }
 spirv.func @non_uniform_fadd(%arg0: f32) -> f32 "None" {
   %0 = spirv.Constant 16 : i32
@@ -51,9 +50,8 @@ spirv.func @non_uniform_fadd(%arg0: f32) -> f32 "None" {
 // CHECK-SAME:                                %[[VAL_0:.*]]: i32) -> i32 {
 // CHECK:           %[[VAL_1:.*]] = llvm.mlir.constant(16 : i32) : i32
 // CHECK:           %[[VAL_2:.*]] = llvm.mlir.constant(3 : i32) : i32
-// CHECK:           %[[VAL_3:.*]] = llvm.mlir.constant(3 : i32) : i32
-// CHECK:           %[[VAL_4:.*]] = llvm.call spir_funccc @_Z27__spirv_GroupNonUniformIMuliijj(%[[VAL_2]], %[[VAL_3]], %[[VAL_0]], %[[VAL_1]]) {convergent, no_unwind, will_return} : (i32, i32, i32, i32) -> i32
-// CHECK:           llvm.return %[[VAL_4]] : i32
+// CHECK:           %[[VAL_3:.*]] = llvm.call spir_funccc @_Z27__spirv_GroupNonUniformIMuliijj(%[[VAL_2]], %[[VAL_2]], %[[VAL_0]], %[[VAL_1]]) {convergent, no_unwind, will_return} : (i32, i32, i32, i32) -> i32
+// CHECK:           llvm.return %[[VAL_3]] : i32
 // CHECK:         }
 spirv.func @non_uniform_imul(%arg0: i32) -> i32 "None" {
   %0 = spirv.Constant 16 : i32
@@ -113,9 +111,8 @@ spirv.func @non_uniform_fmin(%arg0: f32) -> f32 "None" {
 // CHECK-SAME:                                        %[[VAL_0:.*]]: f32) -> f32 {
 // CHECK:           %[[VAL_1:.*]] = llvm.mlir.constant(16 : i32) : i32
 // CHECK:           %[[VAL_2:.*]] = llvm.mlir.constant(3 : i32) : i32
-// CHECK:           %[[VAL_3:.*]] = llvm.mlir.constant(3 : i32) : i32
-// CHECK:           %[[VAL_4:.*]] = llvm.call spir_funccc @_Z27__spirv_GroupNonUniformFMiniifj(%[[VAL_2]], %[[VAL_3]], %[[VAL_0]], %[[VAL_1]]) {convergent, no_unwind, will_return} : (i32, i32, f32, i32) -> f32
-// CHECK:           llvm.return %[[VAL_4]] : f32
+// CHECK:           %[[VAL_3:.*]] = llvm.call spir_funccc @_Z27__spirv_GroupNonUniformFMiniifj(%[[VAL_2]], %[[VAL_2]], %[[VAL_0]], %[[VAL_1]]) {convergent, no_unwind, will_return} : (i32, i32, f32, i32) -> f32
+// CHECK:           llvm.return %[[VAL_3]] : f32
 // CHECK:         }
 spirv.func @non_uniform_fmin_cluster(%arg0: f32) -> f32 "None" {
   %0 = spirv.Constant 16 : i32
@@ -163,9 +160,8 @@ spirv.func @non_uniform_fmax(%arg0: f32) -> f32 "None" {
 // CHECK-SAME:                                        %[[VAL_0:.*]]: i32) -> i32 {
 // CHECK:           %[[VAL_1:.*]] = llvm.mlir.constant(16 : i32) : i32
 // CHECK:           %[[VAL_2:.*]] = llvm.mlir.constant(3 : i32) : i32
-// CHECK:           %[[VAL_3:.*]] = llvm.mlir.constant(3 : i32) : i32
-// CHECK:           %[[VAL_4:.*]] = llvm.call spir_funccc @_Z27__spirv_GroupNonUniformSMaxiijj(%[[VAL_2]], %[[VAL_3]], %[[VAL_0]], %[[VAL_1]]) {convergent, no_unwind, will_return} : (i32, i32, i32, i32) -> i32
-// CHECK:           llvm.return %[[VAL_4]] : i32
+// CHECK:           %[[VAL_3:.*]] = llvm.call spir_funccc @_Z27__spirv_GroupNonUniformSMaxiijj(%[[VAL_2]], %[[VAL_2]], %[[VAL_0]], %[[VAL_1]]) {convergent, no_unwind, will_return} : (i32, i32, i32, i32) -> i32
+// CHECK:           llvm.return %[[VAL_3]] : i32
 // CHECK:         }
 spirv.func @non_uniform_smax_cluster(%arg0: i32) -> i32 "None" {
   %0 = spirv.Constant 16 : i32

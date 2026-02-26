@@ -395,8 +395,8 @@ private:
     const DataLayout &dl = DataLayout(mod);
     std::int64_t distance = getSizeInBytes(dl, varType);
 
-    Value sizeBytes = LLVM::ConstantOp::create(
-        rewriter, loc, mallocFn.getFunctionType().getParamType(0), distance);
+    Value sizeBytes = rewriter.createOrFold<LLVM::ConstantOp>(
+        loc, mallocFn.getFunctionType().getParamType(0), distance);
 
     auto mallocCallOp =
         LLVM::CallOp::create(rewriter, loc, mallocFn, ValueRange{sizeBytes});

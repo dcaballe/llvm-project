@@ -19,11 +19,11 @@ module {
 // Wait operands: waitNum matches the list length, values are stored into an
 // alloca'd wait list, and the async queue remains sync (-1).
 // CHECK-LABEL: llvm.func @test_wait_operands
-// CHECK: %[[ASYNC:.*]] = llvm.mlir.constant(-1 : i64)
-// CHECK: %[[WAIT0:.*]] = llvm.mlir.constant(0 : i64)
-// CHECK: %[[WAIT_NUM:.*]] = llvm.mlir.constant(1 : i32)
-// CHECK: %[[WAIT_LIST:.*]] = llvm.alloca %[[WAIT_NUM]] x i64
 // CHECK: %[[IDX:.*]] = llvm.mlir.constant(0 : i32)
+// CHECK: %[[ASYNC:.*]] = llvm.mlir.constant(-1 : i64)
+// CHECK: %[[WAIT_NUM:.*]] = llvm.mlir.constant(1 : i32)
+// CHECK: %[[WAIT0:.*]] = llvm.mlir.constant(0 : i64)
+// CHECK: %[[WAIT_LIST:.*]] = llvm.alloca %[[WAIT_NUM]] x i64
 // CHECK: %[[WAIT_SLOT:.*]] = llvm.getelementptr %[[WAIT_LIST]][%[[IDX]]] : (!llvm.ptr, i32) -> !llvm.ptr, i64
 // CHECK: llvm.store %[[WAIT0]], %[[WAIT_SLOT]] : i64, !llvm.ptr
 // CHECK: llvm.call @__tgt_acc_wait(%{{.*}}, %{{.*}}, %{{.*}}, %{{.*}}, %[[WAIT_NUM]], %[[WAIT_LIST]], %[[ASYNC]])

@@ -93,12 +93,12 @@ func.func @await_group() {
 
 // CHECK-LABEL: @await_and_resume_token
 func.func @await_and_resume_token() {
+  // CHECK: %[[RESUME:.*]] = llvm.mlir.addressof @__resume
   %0 = async.coro.id
   // CHECK: %[[HDL:.*]] = llvm.intr.coro.begin
   %1 = async.coro.begin %0
   // CHECK: %[[TOKEN:.*]] = call @mlirAsyncRuntimeCreateToken
   %2 = async.runtime.create : !async.token
-  // CHECK: %[[RESUME:.*]] = llvm.mlir.addressof @__resume
   // CHECK: call @mlirAsyncRuntimeAwaitTokenAndExecute
   // CHECK-SAME: (%[[TOKEN]], %[[HDL]], %[[RESUME]])
   async.runtime.await_and_resume %2, %1 : !async.token
@@ -107,12 +107,12 @@ func.func @await_and_resume_token() {
 
 // CHECK-LABEL: @await_and_resume_value
 func.func @await_and_resume_value() {
+  // CHECK: %[[RESUME:.*]] = llvm.mlir.addressof @__resume
   %0 = async.coro.id
   // CHECK: %[[HDL:.*]] = llvm.intr.coro.begin
   %1 = async.coro.begin %0
   // CHECK: %[[VALUE:.*]] = call @mlirAsyncRuntimeCreateValue
   %2 = async.runtime.create : !async.value<f32>
-  // CHECK: %[[RESUME:.*]] = llvm.mlir.addressof @__resume
   // CHECK: call @mlirAsyncRuntimeAwaitValueAndExecute
   // CHECK-SAME: (%[[VALUE]], %[[HDL]], %[[RESUME]])
   async.runtime.await_and_resume %2, %1 : !async.value<f32>
@@ -122,12 +122,12 @@ func.func @await_and_resume_value() {
 // CHECK-LABEL: @await_and_resume_group
 func.func @await_and_resume_group() {
   %c = arith.constant 1 : index
+  // CHECK: %[[RESUME:.*]] = llvm.mlir.addressof @__resume
   %0 = async.coro.id
   // CHECK: %[[HDL:.*]] = llvm.intr.coro.begin
   %1 = async.coro.begin %0
   // CHECK: %[[TOKEN:.*]] = call @mlirAsyncRuntimeCreateGroup
   %2 = async.runtime.create_group %c : !async.group
-  // CHECK: %[[RESUME:.*]] = llvm.mlir.addressof @__resume
   // CHECK: call @mlirAsyncRuntimeAwaitAllInGroupAndExecute
   // CHECK-SAME: (%[[TOKEN]], %[[HDL]], %[[RESUME]])
   async.runtime.await_and_resume %2, %1 : !async.group
@@ -136,10 +136,10 @@ func.func @await_and_resume_group() {
 
 // CHECK-LABEL: @resume
 func.func @resume() {
+  // CHECK: %[[RESUME:.*]] = llvm.mlir.addressof @__resume
   %0 = async.coro.id
   // CHECK: %[[HDL:.*]] = llvm.intr.coro.begin
   %1 = async.coro.begin %0
-  // CHECK: %[[RESUME:.*]] = llvm.mlir.addressof @__resume
   // CHECK: call @mlirAsyncRuntimeExecute(%[[HDL]], %[[RESUME]])
   async.runtime.resume %1
   return

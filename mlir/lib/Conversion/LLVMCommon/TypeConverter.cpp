@@ -736,7 +736,7 @@ Value LLVMTypeConverter::promoteOneMemRefDescriptor(Location loc, Value operand,
   // Alloca with proper alignment. We do not expect optimizations of this
   // alloca op and so we omit allocating at the entry block.
   auto ptrType = LLVM::LLVMPointerType::get(builder.getContext());
-  Value one = LLVM::ConstantOp::create(builder, loc, builder.getI64Type(),
+  Value one = builder.createOrFold<LLVM::ConstantOp>(loc, builder.getI64Type(),
                                        builder.getIndexAttr(1));
   Value allocated =
       LLVM::AllocaOp::create(builder, loc, ptrType, operand.getType(), one);

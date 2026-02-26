@@ -996,7 +996,7 @@ void HopperBuilder::buildBarrierArriveTx(TypedValue<MBarrierGroupType> barrier,
 
 void HopperBuilder::buildTryWaitParity(TypedValue<MBarrierGroupType> barrier) {
   Type i1 = rewriter.getI1Type();
-  Value parity = LLVM::ConstantOp::create(rewriter, loc, i1, 0);
+  Value parity = rewriter.createOrFold<LLVM::ConstantOp>(loc, i1, 0);
   // 10M is an arbitrary, not too small or too big number to specify the number
   // of ticks before retry.
   // TODO: hoist this in a default dialect constant.

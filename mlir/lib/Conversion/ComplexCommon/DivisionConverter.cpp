@@ -131,8 +131,8 @@ void mlir::complex::convertDivToLLVMUsingRangeReduction(
 
   // Consider corner cases.
   // Case 1. Zero denominator, numerator contains at most one NaN value.
-  Value zero = LLVM::ConstantOp::create(rewriter, loc, elementType,
-                                        rewriter.getZeroAttr(elementType));
+  Value zero = rewriter.createOrFold<LLVM::ConstantOp>(
+      loc, elementType, rewriter.getZeroAttr(elementType));
   Value rhsRealAbs = LLVM::FAbsOp::create(rewriter, loc, rhsRe, fmf);
   Value rhsRealIsZero = LLVM::FCmpOp::create(
       rewriter, loc, LLVM::FCmpPredicate::oeq, rhsRealAbs, zero);
@@ -148,8 +148,8 @@ void mlir::complex::convertDivToLLVMUsingRangeReduction(
   Value resultIsInfinity = LLVM::AndOp::create(
       rewriter, loc, lhsContainsNotNaNValue,
       LLVM::AndOp::create(rewriter, loc, rhsRealIsZero, rhsImagIsZero));
-  Value inf = LLVM::ConstantOp::create(
-      rewriter, loc, elementType,
+  Value inf = rewriter.createOrFold<LLVM::ConstantOp>(
+      loc, elementType,
       rewriter.getFloatAttr(elementType,
                             APFloat::getInf(elementType.getFloatSemantics())));
   Value infWithSignOfrhsReal =
@@ -176,8 +176,8 @@ void mlir::complex::convertDivToLLVMUsingRangeReduction(
       LLVM::OrOp::create(rewriter, loc, lhsRealInfinite, lhsImagInfinite);
   Value infNumFiniteDenom =
       LLVM::AndOp::create(rewriter, loc, lhsInfinite, rhsFinite);
-  Value one = LLVM::ConstantOp::create(rewriter, loc, elementType,
-                                       rewriter.getFloatAttr(elementType, 1));
+  Value one = rewriter.createOrFold<LLVM::ConstantOp>(
+      loc, elementType, rewriter.getFloatAttr(elementType, 1));
   Value lhsRealIsInfWithSign = LLVM::CopySignOp::create(
       rewriter, loc,
       LLVM::SelectOp::create(rewriter, loc, lhsRealInfinite, one, zero), lhsRe);

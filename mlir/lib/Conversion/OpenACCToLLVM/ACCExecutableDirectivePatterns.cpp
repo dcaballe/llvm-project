@@ -45,14 +45,14 @@ static Value getAsyncQueue(WaitOp op, ConversionPatternRewriter &rewriter,
   Location loc = op->getLoc();
   Type i64Ty = IntegerType::get(rewriter.getContext(), 64);
   if (op.getAsync())
-    return LLVM::ConstantOp::create(rewriter, loc, i64Ty,
-                                    config.getAsyncNoValueRuntimeValue());
+    return rewriter.createOrFold<LLVM::ConstantOp>(
+        loc, i64Ty, config.getAsyncNoValueRuntimeValue());
   if (Value asyncValue = op.getAsyncOperand()) {
     asyncValue = rewriter.getRemappedValue(asyncValue);
     return castToI64(loc, asyncValue, rewriter);
   }
-  return LLVM::ConstantOp::create(rewriter, loc, i64Ty,
-                                  config.getAsyncSyncRuntimeValue());
+  return rewriter.createOrFold<LLVM::ConstantOp>(
+      loc, i64Ty, config.getAsyncSyncRuntimeValue());
 }
 
 static LogicalResult createIfThen(Location loc, Value ifCond,
@@ -115,15 +115,15 @@ struct WaitOpLowering : public ACCExecutableDirectivePattern<WaitOp> {
             castToI64(loc, rewriter.getRemappedValue(operand), rewriter));
 
       unsigned size = waitValues.size();
-      Value waitNum = LLVM::ConstantOp::create(rewriter, loc, i32Ty, size);
+      Value waitNum = rewriter.createOrFold<LLVM::ConstantOp>(loc, i32Ty, size);
       Value waitList;
       if (size == 0) {
-        waitList = LLVM::ZeroOp::create(rewriter, loc, ptrTy);
+        waitList = rewriter.createOrFold<LLVM::ZeroOp>(loc, ptrTy);
       } else {
         waitList = LLVM::AllocaOp::create(rewriter, loc, ptrTy, i64Ty, waitNum);
         for (auto [index, waitValue] : llvm::enumerate(waitValues)) {
-          Value idx = LLVM::ConstantOp::create(rewriter, loc, i32Ty,
-                                               static_cast<int64_t>(index));
+          Value idx = rewriter.createOrFold<LLVM::ConstantOp>(
+              loc, i32Ty, static_cast<int64_t>(index));
           Value elementPtr = LLVM::GEPOp::create(
               rewriter, loc, ptrTy, i64Ty, waitList, ArrayRef<Value>{idx});
           LLVM::StoreOp::create(rewriter, loc, waitValue, elementPtr);
@@ -134,11 +134,10 @@ struct WaitOpLowering : public ACCExecutableDirectivePattern<WaitOp> {
       if (functionName.empty())
         functionName = getParentFunctionName(op);
       Value ident = createIdent(loc, functionName, rewriter, module, config);
-      Value flags = LLVM::ConstantOp::create(rewriter, loc, i64Ty, 0);
-      Value deviceType = LLVM::ConstantOp::create(
-          rewriter, loc, i64Ty,
-          config.getDeviceTypeRuntimeValue(DeviceType::None));
-      Value deviceNum = LLVM::ConstantOp::create(rewriter, loc, i32Ty, 0);
+      Value flags = rewriter.createOrFold<LLVM::ConstantOp>(loc, i64Ty, 0);
+      Value deviceType = rewriter.createOrFold<LLVM::ConstantOp>(
+          loc, i64Ty, config.getDeviceTypeRuntimeValue(DeviceType::None));
+      Value deviceNum = rewriter.createOrFold<LLVM::ConstantOp>(loc, i32Ty, 0);
 
       return createRuntimeCall(
           loc, rewriter, module, RuntimeFunction::ACCRTL_tgt_acc_wait, config,
@@ -162,13 +161,13 @@ emitDeviceOperationCall(Location loc, RuntimeFunction fn, DeviceType deviceType,
                         ModuleOp module, ConversionPatternRewriter &rewriter,
                         const ACCRuntimeCallConfig &config) {
   Type i64Ty = rewriter.getI64Type();
-  Value deviceTypeValue = LLVM::ConstantOp::create(
-      rewriter, loc, i64Ty, config.getDeviceTypeRuntimeValue(deviceType));
+  Value deviceTypeValue = rewriter.createOrFold<LLVM::ConstantOp>(
+      loc, i64Ty, config.getDeviceTypeRuntimeValue(deviceType));
   Value ident = createIdent(loc, functionName, rewriter, module, config);
-  Value flags = LLVM::ConstantOp::create(rewriter, loc, i64Ty, 0);
+  Value flags = rewriter.createOrFold<LLVM::ConstantOp>(loc, i64Ty, 0);
   Value deviceNumValue =
       deviceNum ? castToI64(loc, deviceNum, rewriter)
-                : LLVM::ConstantOp::create(rewriter, loc, i64Ty, -1);
+                : rewriter.createOrFold<LLVM::ConstantOp>(loc, i64Ty, -1);
   return createRuntimeCall(loc, rewriter, module, fn, config,
                            {ident, flags, deviceTypeValue, deviceNumValue});
 }
@@ -268,11 +267,11 @@ struct SetOpLowering : public ACCExecutableDirectivePattern<SetOp> {
             config);
       }
       if (auto deviceTypeAttr = op.getDeviceTypeAttr()) {
-        Value deviceTypeValue = LLVM::ConstantOp::create(
-            rewriter, loc, i64Ty,
+        Value deviceTypeValue = rewriter.createOrFold<LLVM::ConstantOp>(
+            loc, i64Ty,
             config.getDeviceTypeRuntimeValue(deviceTypeAttr.getValue()));
         Value ident = createIdent(loc, StringRef(), rewriter, module, config);
-        Value flags = LLVM::ConstantOp::create(rewriter, loc, i64Ty, 0);
+        Value flags = rewriter.createOrFold<LLVM::ConstantOp>(loc, i64Ty, 0);
         return createRuntimeCall(
             loc, rewriter, module,
             RuntimeFunction::ACCRTL_tgt_acc_set_device_type, config,

@@ -3666,6 +3666,7 @@ bool LLVM::ConstantOp::isBuildableWith(Attribute value, Type type) {
 
 ConstantOp LLVM::ConstantOp::materialize(OpBuilder &builder, Attribute value,
                                          Type type, Location loc) {
+  // Constant materialization hook, it must create a fresh op.
   if (isBuildableWith(value, type))
     return LLVM::ConstantOp::create(builder, loc, cast<TypedAttr>(value));
   return nullptr;
@@ -4724,6 +4725,7 @@ LogicalResult LLVMDialect::verifyRegionResultAttribute(Operation *op,
 
 Operation *LLVMDialect::materializeConstant(OpBuilder &builder, Attribute value,
                                             Type type, Location loc) {
+  // Constant materialization hook, it must create a fresh op.
   // If this was folded from an operation other than llvm.mlir.constant, it
   // should be materialized as such. Note that an llvm.mlir.zero may fold into
   // a builtin zero attribute and thus will materialize as a llvm.mlir.constant.
@@ -4768,8 +4770,8 @@ Value mlir::LLVM::createGlobalString(Location loc, OpBuilder &builder,
 
   LLVMPointerType ptrType = LLVMPointerType::get(ctx);
   // Get the pointer to the first character in the global string.
-  Value globalPtr =
-      LLVM::AddressOfOp::create(builder, loc, ptrType, global.getSymNameAttr());
+  Value globalPtr = builder.createOrFold<LLVM::AddressOfOp>(
+      loc, ptrType, global.getSymNameAttr());
   return LLVM::GEPOp::create(builder, loc, ptrType, type, globalPtr,
                              ArrayRef<GEPArg>{0, 0});
 }

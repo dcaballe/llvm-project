@@ -76,9 +76,9 @@ module attributes {dlti.dl_spec = #dlti.dl_spec<!llvm.ptr<270> = dense<32> : vec
 // CHECK-LABEL:   llvm.func @target_boxchar_(
 // CHECK-SAME:      %[[ARG0:.*]]: !llvm.ptr {fir.bindc_name = "l"}) attributes {fir.internal_name = "_QPtarget_boxchar", frame_pointer = #llvm.framePointerKind<all>, target_cpu = "x86-64"} {
 // CHECK: %[[VAL_0:.*]] = llvm.mlir.constant(1 : i64) : i64
+// CHECK: %[[VAL_3:.*]] = llvm.mlir.constant(16 : i64) : i64
 // CHECK: %[[VAL_1:.*]] = llvm.alloca %[[VAL_0]] x i32 {bindc_name = "i"} : (i64) -> !llvm.ptr
 // CHECK: %[[VAL_2:.*]] = llvm.mlir.constant(1 : i64) : i64
-// CHECK: %[[VAL_3:.*]] = llvm.mlir.constant(16 : i64) : i64
 // CHECK: %[[HEAP0:.*]] = llvm.call @malloc(%[[VAL_3]]) : (i64) -> !llvm.ptr
 // CHECK: %[[VAL_5:.*]] = llvm.alloca %[[VAL_2]] x !llvm.struct<(ptr, i64)> : (i64) -> !llvm.ptr
 // CHECK: %[[VAL_6:.*]] = llvm.mlir.constant(1 : index) : i64

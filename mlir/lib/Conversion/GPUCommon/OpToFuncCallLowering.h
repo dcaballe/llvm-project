@@ -116,9 +116,9 @@ public:
     // there is no guarantee of a specific value being used to indicate true,
     // compare for inequality with zero (rather than truncate or shift).
     if (isResultBool) {
-      Value zero = LLVM::ConstantOp::create(rewriter, op->getLoc(),
-                                            rewriter.getIntegerType(32),
-                                            rewriter.getI32IntegerAttr(0));
+      Value zero = rewriter.createOrFold<LLVM::ConstantOp>(
+          op->getLoc(), rewriter.getIntegerType(32),
+          rewriter.getI32IntegerAttr(0));
       Value truncated =
           LLVM::ICmpOp::create(rewriter, op->getLoc(), LLVM::ICmpPredicate::ne,
                                callOp.getResult(), zero);

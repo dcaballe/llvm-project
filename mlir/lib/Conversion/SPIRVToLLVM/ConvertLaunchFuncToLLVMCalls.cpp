@@ -254,8 +254,8 @@ class GPULaunchLowering : public ConvertOpToLLVMPattern<gpu::LaunchFuncOp> {
       // Copy the data from src operand pointer to dst global variable. Save
       // src, dst and size so that we can copy data back after emulating the
       // kernel call.
-      Value dst = LLVM::AddressOfOp::create(
-          rewriter, loc, typeConverter->convertType(spirvGlobal.getType()),
+      Value dst = rewriter.createOrFold<LLVM::AddressOfOp>(
+          loc, typeConverter->convertType(spirvGlobal.getType()),
           dstGlobal.getSymName());
       copy(loc, dst, src, sizeBytes, rewriter);
 

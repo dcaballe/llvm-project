@@ -213,7 +213,7 @@ createDecl(PatternRewriter &builder, SymbolTable &symbolTable,
                       {reduce.getOperands()[reductionIndex].getLoc()});
   builder.setInsertionPointToEnd(&decl.getInitializerRegion().back());
   Value init =
-      LLVM::ConstantOp::create(builder, reduce.getLoc(), type, initValue);
+      builder.createOrFold<LLVM::ConstantOp>(reduce.getLoc(), type, initValue);
   omp::YieldOp::create(builder, reduce.getLoc(), init);
 
   Operation *terminator =
@@ -440,9 +440,8 @@ struct ParallelOpLowering : public OpRewritePattern<scf::ParallelOp> {
     // Allocate reduction variables. Make sure the we don't overflow the stack
     // with local `alloca`s by saving and restoring the stack pointer.
     Location loc = parallelOp.getLoc();
-    Value one =
-        LLVM::ConstantOp::create(rewriter, loc, rewriter.getIntegerType(64),
-                                 rewriter.getI64IntegerAttr(1));
+    Value one = rewriter.createOrFold<LLVM::ConstantOp>(
+        loc, rewriter.getIntegerType(64), rewriter.getI64IntegerAttr(1));
     SmallVector<Value> reductionVariables;
     reductionVariables.reserve(parallelOp.getNumReductions());
     auto ptrType = LLVM::LLVMPointerType::get(parallelOp.getContext());
@@ -494,8 +493,8 @@ struct ParallelOpLowering : public OpRewritePattern<scf::ParallelOp> {
 
     SmallVector<Value> numThreadsVars;
     if (numThreads > 0) {
-      Value numThreadsVar = LLVM::ConstantOp::create(
-          rewriter, loc, rewriter.getI32IntegerAttr(numThreads));
+      Value numThreadsVar = rewriter.createOrFold<LLVM::ConstantOp>(
+          loc, rewriter.getI32IntegerAttr(numThreads));
       numThreadsVars.push_back(numThreadsVar);
     }
     // Create the parallel wrapper.

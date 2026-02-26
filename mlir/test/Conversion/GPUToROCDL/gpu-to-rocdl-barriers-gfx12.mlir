@@ -22,9 +22,9 @@ func.func @two_named_barriers() {
   %c4 = arith.constant 4 : i32
   %c8 = arith.constant 8 : i32
   // CHECK: %[[ADDR0:.*]] = llvm.mlir.addressof @[[NB0:__named_barrier[_0-9]*]] : !llvm.ptr<3>
+  // CHECK: %[[ADDR1:.*]] = llvm.mlir.addressof @[[NB1:__named_barrier[_0-9]*]] : !llvm.ptr<3>
   // CHECK: rocdl.s.barrier.init %[[ADDR0]] member_cnt = 4
   %nb0 = gpu.initialize_named_barrier %c4 : i32 -> !gpu.named_barrier
-  // CHECK: %[[ADDR1:.*]] = llvm.mlir.addressof @[[NB1:__named_barrier[_0-9]*]] : !llvm.ptr<3>
   // CHECK: rocdl.s.barrier.init %[[ADDR1]] member_cnt = 8
   %nb1 = gpu.initialize_named_barrier %c8 : i32 -> !gpu.named_barrier
   // CHECK: rocdl.s.barrier.join %[[ADDR0]]

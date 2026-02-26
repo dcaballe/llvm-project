@@ -37,13 +37,14 @@ func.func @execute_no_async_args(%arg0: f32, %arg1: memref<1xf32>) {
 // CHECK-LABEL: func private @async_execute_fn(%arg0: f32, %arg1: memref<1xf32>)
 // CHECK-SAME: -> !llvm.ptr
 
+// CHECK: %[[RESUME:.*]] = llvm.mlir.addressof @__resume
+
 // Create token for return op, and mark a function as a coroutine.
 // CHECK: %[[RET:.*]] = call @mlirAsyncRuntimeCreateToken()
 // CHECK: %[[HDL:.*]] = llvm.intr.coro.begin
 
 // Pass a suspended coroutine to the async runtime.
 // CHECK: %[[STATE:.*]] = llvm.intr.coro.save
-// CHECK: %[[RESUME:.*]] = llvm.mlir.addressof @__resume
 // CHECK: call @mlirAsyncRuntimeExecute(%[[HDL]], %[[RESUME]])
 // CHECK: %[[SUSPENDED:.*]] = llvm.intr.coro.suspend %[[STATE]]
 

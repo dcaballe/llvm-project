@@ -281,8 +281,8 @@ GPUFuncOpLowering::matchAndRewrite(gpu::GPUFuncOp gpuFuncOp, OpAdaptor adaptor,
       for (const auto [idx, global] : llvm::enumerate(workgroupBuffers)) {
         auto ptrType = LLVM::LLVMPointerType::get(rewriter.getContext(),
                                                   global.getAddrSpace());
-        Value address = LLVM::AddressOfOp::create(rewriter, loc, ptrType,
-                                                  global.getSymNameAttr());
+        Value address = rewriter.createOrFold<LLVM::AddressOfOp>(
+            loc, ptrType, global.getSymNameAttr());
         Value memory =
             LLVM::GEPOp::create(rewriter, loc, ptrType, global.getType(),
                                 address, ArrayRef<LLVM::GEPArg>{0, 0});
@@ -313,8 +313,8 @@ GPUFuncOpLowering::matchAndRewrite(gpu::GPUFuncOp gpuFuncOp, OpAdaptor adaptor,
       Type elementType = typeConverter->convertType(type.getElementType());
       auto ptrType =
           LLVM::LLVMPointerType::get(rewriter.getContext(), allocaAddrSpace);
-      Value numElements = LLVM::ConstantOp::create(
-          rewriter, gpuFuncOp.getLoc(), int64Ty, type.getNumElements());
+      Value numElements = rewriter.createOrFold<LLVM::ConstantOp>(
+          gpuFuncOp.getLoc(), int64Ty, type.getNumElements());
       uint64_t alignment = 0;
       if (auto alignAttr =
               dyn_cast_or_null<IntegerAttr>(gpuFuncOp.getPrivateAttributionAttr(
@@ -435,7 +435,7 @@ LogicalResult GPUPrintfOpToHIPLowering::matchAndRewrite(
           {llvmI64, ptrType, /*length (bytes)*/ llvmI64, /*isLast*/ llvmI32}));
 
   /// Start the printf hostcall
-  Value zeroI64 = LLVM::ConstantOp::create(rewriter, loc, llvmI64, 0);
+  Value zeroI64 = rewriter.createOrFold<LLVM::ConstantOp>(loc, llvmI64, 0);
   auto printfBeginCall =
       LLVM::CallOp::create(rewriter, loc, ocklBegin, zeroI64);
   Value printfDesc = printfBeginCall.getResult();
@@ -445,18 +445,18 @@ LogicalResult GPUPrintfOpToHIPLowering::matchAndRewrite(
       rewriter, loc, moduleOp, llvmI8, "printfFormat_", adaptor.getFormat());
 
   // Get a pointer to the format string's first element and pass it to printf()
-  Value globalPtr = LLVM::AddressOfOp::create(
-      rewriter, loc,
+  Value globalPtr = rewriter.createOrFold<LLVM::AddressOfOp>(
+      loc,
       LLVM::LLVMPointerType::get(rewriter.getContext(), global.getAddrSpace()),
       global.getSymNameAttr());
   Value stringStart =
       LLVM::GEPOp::create(rewriter, loc, ptrType, global.getGlobalType(),
                           globalPtr, ArrayRef<LLVM::GEPArg>{0, 0});
-  Value stringLen = LLVM::ConstantOp::create(
-      rewriter, loc, llvmI64, cast<StringAttr>(global.getValueAttr()).size());
+  Value stringLen = rewriter.createOrFold<LLVM::ConstantOp>(
+      loc, llvmI64, cast<StringAttr>(global.getValueAttr()).size());
 
-  Value oneI32 = LLVM::ConstantOp::create(rewriter, loc, llvmI32, 1);
-  Value zeroI32 = LLVM::ConstantOp::create(rewriter, loc, llvmI32, 0);
+  Value oneI32 = rewriter.createOrFold<LLVM::ConstantOp>(loc, llvmI32, 1);
+  Value zeroI32 = rewriter.createOrFold<LLVM::ConstantOp>(loc, llvmI32, 0);
 
   auto appendFormatCall = LLVM::CallOp::create(
       rewriter, loc, ocklAppendStringN,
@@ -474,7 +474,7 @@ LogicalResult GPUPrintfOpToHIPLowering::matchAndRewrite(
     SmallVector<mlir::Value, 2 + argsPerAppend + 1> arguments;
     arguments.push_back(printfDesc);
     arguments.push_back(
-        LLVM::ConstantOp::create(rewriter, loc, llvmI32, numArgsThisCall));
+        rewriter.createOrFold<LLVM::ConstantOp>(loc, llvmI32, numArgsThisCall));
     for (size_t i = group; i < bound; ++i) {
       Value arg = adaptor.getArgs()[i];
       if (auto floatType = dyn_cast<FloatType>(arg.getType())) {
@@ -530,8 +530,8 @@ LogicalResult GPUPrintfOpToLLVMCallLowering::matchAndRewrite(
       /*alignment=*/0, addressSpace);
 
   // Get a pointer to the format string's first element
-  Value globalPtr = LLVM::AddressOfOp::create(
-      rewriter, loc,
+  Value globalPtr = rewriter.createOrFold<LLVM::AddressOfOp>(
+      loc,
       LLVM::LLVMPointerType::get(rewriter.getContext(), global.getAddrSpace()),
       global.getSymNameAttr());
   Value stringStart =
@@ -580,7 +580,7 @@ LogicalResult GPUPrintfOpToVPrintfLowering::matchAndRewrite(
                                 "printfFormat_", adaptor.getFormat());
 
   // Get a pointer to the format string's first element
-  Value globalPtr = LLVM::AddressOfOp::create(rewriter, loc, global);
+  Value globalPtr = rewriter.createOrFold<LLVM::AddressOfOp>(loc, global);
   Value stringStart =
       LLVM::GEPOp::create(rewriter, loc, ptrType, global.getGlobalType(),
                           globalPtr, ArrayRef<LLVM::GEPArg>{0, 0});
@@ -600,8 +600,8 @@ LogicalResult GPUPrintfOpToVPrintfLowering::matchAndRewrite(
   }
   Type structType =
       LLVM::LLVMStructType::getLiteral(gpuPrintfOp.getContext(), types);
-  Value one = LLVM::ConstantOp::create(rewriter, loc, rewriter.getI64Type(),
-                                       rewriter.getIndexAttr(1));
+  Value one = rewriter.createOrFold<LLVM::ConstantOp>(
+      loc, rewriter.getI64Type(), rewriter.getIndexAttr(1));
   Value tempAlloc =
       LLVM::AllocaOp::create(rewriter, loc, ptrType, structType, one,
                              /*alignment=*/0);
@@ -634,7 +634,7 @@ static Value scalarizeVectorOpHelper(Operation *op, ValueRange operands,
   Type elementType = vectorType.getElementType();
 
   for (int64_t i = 0; i < vectorType.getNumElements(); ++i) {
-    Value index = LLVM::ConstantOp::create(rewriter, loc, indexType, i);
+    Value index = rewriter.createOrFold<LLVM::ConstantOp>(loc, indexType, i);
     auto extractElement = [&](Value operand) -> Value {
       if (!isa<VectorType>(operand.getType()))
         return operand;
@@ -753,6 +753,7 @@ LogicalResult GPUDynamicSharedMemoryOpLowering::matchAndRewrite(
   // Step 3. Get address of the global symbol
   OpBuilder::InsertionGuard guard(rewriter);
   rewriter.setInsertionPoint(op);
+  // The op itself is needed to query its result type.
   auto basePtr = LLVM::AddressOfOp::create(rewriter, loc, shmemOp);
   Type baseType = basePtr->getResultTypes().front();
 

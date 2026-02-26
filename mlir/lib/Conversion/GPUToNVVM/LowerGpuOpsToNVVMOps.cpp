@@ -167,7 +167,7 @@ struct GPUSubgroupReduceOpLowering
 
     Location loc = op->getLoc();
     auto int32Type = IntegerType::get(rewriter.getContext(), 32);
-    Value offset = LLVM::ConstantOp::create(rewriter, loc, int32Type, -1);
+    Value offset = rewriter.createOrFold<LLVM::ConstantOp>(loc, int32Type, -1);
 
     auto reduxOp = NVVM::ReduxOp::create(rewriter, loc, int32Type,
                                          op.getValue(), mode.value(), offset);
@@ -207,9 +207,11 @@ struct GPUShuffleOpLowering : public ConvertOpToLLVMPattern<gpu::ShuffleOp> {
     auto int32Type = IntegerType::get(rewriter.getContext(), 32);
     auto predTy = IntegerType::get(rewriter.getContext(), 1);
 
-    Value one = LLVM::ConstantOp::create(rewriter, loc, int32Type, 1);
-    Value minusOne = LLVM::ConstantOp::create(rewriter, loc, int32Type, -1);
-    Value thirtyTwo = LLVM::ConstantOp::create(rewriter, loc, int32Type, 32);
+    Value one = rewriter.createOrFold<LLVM::ConstantOp>(loc, int32Type, 1);
+    Value minusOne =
+        rewriter.createOrFold<LLVM::ConstantOp>(loc, int32Type, -1);
+    Value thirtyTwo =
+        rewriter.createOrFold<LLVM::ConstantOp>(loc, int32Type, 32);
     Value numLeadInactiveLane = LLVM::SubOp::create(
         rewriter, loc, int32Type, thirtyTwo, adaptor.getWidth());
     // Bit mask of active lanes: `(-1) >> (32 - activeWidth)`.
@@ -299,8 +301,8 @@ struct GPUBallotOpToNVVM : public ConvertOpToLLVMPattern<gpu::BallotOp> {
           op, "nvvm.vote.sync ballot only supports i32 and i64 result types");
 
     // Use full mask (-1) so all 32 lanes participate in the ballot.
-    Value mask = LLVM::ConstantOp::create(rewriter, loc, int32Type,
-                                          rewriter.getI32IntegerAttr(-1));
+    Value mask = rewriter.createOrFold<LLVM::ConstantOp>(
+        loc, int32Type, rewriter.getI32IntegerAttr(-1));
 
     auto voteKind = NVVM::VoteSyncKindAttr::get(rewriter.getContext(),
                                                 NVVM::VoteSyncKind::ballot);
@@ -385,8 +387,8 @@ struct AssertOpToAssertfailLowering
     // Create constants.
     auto getGlobal = [&](LLVM::GlobalOp global) {
       // Get a pointer to the format string's first element.
-      Value globalPtr = LLVM::AddressOfOp::create(
-          rewriter, loc, LLVM::LLVMPointerType::get(ctx, global.getAddrSpace()),
+      Value globalPtr = rewriter.createOrFold<LLVM::AddressOfOp>(
+          loc, LLVM::LLVMPointerType::get(ctx, global.getAddrSpace()),
           global.getSymNameAttr());
       Value start =
           LLVM::GEPOp::create(rewriter, loc, ptrType, global.getGlobalType(),
@@ -400,8 +402,8 @@ struct AssertOpToAssertfailLowering
     Value assertFunc = getGlobal(getOrCreateStringConstant(
         rewriter, loc, moduleOp, i8Type, "assert_func_", funcName));
     Value assertLine =
-        LLVM::ConstantOp::create(rewriter, loc, i32Type, fileLine);
-    Value c1 = LLVM::ConstantOp::create(rewriter, loc, i64Type, 1);
+        rewriter.createOrFold<LLVM::ConstantOp>(loc, i32Type, fileLine);
+    Value c1 = rewriter.createOrFold<LLVM::ConstantOp>(loc, i64Type, 1);
 
     // Insert function call to __assertfail.
     SmallVector<Value> arguments{assertMessage, assertFile, assertLine,
@@ -437,9 +439,9 @@ struct GPUBarrierOpToNVVMLowering final
       return success();
     case gpu::BarrierScope::Subgroup: {
       // Emit __syncwarp(0xFFFFFFFF) for full-warp sync.
-      Value mask =
-          LLVM::ConstantOp::create(rewriter, op.getLoc(), rewriter.getI32Type(),
-                                   rewriter.getI32IntegerAttr(0xFFFFFFFF));
+      Value mask = rewriter.createOrFold<LLVM::ConstantOp>(
+          op.getLoc(), rewriter.getI32Type(),
+          rewriter.getI32IntegerAttr(0xFFFFFFFF));
       rewriter.replaceOpWithNewOp<NVVM::SyncWarpOp>(op, mask);
       return success();
     }
@@ -471,13 +473,12 @@ struct GPUInitializeNamedBarrierOpToNVVMLowering final
     if (failed(maybeGlobalName))
       return failure();
 
-    auto addressOf = LLVM::AddressOfOp::create(
-        rewriter, loc, LLVM::LLVMPointerType::get(ctx), *maybeGlobalName);
-    Value barrierId =
-        LLVM::LoadOp::create(rewriter, loc, i32, addressOf.getResult());
+    auto addressOf = rewriter.createOrFold<LLVM::AddressOfOp>(
+        loc, LLVM::LLVMPointerType::get(ctx), *maybeGlobalName);
+    Value barrierId = LLVM::LoadOp::create(rewriter, loc, i32, addressOf);
 
-    Value warpSize = LLVM::ConstantOp::create(
-        rewriter, loc, i32, rewriter.getI32IntegerAttr(kNVVMWarpSize));
+    Value warpSize = rewriter.createOrFold<LLVM::ConstantOp>(
+        loc, i32, rewriter.getI32IntegerAttr(kNVVMWarpSize));
     Value numberOfThreads =
         LLVM::MulOp::create(rewriter, loc, adaptor.getMemberCount(), warpSize);
 

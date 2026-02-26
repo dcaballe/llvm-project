@@ -51,11 +51,11 @@ func.func @trivial_ops(%a: index, %b: index) {
 // CHECK-LABEL: @ceildivs
 // CHECK-SAME: %[[NI:.*]]: index, %[[MI:.*]]: index
 func.func @ceildivs(%n: index, %m: index) -> index {
-  // CHECK-DAG: %[[N:.*]] = builtin.unrealized_conversion_cast %[[NI]]
-  // CHECK-DAG: %[[M:.*]] = builtin.unrealized_conversion_cast %[[MI]]
   // CHECK: %[[ZERO:.*]] = llvm.mlir.constant(0 :
   // CHECK: %[[POS_ONE:.*]] = llvm.mlir.constant(1 :
   // CHECK: %[[NEG_ONE:.*]] = llvm.mlir.constant(-1 :
+  // CHECK-DAG: %[[N:.*]] = builtin.unrealized_conversion_cast %[[NI]]
+  // CHECK-DAG: %[[M:.*]] = builtin.unrealized_conversion_cast %[[MI]]
 
   // CHECK: %[[M_POS:.*]] = llvm.icmp "sgt" %[[M]], %[[ZERO]]
   // CHECK: %[[X:.*]] = llvm.select %[[M_POS]], %[[NEG_ONE]], %[[POS_ONE]]
@@ -83,10 +83,10 @@ func.func @ceildivs(%n: index, %m: index) -> index {
 // CHECK-LABEL: @ceildivu
 // CHECK-SAME: %[[NI:.*]]: index, %[[MI:.*]]: index
 func.func @ceildivu(%n: index, %m: index) -> index {
-  // CHECK-DAG: %[[N:.*]] = builtin.unrealized_conversion_cast %[[NI]]
-  // CHECK-DAG: %[[M:.*]] = builtin.unrealized_conversion_cast %[[MI]]
   // CHECK: %[[ZERO:.*]] = llvm.mlir.constant(0 :
   // CHECK: %[[ONE:.*]] = llvm.mlir.constant(1 :
+  // CHECK-DAG: %[[N:.*]] = builtin.unrealized_conversion_cast %[[NI]]
+  // CHECK-DAG: %[[M:.*]] = builtin.unrealized_conversion_cast %[[MI]]
 
   // CHECK: %[[MINUS_ONE:.*]] = llvm.sub %[[N]], %[[ONE]]
   // CHECK: %[[QUOTIENT:.*]] = llvm.udiv %[[MINUS_ONE]], %[[M]]

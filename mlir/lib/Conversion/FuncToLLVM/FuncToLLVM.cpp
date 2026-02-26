@@ -207,8 +207,8 @@ static void wrapExternalFunction(OpBuilder &builder, Location loc,
   if (resultStructType) {
     // Allocate the struct on the stack and pass the pointer.
     Type resultType = cast<LLVM::LLVMFunctionType>(wrapperType).getParamType(0);
-    Value one = LLVM::ConstantOp::create(
-        builder, loc, typeConverter.convertType(builder.getIndexType()),
+    Value one = builder.createOrFold<LLVM::ConstantOp>(
+        loc, typeConverter.convertType(builder.getIndexType()),
         builder.getIntegerAttr(builder.getIndexType(), 1));
     Value result =
         LLVM::AllocaOp::create(builder, loc, resultType, resultStructType, one);
@@ -235,8 +235,8 @@ static void wrapExternalFunction(OpBuilder &builder, Location loc,
                     wrapperArgsRange.take_front(numToDrop));
 
       auto ptrTy = LLVM::LLVMPointerType::get(builder.getContext());
-      Value one = LLVM::ConstantOp::create(
-          builder, loc, typeConverter.convertType(builder.getIndexType()),
+      Value one = builder.createOrFold<LLVM::ConstantOp>(
+          loc, typeConverter.convertType(builder.getIndexType()),
           builder.getIntegerAttr(builder.getIndexType(), 1));
       Value allocated = LLVM::AllocaOp::create(
           builder, loc, ptrTy, packed.getType(), one, /*alignment=*/0);
@@ -547,6 +547,7 @@ struct ConstantOpLowering : public ConvertOpToLLVMPattern<func::ConstantOp> {
     if (!type || !LLVM::isCompatibleType(type))
       return rewriter.notifyMatchFailure(op, "failed to convert result type");
 
+    // The op itself is needed to copy the remaining attributes onto it.
     auto newOp =
         LLVM::AddressOfOp::create(rewriter, op.getLoc(), type, op.getValue());
     for (const NamedAttribute &attr : op->getAttrs()) {

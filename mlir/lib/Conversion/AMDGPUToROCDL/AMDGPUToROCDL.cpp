@@ -119,7 +119,8 @@ static Value convertUnsignedToI32(ConversionPatternRewriter &rewriter,
 
 static Value createI32Constant(ConversionPatternRewriter &rewriter,
                                Location loc, int32_t value) {
-  return LLVM::ConstantOp::create(rewriter, loc, rewriter.getI32Type(), value);
+  return rewriter.createOrFold<LLVM::ConstantOp>(loc, rewriter.getI32Type(),
+                                                 value);
 }
 
 /// Convert an unsigned number `val` to i64.
@@ -137,7 +138,8 @@ static Value convertUnsignedToI64(ConversionPatternRewriter &rewriter,
 
 static Value createI64Constant(ConversionPatternRewriter &rewriter,
                                Location loc, int64_t value) {
-  return LLVM::ConstantOp::create(rewriter, loc, rewriter.getI64Type(), value);
+  return rewriter.createOrFold<LLVM::ConstantOp>(loc, rewriter.getI64Type(),
+                                                 value);
 }
 
 /// Returns the linear index used to access an element in the memref.
@@ -152,7 +154,7 @@ static Value getLinearIndexI32(ConversionPatternRewriter &rewriter,
           ShapedType::isDynamic(stride)
               ? convertUnsignedToI32(rewriter, loc,
                                      memRefDescriptor.stride(rewriter, loc, i))
-              : LLVM::ConstantOp::create(rewriter, loc, i32, stride);
+              : rewriter.createOrFold<LLVM::ConstantOp>(loc, i32, stride);
       increment = LLVM::MulOp::create(rewriter, loc, increment, strideValue);
     }
     index = index ? LLVM::AddOp::create(rewriter, loc, index, increment)
@@ -209,13 +211,13 @@ static Value makeBufferRsrc(ConversionPatternRewriter &rewriter, Location loc,
   if (chipset.majorVersion == 9 && chipset >= kGfx942 && cacheSwizzleStride) {
     Value cacheStrideZext =
         LLVM::ZExtOp::create(rewriter, loc, i16, cacheSwizzleStride);
-    Value swizzleBit = LLVM::ConstantOp::create(
-        rewriter, loc, i16, rewriter.getI16IntegerAttr(1 << 14));
+    Value swizzleBit = rewriter.createOrFold<LLVM::ConstantOp>(
+        loc, i16, rewriter.getI16IntegerAttr(1 << 14));
     stride = LLVM::OrOp::create(rewriter, loc, cacheStrideZext, swizzleBit,
                                 /*isDisjoint=*/true);
   } else {
-    stride = LLVM::ConstantOp::create(rewriter, loc, i16,
-                                      rewriter.getI16IntegerAttr(0));
+    stride = rewriter.createOrFold<LLVM::ConstantOp>(
+        loc, i16, rewriter.getI16IntegerAttr(0));
   }
 
   uint32_t flags = 0;
@@ -299,8 +301,8 @@ struct FatRawBufferCastLowering
             : descriptor.alignedPtr(rewriter, loc);
 
     Value offset = adaptor.getResetOffset()
-                       ? LLVM::ConstantOp::create(rewriter, loc, getIndexType(),
-                                                  rewriter.getIndexAttr(0))
+                       ? rewriter.createOrFold<LLVM::ConstantOp>(
+                             loc, getIndexType(), rewriter.getIndexAttr(0))
                        : descriptor.offset(rewriter, loc);
 
     bool hasSizes = memrefType.getRank() > 0;
@@ -2644,7 +2646,7 @@ LogicalResult ExtPackedFp8OpLowering::matchAndRewrite(
   Type sourceElemType = getElementTypeOrSelf(op.getSource());
   // Extend to a v4i8
   if (!sourceVecType || sourceVecType.getNumElements() < 4) {
-    Value longVec = LLVM::UndefOp::create(rewriter, loc, v4i8);
+    Value longVec = rewriter.createOrFold<LLVM::UndefOp>(loc, v4i8);
     if (!sourceVecType) {
       longVec = LLVM::InsertElementOp::create(
           rewriter, loc, longVec, source, createI32Constant(rewriter, loc, 0));
@@ -2877,7 +2879,7 @@ LogicalResult ScaledExtPackedOpLowering::matchAndRewrite(
 
   // Extend to a packedVectorType
   if (sourceVecType.getNumElements() < packedVecType.getNumElements()) {
-    Value longVec = LLVM::ZeroOp::create(rewriter, loc, packedVecType);
+    Value longVec = rewriter.createOrFold<LLVM::ZeroOp>(loc, packedVecType);
     if (!sourceVecType) {
       longVec = LLVM::InsertElementOp::create(
           rewriter, loc, longVec, source, createI32Constant(rewriter, loc, 0));
@@ -2951,13 +2953,13 @@ LogicalResult PackedScaledTruncOpLowering::matchAndRewrite(
   if (existing)
     existing = LLVM::BitcastOp::create(rewriter, loc, intResultType, existing);
   else
-    existing = LLVM::ZeroOp::create(rewriter, loc, intResultType);
+    existing = rewriter.createOrFold<LLVM::ZeroOp>(loc, intResultType);
 
   if (sourceVecType.getNumElements() < 2) {
     Value c0 = createI32Constant(rewriter, loc, 0);
     Value elem0 = LLVM::ExtractElementOp::create(rewriter, loc, source, c0);
     VectorType v2 = VectorType::get(2, sourceElemType);
-    source = LLVM::ZeroOp::create(rewriter, loc, v2);
+    source = rewriter.createOrFold<LLVM::ZeroOp>(loc, v2);
     source = LLVM::InsertElementOp::create(rewriter, loc, source, elem0, c0);
   }
 
@@ -3024,12 +3026,12 @@ LogicalResult PackedTrunc2xFp8OpLowering::matchAndRewrite(
   Value sourceA = adaptor.getSourceA();
   Value sourceB = adaptor.getSourceB();
   if (!sourceB)
-    sourceB = LLVM::UndefOp::create(rewriter, loc, sourceA.getType());
+    sourceB = rewriter.createOrFold<LLVM::UndefOp>(loc, sourceA.getType());
   Value existing = adaptor.getExisting();
   if (existing)
     existing = LLVM::BitcastOp::create(rewriter, loc, i32, existing);
   else
-    existing = LLVM::UndefOp::create(rewriter, loc, i32);
+    existing = rewriter.createOrFold<LLVM::UndefOp>(loc, i32);
 
   Value result;
   if (typeIsExpectedBf8ForChipset(chipset, resultElemType))
@@ -3063,7 +3065,7 @@ LogicalResult PackedStochRoundFp8OpLowering::matchAndRewrite(
   if (existing)
     existing = LLVM::BitcastOp::create(rewriter, loc, i32, existing);
   else
-    existing = LLVM::UndefOp::create(rewriter, loc, i32);
+    existing = rewriter.createOrFold<LLVM::UndefOp>(loc, i32);
 
   Value result;
   if (typeIsExpectedBf8ForChipset(chipset, resultElemType))
@@ -3119,7 +3121,7 @@ struct AMDGPUDPPLowering : public ConvertOpToLLVMPattern<DPPOp> {
         }
         auto llvmVecType = typeConverter->convertType(mlir::VectorType::get(
             32 / operandType.getIntOrFloatBitWidth(), llvmSrcIntType));
-        Value undefVec = LLVM::UndefOp::create(rewriter, loc, llvmVecType);
+        Value undefVec = rewriter.createOrFold<LLVM::UndefOp>(loc, llvmVecType);
         operand =
             LLVM::InsertElementOp::create(rewriter, loc, undefVec, operand,
                                           createI32Constant(rewriter, loc, 0));
@@ -4248,7 +4250,7 @@ struct AMDGPULowerDescriptor : public ConvertOpToLLVMPattern<DescriptorOp> {
 
     bool onlyNeedsTwoDescriptors = !op.getLdsIncrement() && op.getRank() <= 2;
     if (onlyNeedsTwoDescriptors)
-      return LLVM::ZeroOp::create(rewriter, loc, v4i32);
+      return rewriter.createOrFold<LLVM::ZeroOp>(loc, v4i32);
 
     constexpr int64_t sgprlen = 4;
     Value sgprs[sgprlen];
@@ -4385,7 +4387,7 @@ struct AMDGPULowerDescriptor : public ConvertOpToLLVMPattern<DescriptorOp> {
     assert(v4i32 && "expected type conversion to succeed.");
     bool onlyNeedsTwoDescriptors = !op.getLdsIncrement() && op.getRank() <= 2;
     if (onlyNeedsTwoDescriptors)
-      return LLVM::ZeroOp::create(rewriter, loc, v4i32);
+      return rewriter.createOrFold<LLVM::ZeroOp>(loc, v4i32);
 
     constexpr int32_t sgprlen = 4;
     Value sgprs[sgprlen];
@@ -4455,7 +4457,7 @@ struct AMDGPUTensorLoadStoreOpLowering
     // Create a <v8 x i32> 0 as the fifth argument to match llvm intrinsic. It
     // will move into the TDM descriptor once it becomes relevant for future use
     auto v8i32 = VectorType::get(8, rewriter.getI32Type());
-    Value dgroup4 = LLVM::ZeroOp::create(rewriter, op.getLoc(), v8i32);
+    Value dgroup4 = rewriter.createOrFold<LLVM::ZeroOp>(op.getLoc(), v8i32);
     Attribute cachePolicy = rewriter.getI32IntegerAttr(0);
     rewriter.replaceOpWithNewOp<TargetOp>(op, desc[0], desc[1], desc[2],
                                           desc[3], dgroup4, cachePolicy,

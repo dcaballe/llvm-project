@@ -78,8 +78,8 @@ func.func @log1p_fmf(%arg0 : f32) {
 
 // CHECK-LABEL: func @log1p_2dvector(
 func.func @log1p_2dvector(%arg0 : vector<4x3xf32>) {
-  // CHECK: %[[EXTRACT:.*]] = llvm.extractvalue %{{.*}}[0] : !llvm.array<4 x vector<3xf32>>
   // CHECK: %[[ONE:.*]] = llvm.mlir.constant(dense<1.000000e+00> : vector<3xf32>) : vector<3xf32>
+  // CHECK: %[[EXTRACT:.*]] = llvm.extractvalue %{{.*}}[0] : !llvm.array<4 x vector<3xf32>>
   // CHECK: %[[ADD:.*]] = llvm.fadd %[[ONE]], %[[EXTRACT]] : vector<3xf32>
   // CHECK: %[[LOG:.*]] = llvm.intr.log(%[[ADD]]) : (vector<3xf32>) -> vector<3xf32>
   // CHECK: %[[INSERT:.*]] = llvm.insertvalue %[[LOG]], %{{.*}}[0] : !llvm.array<4 x vector<3xf32>>
@@ -91,8 +91,8 @@ func.func @log1p_2dvector(%arg0 : vector<4x3xf32>) {
 
 // CHECK-LABEL: func @log1p_2dvector_fmf(
 func.func @log1p_2dvector_fmf(%arg0 : vector<4x3xf32>) {
-  // CHECK: %[[EXTRACT:.*]] = llvm.extractvalue %{{.*}}[0] : !llvm.array<4 x vector<3xf32>>
   // CHECK: %[[ONE:.*]] = llvm.mlir.constant(dense<1.000000e+00> : vector<3xf32>) : vector<3xf32>
+  // CHECK: %[[EXTRACT:.*]] = llvm.extractvalue %{{.*}}[0] : !llvm.array<4 x vector<3xf32>>
   // CHECK: %[[ADD:.*]] = llvm.fadd %[[ONE]], %[[EXTRACT]] {fastmathFlags = #llvm.fastmath<fast>} : vector<3xf32>
   // CHECK: %[[LOG:.*]] = llvm.intr.log(%[[ADD]]) {fastmathFlags = #llvm.fastmath<fast>} : (vector<3xf32>) -> vector<3xf32>
   // CHECK: %[[INSERT:.*]] = llvm.insertvalue %[[LOG]], %{{.*}}[0] : !llvm.array<4 x vector<3xf32>>
@@ -117,8 +117,8 @@ func.func @log1p_scalable_vector(%arg0 : vector<[4]xf32>) -> vector<[4]xf32> {
 // CHECK-LABEL: func @log1p_0dvector(
 // CHECK-SAME: vector<f32>
 func.func @log1p_0dvector(%arg0 : vector<f32>) {
-  // CHECK: %[[CAST:.+]] = builtin.unrealized_conversion_cast %arg0 : vector<f32> to vector<1xf32>
   // CHECK: %[[ONE:.*]] = llvm.mlir.constant(dense<1.000000e+00> : vector<1xf32>) : vector<1xf32>
+  // CHECK: %[[CAST:.+]] = builtin.unrealized_conversion_cast %arg0 : vector<f32> to vector<1xf32>
   // CHECK: %[[ADD:.*]] = llvm.fadd %[[ONE]], %[[CAST]]  : vector<1xf32>
   // CHECK: %[[LOG:.*]] = llvm.intr.log(%[[ADD]])  : (vector<1xf32>) -> vector<1xf32>
   %0 = math.log1p %arg0 : vector<f32>
@@ -190,8 +190,8 @@ func.func @expm1_vector_fmf(%arg0 : vector<4xf32>) {
 // CHECK-LABEL: func @expm1_0dvector(
 // CHECK-SAME: vector<f32>
 func.func @expm1_0dvector(%arg0 : vector<f32>) {
-  // CHECK: %[[CAST:.+]] = builtin.unrealized_conversion_cast %arg0 : vector<f32> to vector<1xf32>
   // CHECK: %[[ONE:.*]] = llvm.mlir.constant(dense<1.000000e+00> : vector<1xf32>) : vector<1xf32>
+  // CHECK: %[[CAST:.+]] = builtin.unrealized_conversion_cast %arg0 : vector<f32> to vector<1xf32>
   // CHECK: %[[EXP:.*]] = llvm.intr.exp(%[[CAST]]) : (vector<1xf32>) -> vector<1xf32>
   // CHECK: %[[SUB:.*]] = llvm.fsub %[[EXP]], %[[ONE]] : vector<1xf32>
   %0 = math.expm1 %arg0 : vector<f32>
@@ -215,8 +215,8 @@ func.func @rsqrt(%arg0 : f32) {
 // CHECK-LABEL: func @rsqrt_0dvector(
 // CHECK-SAME: vector<f32>
 func.func @rsqrt_0dvector(%arg0 : vector<f32>) {
-  // CHECK: %[[CAST:.+]] = builtin.unrealized_conversion_cast %arg0 : vector<f32> to vector<1xf32>
   // CHECK: %[[ONE:.*]] = llvm.mlir.constant(dense<1.000000e+00> : vector<1xf32>) : vector<1xf32>
+  // CHECK: %[[CAST:.+]] = builtin.unrealized_conversion_cast %arg0 : vector<f32> to vector<1xf32>
   // CHECK: %[[SQRT:.*]] = llvm.intr.sqrt(%[[CAST]]) : (vector<1xf32>) -> vector<1xf32>
   // CHECK: %[[SUB:.*]] = llvm.fdiv %[[ONE]], %[[SQRT]] : vector<1xf32>
   %0 = math.rsqrt %arg0 : vector<f32>
@@ -551,8 +551,8 @@ func.func @rsqrt_scalable_vector_fmf(%arg0 : vector<[4]xf32>) -> vector<[4]xf32>
 
 // CHECK-LABEL: func @rsqrt_multidim_vector(
 func.func @rsqrt_multidim_vector(%arg0 : vector<4x3xf32>) {
-  // CHECK: %[[EXTRACT:.*]] = llvm.extractvalue %{{.*}}[0] : !llvm.array<4 x vector<3xf32>>
   // CHECK: %[[ONE:.*]] = llvm.mlir.constant(dense<1.000000e+00> : vector<3xf32>) : vector<3xf32>
+  // CHECK: %[[EXTRACT:.*]] = llvm.extractvalue %{{.*}}[0] : !llvm.array<4 x vector<3xf32>>
   // CHECK: %[[SQRT:.*]] = llvm.intr.sqrt(%[[EXTRACT]]) : (vector<3xf32>) -> vector<3xf32>
   // CHECK: %[[DIV:.*]] = llvm.fdiv %[[ONE]], %[[SQRT]] : vector<3xf32>
   // CHECK: %[[INSERT:.*]] = llvm.insertvalue %[[DIV]], %{{.*}}[0] : !llvm.array<4 x vector<3xf32>>
@@ -564,8 +564,8 @@ func.func @rsqrt_multidim_vector(%arg0 : vector<4x3xf32>) {
 
 // CHECK-LABEL: func @rsqrt_multidim_scalable_vector(
 func.func @rsqrt_multidim_scalable_vector(%arg0 : vector<4x[4]xf32>) -> vector<4x[4]xf32> {
-  // CHECK: %[[EXTRACT:.*]] = llvm.extractvalue %{{.*}}[0] : !llvm.array<4 x vector<[4]xf32>>
   // CHECK: %[[ONE:.*]] = llvm.mlir.constant(dense<1.000000e+00> : vector<[4]xf32>) : vector<[4]xf32>
+  // CHECK: %[[EXTRACT:.*]] = llvm.extractvalue %{{.*}}[0] : !llvm.array<4 x vector<[4]xf32>>
   // CHECK: %[[SQRT:.*]] = llvm.intr.sqrt(%[[EXTRACT]]) : (vector<[4]xf32>) -> vector<[4]xf32>
   // CHECK: %[[DIV:.*]] = llvm.fdiv %[[ONE]], %[[SQRT]] : vector<[4]xf32>
   // CHECK: %[[INSERT:.*]] = llvm.insertvalue %[[DIV]], %{{.*}}[0] : !llvm.array<4 x vector<[4]xf32>>

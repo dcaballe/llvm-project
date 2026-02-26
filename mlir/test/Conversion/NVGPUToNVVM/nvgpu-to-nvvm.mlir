@@ -246,18 +246,17 @@ func.func @m16n8k4_tf32(%arg0: vector<2x1xf32>, %arg1: vector<1x1xf32>, %arg2: v
 // CHECK-SAME: %[[IDX:[a-zA-Z0-9_]+]]: index)
 func.func @async_cp(
   %src: memref<128x128xf32>, %dst: memref<3x16x128xf32, 3>, %i : index) {
+  // CHECK-DAG: %[[S0:.*]] = llvm.mlir.constant(2048 : index) : i64
+  // CHECK-DAG: %[[S1:.*]] = llvm.mlir.constant(128 : index) : i64
   // CHECK: %[[IDX1:.*]] = builtin.unrealized_conversion_cast %[[IDX]] : index to i64
   // CHECK-DAG: %[[BASEDST:.*]] = llvm.extractvalue %{{.*}}[1] : !llvm.struct<(ptr<3>, ptr<3>, i64, array<3 x i64>, array<3 x i64>)>
-  // CHECK-DAG: %[[S0:.*]] = llvm.mlir.constant(2048 : index) : i64
   // CHECK-DAG: %[[LI:.*]] = llvm.mul %[[IDX1]], %[[S0]] : i64
-  // CHECK-DAG: %[[S1:.*]] = llvm.mlir.constant(128 : index) : i64
   // CHECK-DAG: %[[FI0:.*]] = llvm.mul %[[IDX1]], %[[S1]] : i64
   // CHECK-DAG: %[[FI1:.*]] = llvm.add %[[LI]], %[[FI0]] : i64
   // CHECK-DAG: %[[FI2:.*]] = llvm.add %[[FI1]], %[[IDX1]] : i64
   // CHECK-DAG: %[[ADDRESSDST:.*]] = llvm.getelementptr %[[BASEDST]][%[[FI2]]] : (!llvm.ptr<3>, i64) -> !llvm.ptr<3>
   // CHECK-DAG: %[[BASESRC:.*]] = llvm.extractvalue %{{.*}}[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
-  // CHECK-DAG: %[[S3:.*]] = llvm.mlir.constant(128 : index) : i64
-  // CHECK-DAG: %[[FI3:.*]] = llvm.mul %[[IDX1]], %[[S3]]  : i64
+  // CHECK-DAG: %[[FI3:.*]] = llvm.mul %[[IDX1]], %[[S1]]  : i64
   // CHECK-DAG: %[[FI4:.*]] = llvm.add %[[FI3]], %[[IDX1]]  : i64
   // CHECK-DAG: %[[ADDRESSSRC:.*]] = llvm.getelementptr %[[BASESRC]][%[[FI4]]] : (!llvm.ptr, i64) -> !llvm.ptr
   // CHECK-DAG: %[[CAST2:.*]] = llvm.addrspacecast %[[ADDRESSSRC]] : !llvm.ptr to !llvm.ptr<1>
@@ -277,14 +276,14 @@ func.func @async_cp(
 // CHECK-SAME: %[[IDX:[a-zA-Z0-9_]+]]: index)
 func.func @async_cp_i4(
   %src: memref<128x64xi4>, %dst: memref<128x128xi4, 3>, %i : index) -> !nvgpu.device.async.token {
+  // CHECK-DAG: %[[S0:.*]] = llvm.mlir.constant(128 : index) : i64
+  // CHECK-DAG: %[[S2:.*]] = llvm.mlir.constant(64 : index) : i64
   // CHECK: %[[IDX1:.*]] = builtin.unrealized_conversion_cast %[[IDX]] : index to i64
   // CHECK-DAG: %[[BASEDST:.*]] = llvm.extractvalue %{{.*}}[1] : !llvm.struct<(ptr<3>, ptr<3>, i64, array<2 x i64>, array<2 x i64>)>
-  // CHECK-DAG: %[[S0:.*]] = llvm.mlir.constant(128 : index) : i64
   // CHECK-DAG: %[[LI:.*]] = llvm.mul %[[IDX1]], %[[S0]] : i64
   // CHECK-DAG: %[[FI1:.*]] = llvm.add %[[LI]], %[[IDX1]] : i64
   // CHECK-DAG: %[[ADDRESSDST:.*]] = llvm.getelementptr %[[BASEDST]][%[[FI1]]] : (!llvm.ptr<3>, i64) -> !llvm.ptr<3>
   // CHECK-DAG: %[[BASESRC:.*]] = llvm.extractvalue %{{.*}}[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
-  // CHECK-DAG: %[[S2:.*]] = llvm.mlir.constant(64 : index) : i64
   // CHECK-DAG: %[[FI2:.*]] = llvm.mul %[[IDX1]], %[[S2]]  : i64
   // CHECK-DAG: %[[FI3:.*]] = llvm.add %[[FI2]], %[[IDX1]]  : i64
   // CHECK-DAG: %[[ADDRESSSRC:.*]] = llvm.getelementptr %[[BASESRC]][%[[FI3]]] : (!llvm.ptr, i64) -> !llvm.ptr
@@ -298,24 +297,23 @@ func.func @async_cp_i4(
 // CHECK-SAME: %[[IDX:[a-zA-Z0-9_]+]]: index, %[[SRCELEMENTS:[a-zA-Z0-9_]+]]: index
 func.func @async_cp_zfill_f32_align4(
   %src: memref<128x128xf32>, %dst: memref<3x16x128xf32, 3>, %i : index, %srcElements : index) {
+  // CHECK-DAG: %[[S2048:.*]] = llvm.mlir.constant(2048 : index) : i64
+  // CHECK-DAG: %[[S0:.*]] = llvm.mlir.constant(128 : index) : i64
+  // CHECK-DAG: %[[c1:.*]] = llvm.mlir.constant(3 : i32) : i32
+  // CHECK-DAG: %[[c2:.*]] = llvm.mlir.constant(32 : i32) : i32
   // CHECK-DAG: %[[IDX1:.*]] = builtin.unrealized_conversion_cast %[[IDX]] : index to i64
   // CHECK-DAG: %[[SRC1:.*]] = builtin.unrealized_conversion_cast %[[SRCELEMENTS]] : index to i64
   // CHECK-DAG: %[[BASEDST:.*]] = llvm.extractvalue %{{.*}}[1] : !llvm.struct<(ptr<3>, ptr<3>, i64, array<3 x i64>, array<3 x i64>)>
-  // CHECK-DAG: %[[S2048:.*]] = llvm.mlir.constant(2048 : index) : i64
   // CHECK-DAG: %[[LI1:.*]] = llvm.mul %[[IDX1]], %[[S2048]] : i64
-  // CHECK-DAG: %[[S0:.*]] = llvm.mlir.constant(128 : index) : i64
   // CHECK-DAG: %[[LI:.*]] = llvm.mul %[[IDX1]], %[[S0]] : i64
   // CHECK-DAG: %[[FI1:.*]] = llvm.add %[[LI1]], %[[LI]] : i64
   // CHECK-DAG: %[[FI2:.*]] = llvm.add %[[FI1]], %[[IDX1]] : i64
   // CHECK-DAG: %[[ADDRESSDST:.*]] = llvm.getelementptr %[[BASEDST]][%[[FI2]]] : (!llvm.ptr<3>, i64) -> !llvm.ptr<3>, f32
   // CHECK-DAG: %[[BASESRC:.*]] = llvm.extractvalue %{{.*}}[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
-  // CHECK-DAG: %[[S2:.*]] = llvm.mlir.constant(128 : index) : i64
-  // CHECK-DAG: %[[FI2:.*]] = llvm.mul %[[IDX1]], %[[S2]]  : i64
+  // CHECK-DAG: %[[FI2:.*]] = llvm.mul %[[IDX1]], %[[S0]]  : i64
   // CHECK-DAG: %[[FI3:.*]] = llvm.add %[[FI2]], %[[IDX1]]  : i64
   // CHECK-DAG: %[[ADDRESSSRC:.*]] = llvm.getelementptr %[[BASESRC]][%[[FI3]]] : (!llvm.ptr, i64) -> !llvm.ptr
   // CHECK-DAG: %[[CAST2:.*]] = llvm.addrspacecast %[[ADDRESSSRC]] : !llvm.ptr to !llvm.ptr<1>
-  // CHECK-DAG: %[[c1:.*]] = llvm.mlir.constant(3 : i32) : i32
-  // CHECK-DAG: %[[c2:.*]] = llvm.mlir.constant(32 : i32) : i32
   // CHECK-DAG: %[[c3:.*]] = llvm.trunc %[[SRC1]] : i64 to i32
   // CHECK-DAG: %[[c4:.*]] = llvm.mul %[[c2]], %[[c3]] : i32
   // CHECK-DAG: %[[c5:.*]] = llvm.lshr %[[c4]], %[[c1]] : i32
@@ -333,24 +331,23 @@ func.func @async_cp_zfill_f32_align4(
 // CHECK-SAME: %[[IDX:[a-zA-Z0-9_]+]]: index, %[[SRCELEMENTS:[a-zA-Z0-9_]+]]: index)
 func.func @async_cp_zfill_f32_align1(
   %src: memref<128x128xf32>, %dst: memref<3x16x128xf32, 3>, %i : index, %srcElements : index) {
+  // CHECK-DAG: %[[S2048:.*]] = llvm.mlir.constant(2048 : index) : i64
+  // CHECK-DAG: %[[S0:.*]] = llvm.mlir.constant(128 : index) : i64
+  // CHECK-DAG: %[[c1:.*]] = llvm.mlir.constant(3 : i32) : i32
+  // CHECK-DAG: %[[c2:.*]] = llvm.mlir.constant(32 : i32) : i32
   // CHECK-DAG: %[[IDX1:.*]] = builtin.unrealized_conversion_cast %[[IDX]] : index to i64
   // CHECK-DAG: %[[SRC1:.*]] = builtin.unrealized_conversion_cast %[[SRCELEMENTS]] : index to i64
   // CHECK-DAG: %[[BASEDST:.*]] = llvm.extractvalue %{{.*}}[1] : !llvm.struct<(ptr<3>, ptr<3>, i64, array<3 x i64>, array<3 x i64>)>
-  // CHECK-DAG: %[[S2048:.*]] = llvm.mlir.constant(2048 : index) : i64
   // CHECK-DAG: %[[LI1:.*]] = llvm.mul %[[IDX1]], %[[S2048]] : i64
-  // CHECK-DAG: %[[S0:.*]] = llvm.mlir.constant(128 : index) : i64
   // CHECK-DAG: %[[LI:.*]] = llvm.mul %[[IDX1]], %[[S0]] : i64
   // CHECK-DAG: %[[FI1:.*]] = llvm.add %[[LI1]], %[[LI]] : i64
   // CHECK-DAG: %[[FI2:.*]] = llvm.add %[[FI1]], %[[IDX1]] : i64
   // CHECK-DAG: %[[ADDRESSDST:.*]] = llvm.getelementptr %[[BASEDST]][%[[FI2]]] : (!llvm.ptr<3>, i64) -> !llvm.ptr<3>, f32
   // CHECK-DAG: %[[BASESRC:.*]] = llvm.extractvalue %{{.*}}[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
-  // CHECK-DAG: %[[S2:.*]] = llvm.mlir.constant(128 : index) : i64
-  // CHECK-DAG: %[[FI2:.*]] = llvm.mul %[[IDX1]], %[[S2]]  : i64
+  // CHECK-DAG: %[[FI2:.*]] = llvm.mul %[[IDX1]], %[[S0]]  : i64
   // CHECK-DAG: %[[FI3:.*]] = llvm.add %[[FI2]], %[[IDX1]]  : i64
   // CHECK-DAG: %[[ADDRESSSRC:.*]] = llvm.getelementptr %[[BASESRC]][%[[FI3]]] : (!llvm.ptr, i64) -> !llvm.ptr
   // CHECK-DAG: %[[CAST2:.*]] = llvm.addrspacecast %[[ADDRESSSRC]] : !llvm.ptr to !llvm.ptr<1>
-  // CHECK-DAG: %[[c1:.*]] = llvm.mlir.constant(3 : i32) : i32
-  // CHECK-DAG: %[[c2:.*]] = llvm.mlir.constant(32 : i32) : i32
   // CHECK-DAG: %[[c3:.*]] = llvm.trunc %[[SRC1]] : i64 to i32
   // CHECK-DAG: %[[c4:.*]] = llvm.mul %[[c2]], %[[c3]] : i32
   // CHECK-DAG: %[[c5:.*]] = llvm.lshr %[[c4]], %[[c1]] : i32
@@ -851,8 +848,8 @@ func.func @tma_prefetch(%tensorMap1d: !tensorMap1d, %p : i1) {
 // CHECK-LABEL: @tma_fence(
 // CHECK-SAME: %[[arg0:[a-zA-Z0-9_]+]]: !nvgpu.tensormap.descriptor<tensor = memref<128xf32, 3>, swizzle = none, l2promo = none, oob = nan, interleave = none>
 func.func @tma_fence(%tensorMap1d: !tensorMap1d) {
-  // CHECK: %[[S0:.+]] = builtin.unrealized_conversion_cast %[[arg0]] : !nvgpu.tensormap.descriptor<tensor = memref<128xf32, 3>, swizzle = none, l2promo = none, oob = nan, interleave = none> to !llvm.ptr
   // CHECK: %[[S1:.+]] = llvm.mlir.constant(128 : i32) : i32
+  // CHECK: %[[S0:.+]] = builtin.unrealized_conversion_cast %[[arg0]] : !nvgpu.tensormap.descriptor<tensor = memref<128xf32, 3>, swizzle = none, l2promo = none, oob = nan, interleave = none> to !llvm.ptr
   // CHECK: nvvm.fence.proxy.acquire <sys> %[[S0]], %[[S1]]
   nvgpu.tma.fence.descriptor %tensorMap1d: !tensorMap1d
   func.return
@@ -872,10 +869,10 @@ module @mymodule {
     %rhsShmem2 = memref.reinterpret_cast %dynamicMem to offset: [0], sizes: [4, 64, 64],  strides: [4096, 64, 1] : memref<0xf16, 3> to memref<4x64x64xf16,3>
     %rhsShmem3 = memref.subview %rhsShmem2[2, 0, 0][1, 64, 64][1, 1, 1] : memref<4x64x64xf16,3> to memref<1x64x64xf16, strided<[4096, 64, 1], offset: 8192>, 3>
     %rhsShmem = memref.subview %rhsShmem3[0, 0, 0][1, 64, 64][1, 1, 1]  : memref<1x64x64xf16, strided<[4096, 64, 1], offset: 8192>, 3> to memref<64x64xf16, strided<[64, 1], offset: 8192>, 3>
+    // CHECK: %[[c8192:.+]] = llvm.mlir.constant(8192 : index) : i64
     // CHECK: nvvm.cp.async.bulk.tensor.shared.cluster.global
     nvgpu.tma.async.load %lhsTensorMap[%c0, %c0], %mbarrier[%c0] to %lhsShmem : !lhsTensorMap, !barrierType -> memref<128x64xf16,3>
     // CHECK: %[[desc:.+]] = llvm.extractvalue %{{.*}}[1] : !llvm.struct<(ptr<3>, ptr<3>, i64, array<2 x i64>, array<2 x i64>)>
-    // CHECK: %[[c8192:.+]] = llvm.mlir.constant(8192 : index) : i64
     // CHECK: %[[shmemOfset:.+]] = llvm.getelementptr %[[desc]][%[[c8192]]] : (!llvm.ptr<3>, i64)
     // CHECK: %[[dest:.+]] = llvm.addrspacecast %[[shmemOfset]] : !llvm.ptr<3> to !llvm.ptr<7>
     // CHECK: nvvm.cp.async.bulk.tensor.shared.cluster.global %[[dest]], %{{.*}}, %{{.*}}, box[%{{.*}}, %{{.*}}]
@@ -890,34 +887,32 @@ memref.global "private" @dynamicShmem : memref<0xf16,3>
 func.func @create_wgmma_descriptor(%tensorMap : !tensorMap) -> !nvgpu.warpgroup.descriptor<tensor=memref<128x64xf16,3>>{
   %dynamicMem = memref.get_global @dynamicShmem : memref<0xf16, 3>
   %lhsShmem = memref.reinterpret_cast %dynamicMem to offset: [0], sizes: [128,64], strides: [64,1] : memref<0xf16, 3> to memref<128x64xf16,3>
-    // CHECK: %[[S0:.+]] = memref.get_global @dynamicShmem : memref<0xf16, 3>
-    // CHECK: %[[Sre:.+]] = memref.reinterpret_cast %[[S0]] to offset: [0], sizes: [128, 64], strides: [64, 1] : memref<0xf16, 3> to memref<128x64xf16, 3>
-    // CHECK: %[[S1:.+]] = builtin.unrealized_conversion_cast %[[Sre]] : memref<128x64xf16, 3> to !llvm.struct<(ptr<3>, ptr<3>, i64, array<2 x i64>, array<2 x i64>)>
     // CHECK: %[[c64:.+]] =  llvm.mlir.constant(64 : i64) : i64
     // CHECK: %[[c1024:.+]] = llvm.mlir.constant(1024 : i64) : i64
-    // CHECK: %[[S2:.+]] = llvm.extractvalue %[[S1]][1] : !llvm.struct<(ptr<3>, ptr<3>, i64, array<2 x i64>, array<2 x i64>)>
-    // CHECK: %[[S3:.+]] = llvm.ptrtoint %[[S2]] : !llvm.ptr<3> to i64
     // CHECK: %[[S4:.+]] = llvm.mlir.constant(46 : i64) : i64
-    // CHECK: %[[S5:.+]] = llvm.shl %[[S3]], %[[S4]]  : i64
     // CHECK: %[[S6:.+]] = llvm.mlir.constant(50 : i64) : i64
-    // CHECK: %[[S7:.+]] = llvm.lshr %[[S5]], %[[S6]]  : i64
     // CHECK: %[[S8:.+]] = llvm.mlir.constant(0 : i64) : i64
     // CHECK: %[[S9:.+]] = llvm.mlir.constant(1 : i64) : i64
     // CHECK: %[[S10:.+]] = llvm.mlir.constant(62 : i64) : i64
+    // CHECK: %[[S14:.+]] = llvm.mlir.constant(49 : i64) : i64
+    // CHECK: %[[S18:.+]] = llvm.mlir.constant(32 : i64) : i64
+    // CHECK: %[[S22:.+]] = llvm.mlir.constant(16 : i64) : i64
+    // CHECK: %[[S0:.+]] = memref.get_global @dynamicShmem : memref<0xf16, 3>
+    // CHECK: %[[Sre:.+]] = memref.reinterpret_cast %[[S0]] to offset: [0], sizes: [128, 64], strides: [64, 1] : memref<0xf16, 3> to memref<128x64xf16, 3>
+    // CHECK: %[[S1:.+]] = builtin.unrealized_conversion_cast %[[Sre]] : memref<128x64xf16, 3> to !llvm.struct<(ptr<3>, ptr<3>, i64, array<2 x i64>, array<2 x i64>)>
+    // CHECK: %[[S2:.+]] = llvm.extractvalue %[[S1]][1] : !llvm.struct<(ptr<3>, ptr<3>, i64, array<2 x i64>, array<2 x i64>)>
+    // CHECK: %[[S3:.+]] = llvm.ptrtoint %[[S2]] : !llvm.ptr<3> to i64
+    // CHECK: %[[S5:.+]] = llvm.shl %[[S3]], %[[S4]]  : i64
+    // CHECK: %[[S7:.+]] = llvm.lshr %[[S5]], %[[S6]]  : i64
     // CHECK: %[[S11:.+]] = llvm.shl %[[S9]], %[[S10]]  : i64
     // CHECK: %[[S12:.+]] = llvm.or %[[S8]], %[[S11]]  : i64
-    // CHECK: %[[S13:.+]] = llvm.mlir.constant(0 : i64) : i64
-    // CHECK: %[[S14:.+]] = llvm.mlir.constant(49 : i64) : i64
-    // CHECK: %[[S15:.+]] = llvm.shl %[[S13]], %[[S14]]  : i64
+    // CHECK: %[[S15:.+]] = llvm.shl %[[S8]], %[[S14]]  : i64
     // CHECK: %[[S16:.+]] = llvm.or %[[S12]], %[[S15]]  : i64
-    // CHECK: %[[S18:.+]] = llvm.mlir.constant(32 : i64) : i64
     // CHECK: %[[S19:.+]] = llvm.shl %[[c64]], %[[S18]]  : i64
     // CHECK: %[[S20:.+]] = llvm.or %[[S16]], %[[S19]]  : i64
-    // CHECK: %[[S22:.+]] = llvm.mlir.constant(16 : i64) : i64
     // CHECK: %[[S23:.+]] = llvm.shl %[[c1024]], %[[S22]]  : i64
     // CHECK: %[[S24:.+]] = llvm.or %[[S20]], %[[S23]]  : i64
-    // CHECK: %[[S25:.+]] = llvm.mlir.constant(0 : i64) : i64
-    // CHECK: %[[S26:.+]] = llvm.shl %[[S7]], %[[S25]]  : i64
+    // CHECK: %[[S26:.+]] = llvm.shl %[[S7]], %[[S8]]  : i64
     // CHECK: %[[S27:.+]] = llvm.or %[[S24]], %[[S26]]  : i64
     // CHECK: %[[ret:.+]] = builtin.unrealized_conversion_cast %[[S27]] : i64 to !nvgpu.warpgroup.descriptor<tensor = memref<128x64xf16, 3>>
     // CHECK: return %[[ret]]
@@ -932,6 +927,16 @@ func.func @warpgroup_mma_128_128_64(
       %descB: !nvgpu.warpgroup.descriptor<tensor = memref<64x128xf16, 3>>,
       %acc: !nvgpu.warpgroup.accumulator<fragmented = vector<128x128xf32>>)
 {
+// CHECK: %[[S5:.+]] = llvm.mlir.constant(2 : i32) : i64
+// CHECK: %[[S7:.+]] = llvm.mlir.constant(128 : i32) : i64
+// CHECK: %[[S10:.+]] = llvm.mlir.constant(4 : i32) : i64
+// CHECK: %[[S12:.+]] = llvm.mlir.constant(256 : i32) : i64
+// CHECK: %[[S15:.+]] = llvm.mlir.constant(6 : i32) : i64
+// CHECK: %[[S17:.+]] = llvm.mlir.constant(384 : i32) : i64
+// CHECK: %[[S21:.+]] = llvm.mlir.constant(512 : i32) : i64
+// CHECK: %[[S24:.+]] = llvm.mlir.constant(514 : i32) : i64
+// CHECK: %[[S29:.+]] = llvm.mlir.constant(516 : i32) : i64
+// CHECK: %[[S34:.+]] = llvm.mlir.constant(518 : i32) : i64
 // CHECK-DAG: %[[S0:.+]] = builtin.unrealized_conversion_cast %[[arg0]] : !nvgpu.warpgroup.descriptor<tensor = memref<128x64xf16, 3>> to i64
 // CHECK-DAG: %[[S1:.+]] = builtin.unrealized_conversion_cast %[[arg1]] : !nvgpu.warpgroup.descriptor<tensor = memref<64x128xf16, 3>> to i64
 // CHECK-DAG: %[[ARG:.+]] = builtin.unrealized_conversion_cast %[[arg2]] : !nvgpu.warpgroup.accumulator<fragmented = vector<128x128xf32>> to !llvm.struct<(struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>, struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>)>
@@ -939,39 +944,26 @@ func.func @warpgroup_mma_128_128_64(
 // CHECK: %[[UD:.+]] =  llvm.mlir.poison : !llvm.struct<(struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>, struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>)>
 // CHECK: %[[S2:.+]] = llvm.extractvalue %[[ARG]][0] : !llvm.struct<(struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>, struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>)>
 // CHECK: %[[S4:.+]] = nvvm.wgmma.mma_async %[[S0]], %[[S1]], %[[S2]], <m = 64, n = 128, k = 16>, D[<f32>, <one>, <wrapped>], A[<f16>, <one>, <row>], B[<f16>, <one>, <row>] : !llvm.struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)> -> !llvm.struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>
-// CHECK: %[[S5:.+]] = llvm.mlir.constant(2 : i32) : i64
 // CHECK: %[[S6:.+]] = llvm.add %[[S0]], %[[S5]] : i64
-// CHECK: %[[S7:.+]] = llvm.mlir.constant(128 : i32) : i64
 // CHECK: %[[S8:.+]] = llvm.add %[[S1]], %[[S7]]  : i64
 // CHECK: %[[S9:.+]] = nvvm.wgmma.mma_async %[[S6]], %[[S8]], %[[S4]], <m = 64, n = 128, k = 16>, D[<f32>, <one>, <wrapped>], A[<f16>, <one>, <row>], B[<f16>, <one>, <row>] : !llvm.struct
-// CHECK: %[[S10:.+]] = llvm.mlir.constant(4 : i32) : i64
 // CHECK: %[[S11:.+]] = llvm.add %[[S0]], %[[S10]]  : i64
-// CHECK: %[[S12:.+]] = llvm.mlir.constant(256 : i32) : i64
 // CHECK: %[[S13:.+]] = llvm.add %[[S1]], %[[S12]]  : i64
 // CHECK: %[[S14:.+]] = nvvm.wgmma.mma_async %[[S11]], %[[S13]], %[[S9]], <m = 64, n = 128, k = 16>, D[<f32>, <one>, <wrapped>], A[<f16>, <one>, <row>], B[<f16>, <one>, <row>] : !llvm.struct
-// CHECK: %[[S15:.+]] = llvm.mlir.constant(6 : i32) : i64
 // CHECK: %[[S16:.+]] = llvm.add %[[S0]], %[[S15]]  : i64
-// CHECK: %[[S17:.+]] = llvm.mlir.constant(384 : i32) : i64
 // CHECK: %[[S18:.+]] = llvm.add %[[S1]], %[[S17]]  : i64
 // CHECK: %[[S19:.+]] = nvvm.wgmma.mma_async %[[S16]], %[[S18]], %[[S14]], <m = 64, n = 128, k = 16>, D[<f32>, <one>, <wrapped>], A[<f16>, <one>, <row>], B[<f16>, <one>, <row>] : !llvm.struct
 // CHECK: %[[S3:.+]] = llvm.extractvalue %[[ARG]][1] : !llvm.struct<(struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>, struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>)>
-// CHECK: %[[S21:.+]] = llvm.mlir.constant(512 : i32) : i64
 // CHECK: %[[S22:.+]] = llvm.add %[[S0]], %[[S21]]  : i64
 // CHECK: %[[S23:.+]] = nvvm.wgmma.mma_async %[[S22]], %[[S1]], %[[S3]], <m = 64, n = 128, k = 16>, D[<f32>, <one>, <wrapped>], A[<f16>, <one>, <row>], B[<f16>, <one>, <row>] : !llvm.struct
-// CHECK: %[[S24:.+]] = llvm.mlir.constant(514 : i32) : i64
 // CHECK: %[[S25:.+]] = llvm.add %[[S0]], %[[S24]]  : i64
-// CHECK: %[[S26:.+]] = llvm.mlir.constant(128 : i32) : i64
-// CHECK: %[[S27:.+]] = llvm.add %[[S1]], %[[S26]]  : i64
+// CHECK: %[[S27:.+]] = llvm.add %[[S1]], %[[S7]]  : i64
 // CHECK: %[[S28:.+]] = nvvm.wgmma.mma_async %[[S25]], %[[S27]], %[[S23]], <m = 64, n = 128, k = 16>, D[<f32>, <one>, <wrapped>], A[<f16>, <one>, <row>], B[<f16>, <one>, <row>] : !llvm.struct
-// CHECK: %[[S29:.+]] = llvm.mlir.constant(516 : i32) : i64
 // CHECK: %[[S30:.+]] = llvm.add %[[S0]], %[[S29]]  : i64
-// CHECK: %[[S31:.+]] = llvm.mlir.constant(256 : i32) : i64
-// CHECK: %[[S32:.+]] = llvm.add %[[S1]], %[[S31]]  : i64
+// CHECK: %[[S32:.+]] = llvm.add %[[S1]], %[[S12]]  : i64
 // CHECK: %[[S33:.+]] = nvvm.wgmma.mma_async %[[S30]], %[[S32]], %[[S28]], <m = 64, n = 128, k = 16>, D[<f32>, <one>, <wrapped>], A[<f16>, <one>, <row>], B[<f16>, <one>, <row>] : !llvm.struct
-// CHECK: %[[S34:.+]] = llvm.mlir.constant(518 : i32) : i64
 // CHECK: %[[S35:.+]] = llvm.add %[[S0]], %[[S34]]  : i64
-// CHECK: %[[S36:.+]] = llvm.mlir.constant(384 : i32) : i64
-// CHECK: %[[S37:.+]] = llvm.add %[[S1]], %[[S36]]  : i64
+// CHECK: %[[S37:.+]] = llvm.add %[[S1]], %[[S17]]  : i64
 // CHECK: %[[S38:.+]] = nvvm.wgmma.mma_async %[[S35]], %[[S37]], %[[S33]], <m = 64, n = 128, k = 16>, D[<f32>, <one>, <wrapped>], A[<f16>, <one>, <row>], B[<f16>, <one>, <row>] : !llvm.struct
 // CHECK: %[[S40:.+]] = llvm.insertvalue %[[S19]], %[[UD]][0] : !llvm.struct<(struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>, struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>)>
 // CHECK: %[[S41:.+]] = llvm.insertvalue %[[S38]], %[[S40]][1] : !llvm.struct<(struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>, struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>)>
@@ -991,14 +983,17 @@ func.func @warpgroup_mma_128_128_64(
 func.func @warpgroup_mma_store(
     %result : !nvgpu.warpgroup.accumulator<fragmented = vector<128x128xf32>>,
     %matrixD: memref<128x128xf32,3>) {
-// CHECK: %[[S0:.+]] = builtin.unrealized_conversion_cast %[[arg0]] : !nvgpu.warpgroup.accumulator<fragmented = vector<128x128xf32>> to !llvm.struct<(struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>, struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>)>
-// CHECK: %[[EX1:.+]] = llvm.extractvalue %[[S0]][0] : !llvm.struct<(struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>, struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>)>
 // CHECK: %[[S6:.+]] = llvm.mlir.constant(1 : i32) : i32
 // CHECK: %[[S5:.+]] = llvm.mlir.constant(2 : i32) : i32
 // CHECK: %[[S2:.+]] = llvm.mlir.constant(4 : i32) : i32
 // CHECK: %[[S4:.+]] = llvm.mlir.constant(8 : i32) : i32
 // CHECK: %[[S7:.+]] = llvm.mlir.constant(16 : i32) : i32
 // CHECK: %[[WarpSize:.+]] = llvm.mlir.constant(32 : i32) : i32
+// CHECK: %[[S16:.+]] = llvm.mlir.constant(0 : i32) : i32
+// CHECK: %[[S46:.+]] = llvm.mlir.constant(3 : i32) : i32
+// CHECK: %[[S325:.+]] = llvm.mlir.constant(64 : i32) : i32
+// CHECK: %[[S0:.+]] = builtin.unrealized_conversion_cast %[[arg0]] : !nvgpu.warpgroup.accumulator<fragmented = vector<128x128xf32>> to !llvm.struct<(struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>, struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>)>
+// CHECK: %[[EX1:.+]] = llvm.extractvalue %[[S0]][0] : !llvm.struct<(struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>, struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>)>
 
 // ### Store {d0, d1} of each thread ###
 
@@ -1010,11 +1005,9 @@ func.func @warpgroup_mma_store(
 // CHECK: %[[S13:.+]] = llvm.mul %[[S12]], %[[S5]]  : i32
 // CHECK: %[[S14:.+]] = llvm.mul %[[S10]], %[[S7]]  : i32
 // CHECK: %[[S15:.+]] = llvm.add %[[S11]], %[[S14]]  : i32
-// CHECK: %[[S16:.+]] = llvm.mlir.constant(0 : i32) : i32
 // CHECK: %[[S17:.+]] = llvm.mul %[[S16]], %[[S4]]  : i32
 // CHECK: %[[S18:.+]] = llvm.add %[[S15]], %[[S17]]  : i32
-// CHECK: %[[S19:.+]] = llvm.mlir.constant(0 : i32) : i32
-// CHECK: %[[S20:.+]] = llvm.mul %[[S19]], %[[S4]]  : i32
+// CHECK: %[[S20:.+]] = llvm.mul %[[S16]], %[[S4]]  : i32
 // CHECK: %[[S21:.+]] = llvm.add %[[S13]], %[[S20]]  : i32
 // CHECK: %[[S22:.+]] = arith.index_cast %[[S18]] : i32 to index
 // CHECK: %[[S23:.+]] = arith.index_cast %[[S21]] : i32 to index
@@ -1027,8 +1020,7 @@ func.func @warpgroup_mma_store(
 
 // ### Store {d2, d3} of each thread ###
 
-// CHECK: %[[S28:.+]] = llvm.mlir.constant(1 : i32) : i32
-// CHECK: %[[S29:.+]] = llvm.mul %[[S28]], %[[S4]]  : i32
+// CHECK: %[[S29:.+]] = llvm.mul %[[S6]], %[[S4]]  : i32
 // CHECK: %[[S30:.+]] = llvm.add %[[S13]], %[[S29]]  : i32
 // CHECK: %[[S31:.+]] = arith.index_cast %[[S18]] : i32 to index
 // CHECK: %[[S32:.+]] = arith.index_cast %[[S30]] : i32 to index
@@ -1041,8 +1033,7 @@ func.func @warpgroup_mma_store(
 
 // ### Store {d4, d5} of each thread ###
 
-// CHECK: %[[S37:.+]] = llvm.mlir.constant(2 : i32) : i32
-// CHECK: %[[S38:.+]] = llvm.mul %[[S37]], %[[S4]]  : i32
+// CHECK: %[[S38:.+]] = llvm.mul %[[S5]], %[[S4]]  : i32
 // CHECK: %[[S39:.+]] = llvm.add %[[S13]], %[[S38]]  : i32
 // CHECK: %[[S40:.+]] = arith.index_cast %[[S18]] : i32 to index
 // CHECK: %[[S41:.+]] = arith.index_cast %[[S39]] : i32 to index
@@ -1055,7 +1046,6 @@ func.func @warpgroup_mma_store(
 
 // ### Store {d6, d7} of each thread ###
 
-// CHECK: %[[S46:.+]] = llvm.mlir.constant(3 : i32) : i32
 // CHECK: %[[S47:.+]] = llvm.mul %[[S46]], %[[S4]]  : i32
 // CHECK: %[[S48:.+]] = llvm.add %[[S13]], %[[S47]]  : i32
 // CHECK: %[[S49:.+]] = arith.index_cast %[[S18]] : i32 to index
@@ -1069,36 +1059,25 @@ func.func @warpgroup_mma_store(
 
 // Pattern continues similarly 28x times until {... d62, d63}
 
-// CHECK: %[[c1:.+]] = llvm.mlir.constant(1 : i32) : i32
-// CHECK: %[[c2:.+]] = llvm.mlir.constant(2 : i32) : i32
 
 // ### Store {d64, d65} of each thread ###
 // CHECK: %[[EX2:.+]] = llvm.extractvalue %[[S0]][1] : !llvm.struct<(struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>, struct<(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>)>
-// CHECK: %[[S315:.+]] = llvm.mlir.constant(1 : i32) : i32
-// CHECK: %[[S312:.+]] = llvm.mlir.constant(2 : i32) : i32
-// CHECK: %[[S311:.+]] = llvm.mlir.constant(4 : i32) : i32
-// CHECK: %[[S313:.+]] = llvm.mlir.constant(8 : i32) : i32
-// CHECK: %[[S316:.+]] = llvm.mlir.constant(16 : i32) : i32
-// CHECK: %[[WS2:.+]] = llvm.mlir.constant(32 : i32) : i32
 // CHECK: %[[S317:.+]] = nvvm.read.ptx.sreg.tid.x : i32
-// CHECK: %[[S318:.+]] = llvm.urem %[[S317]], %[[WS2]]  : i32
-// CHECK: %[[S319:.+]] = llvm.udiv %[[S317]], %[[WS2]]  : i32
-// CHECK: %[[S320:.+]] = llvm.udiv %[[S318]], %[[S311]]  : i32
-// CHECK: %[[S321:.+]] = llvm.urem %[[S318]], %[[S311]]  : i32
-// CHECK: %[[S322:.+]] = llvm.mul %[[S321]], %[[S312]]  : i32
-// CHECK: %[[S323:.+]] = llvm.mul %[[S319]], %[[S316]]  : i32
+// CHECK: %[[S318:.+]] = llvm.urem %[[S317]], %[[WarpSize]]  : i32
+// CHECK: %[[S319:.+]] = llvm.udiv %[[S317]], %[[WarpSize]]  : i32
+// CHECK: %[[S320:.+]] = llvm.udiv %[[S318]], %[[S2]]  : i32
+// CHECK: %[[S321:.+]] = llvm.urem %[[S318]], %[[S2]]  : i32
+// CHECK: %[[S322:.+]] = llvm.mul %[[S321]], %[[S5]]  : i32
+// CHECK: %[[S323:.+]] = llvm.mul %[[S319]], %[[S7]]  : i32
 // CHECK: %[[S324:.+]] = llvm.add %[[S320]], %[[S323]]  : i32
-// CHECK: %[[S325:.+]] = llvm.mlir.constant(64 : i32) : i32
 // CHECK: %[[S326:.+]] = llvm.add %[[S324]], %[[S325]]  : i32
-// CHECK: %[[S327:.+]] = llvm.mlir.constant(0 : i32) : i32
-// CHECK: %[[S328:.+]] = llvm.mul %[[S327]], %[[S313]]  : i32
+// CHECK: %[[S328:.+]] = llvm.mul %[[S16]], %[[S4]]  : i32
 // CHECK: %[[S329:.+]] = llvm.add %[[S326]], %[[S328]]  : i32
-// CHECK: %[[S330:.+]] = llvm.mlir.constant(0 : i32) : i32
-// CHECK: %[[S331:.+]] = llvm.mul %[[S330]], %[[S313]]  : i32
+// CHECK: %[[S331:.+]] = llvm.mul %[[S16]], %[[S4]]  : i32
 // CHECK: %[[S332:.+]] = llvm.add %[[S322]], %[[S331]]  : i32
 // CHECK: %[[S333:.+]] = arith.index_cast %[[S329]] : i32 to index
 // CHECK: %[[S334:.+]] = arith.index_cast %[[S332]] : i32 to index
-// CHECK: %[[S335:.+]] = llvm.add %[[S332]], %[[S315]]  : i32
+// CHECK: %[[S335:.+]] = llvm.add %[[S332]], %[[S6]]  : i32
 // CHECK: %[[S336:.+]] = arith.index_cast %[[S335]] : i32 to index
 // CHECK: %[[S337:.+]] = llvm.extractvalue %[[EX2]][0]
 // CHECK: %[[S338:.+]] = llvm.extractvalue %[[EX2]][1]
@@ -1399,10 +1378,10 @@ module attributes {transform.with_named_sequence} {
 // CHECK-LABEL: @rcp_approx_ftz_f32
 // CHECK-SAME:  %[[IN:.*]]: vector<32x16xf32>
 func.func @rcp_approx_ftz_f32(%in: vector<32x16xf32>) {
+  // CHECK: %[[IDX_0:.+]] = llvm.mlir.constant(0 : i64) : i64
   // CHECK: %[[IN_LLVM:.*]] = builtin.unrealized_conversion_cast %[[IN]] : vector<32x16xf32> to !llvm.array<32 x vector<16xf32>>
   // CHECK: %[[IN1DVEC:.*]] = llvm.extractvalue %[[IN_LLVM]][0] : !llvm.array<32 x vector<16xf32>>
   // CHECK: %[[OUT1DVEC:.*]] = llvm.mlir.poison : vector<16xf32>
-  // CHECK: %[[IDX_0:.+]] = llvm.mlir.constant(0 : i64) : i64
   // CHECK: %[[ELEM_0:.*]] = llvm.extractelement %[[IN1DVEC]][%[[IDX_0]] : i64]
   // CHECK: %[[ELEM_RCP0:.*]] = nvvm.rcp.approx.ftz.f %[[ELEM_0]] : f32
   // CHECK: llvm.insertelement %[[ELEM_RCP0]], %[[OUT1DVEC]][%[[IDX_0]] : i64] : vector<16xf32>

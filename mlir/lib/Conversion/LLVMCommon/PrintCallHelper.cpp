@@ -74,7 +74,7 @@ LogicalResult mlir::LLVM::createPrintStrCall(
   // Emit call to `printStr` in runtime library.
   builder.restoreInsertionPoint(ip);
   auto msgAddr =
-      LLVM::AddressOfOp::create(builder, loc, ptrTy, globalOp.getName());
+      builder.createOrFold<LLVM::AddressOfOp>(loc, ptrTy, globalOp.getName());
   SmallVector<LLVM::GEPArg> indices(1, 0);
   Value gep =
       LLVM::GEPOp::create(builder, loc, ptrTy, arrayTy, msgAddr, indices);

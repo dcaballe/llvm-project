@@ -6,9 +6,9 @@
 // CHECK-LABEL: @cvt_float_e4m3fn_to_f16(
 // CHECK-SAME: %[[IN:.+]]: vector<8xf8E4M3FN>
 func.func @cvt_float_e4m3fn_to_f16(%in : vector<8xf8E4M3FN>) {
+  // CHECK: llvm.mlir.undef : vector<4xi32>
   // CHECK: %[[CAST:.*]] = builtin.unrealized_conversion_cast %[[IN]] : vector<8xf8E4M3FN> to vector<8xi8>
   // CHECK: llvm.bitcast %[[CAST]] : vector<8xi8> to vector<2xi32>
-  // CHECK: llvm.mlir.undef : vector<4xi32>
   // CHECK: llvm.bitcast {{.*}} : i32 to vector<2xi16>
   // CHECK: llvm.bitcast {{.*}} : i16 to vector<2xi8>
   // CHECK: nvvm.convert.f8x2.to.f16x2
@@ -27,9 +27,9 @@ func.func @cvt_float_e4m3fn_to_f16(%in : vector<8xf8E4M3FN>) {
 // CHECK-LABEL: @cvt_float_e5m2_to_f16(
 // CHECK-SAME: %[[IN:.+]]: vector<8xf8E5M2>
 func.func @cvt_float_e5m2_to_f16(%in : vector<8xf8E5M2>) {
+  // CHECK: %[[OUT_I32:.+]] = llvm.mlir.undef : vector<4xi32>
   // CHECK: %[[CAST:.*]] = builtin.unrealized_conversion_cast %[[IN]] : vector<8xf8E5M2> to vector<8xi8>
   // CHECK: %[[IN_I32:.+]] = llvm.bitcast %[[CAST]] : vector<8xi8> to vector<2xi32>
-  // CHECK: %[[OUT_I32:.+]] = llvm.mlir.undef : vector<4xi32>
   // CHECK: llvm.extractelement %[[IN_I32]]
   // CHECK: llvm.bitcast {{.*}} : i32 to vector<2xi16>
   // CHECK: llvm.extractelement {{.*}} : vector<2xi16>
@@ -57,9 +57,9 @@ func.func @cvt_float_e5m2_to_f16(%in : vector<8xf8E5M2>) {
 // CHECK-LABEL: @cvt_float_e8m0_to_bf16(
 // CHECK-SAME: %[[IN:.+]]: vector<8xf8E8M0FNU>
 func.func @cvt_float_e8m0_to_bf16(%in : vector<8xf8E8M0FNU>) {
+  // CHECK: llvm.mlir.undef : vector<4xi32>
   // CHECK: %[[CAST:.*]] = builtin.unrealized_conversion_cast %[[IN]] : vector<8xf8E8M0FNU> to vector<8xi8>
   // CHECK: llvm.bitcast %[[CAST]] : vector<8xi8> to vector<2xi32>
-  // CHECK: llvm.mlir.undef : vector<4xi32>
   // CHECK: llvm.bitcast {{.*}} : i32 to vector<2xi16>
   // CHECK: llvm.bitcast {{.*}} : i16 to vector<2xi8>
   // CHECK: nvvm.convert.f8x2.to.bf16x2
@@ -79,10 +79,10 @@ func.func @cvt_float_e8m0_to_bf16(%in : vector<8xf8E8M0FNU>) {
 // CHECK-LABEL: @cvt_float_e2m3_to_f16(
 // CHECK-SAME: %[[IN:.+]]: vector<8xf6E2M3FN>
 func.func @cvt_float_e2m3_to_f16(%in : vector<8xf6E2M3FN>) {
+  // CHECK: llvm.mlir.undef : vector<4xi32>
   // CHECK: %[[CAST:.*]] = builtin.unrealized_conversion_cast %[[IN]] : vector<8xf6E2M3FN> to vector<8xi6>
   // CHECK: llvm.zext %[[CAST]] : vector<8xi6> to vector<8xi8>
   // CHECK: llvm.bitcast {{.*}} : vector<8xi8> to vector<2xi32>
-  // CHECK: llvm.mlir.undef : vector<4xi32>
   // CHECK: llvm.bitcast {{.*}} : i32 to vector<2xi16>
   // CHECK: llvm.bitcast {{.*}} : i16 to vector<2xi8>
   // CHECK: nvvm.convert.f6x2.to.f16x2
@@ -101,10 +101,10 @@ func.func @cvt_float_e2m3_to_f16(%in : vector<8xf6E2M3FN>) {
 // CHECK-LABEL: @cvt_float_e3m2_to_f16(
 // CHECK-SAME: %[[IN:.+]]: vector<8xf6E3M2FN>
 func.func @cvt_float_e3m2_to_f16(%in : vector<8xf6E3M2FN>) {
+  // CHECK: %[[OUT_I32:.+]] = llvm.mlir.undef : vector<4xi32>
   // CHECK: %[[CAST:.*]] = builtin.unrealized_conversion_cast %[[IN]] : vector<8xf6E3M2FN> to vector<8xi6>
   // CHECK: llvm.zext %[[CAST]] : vector<8xi6> to vector<8xi8>
   // CHECK: llvm.bitcast {{.*}} : vector<8xi8> to vector<2xi32>
-  // CHECK: %[[OUT_I32:.+]] = llvm.mlir.undef : vector<4xi32>
   // CHECK: llvm.bitcast {{.*}} : i32 to vector<2xi16>
   // CHECK: llvm.bitcast {{.*}} : i16 to vector<2xi8>
   // CHECK: nvvm.convert.f6x2.to.f16x2
@@ -126,9 +126,9 @@ func.func @cvt_float_e3m2_to_f16(%in : vector<8xf6E3M2FN>) {
 // CHECK-LABEL: @cvt_float_e2m1_to_f16(
 // CHECK-SAME: %[[IN:.+]]: vector<16xf4E2M1FN>
 func.func @cvt_float_e2m1_to_f16(%in : vector<16xf4E2M1FN>) {
+  // CHECK: %[[OUT_I32:.+]] = llvm.mlir.undef : vector<8xi32>
   // CHECK: %[[CAST:.*]] = builtin.unrealized_conversion_cast %[[IN]] : vector<16xf4E2M1FN> to vector<16xi4>
   // CHECK: %[[IN_I32:.+]] = llvm.bitcast %[[CAST]] : vector<16xi4> to vector<2xi32>
-  // CHECK: %[[OUT_I32:.+]] = llvm.mlir.undef : vector<8xi32>
   // CHECK: llvm.extractelement %[[IN_I32]]
   // CHECK: llvm.bitcast {{.*}} : i32 to vector<4xi8>
   // CHECK: llvm.extractelement {{.*}} : vector<4xi8>
