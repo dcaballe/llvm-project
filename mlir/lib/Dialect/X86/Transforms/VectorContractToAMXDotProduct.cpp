@@ -286,7 +286,7 @@ static void performShuffle(OpBuilder &rewriter, Location loc, Value matB,
           vectorType = VectorType::get((16 * offset), ipType);
 
         int64_t srcRank = (dyn_cast<ShapedType>(matB.getType())).getRank();
-        Value padding = ub::PoisonOp::create(rewriter, loc, ipType);
+        Value padding = rewriter.createOrFold<ub::PoisonOp>(loc, ipType);
         auto map = AffineMap::getMinorIdentityMap(srcRank, vectorType.getRank(),
                                                   rewriter.getContext());
         SmallVector<bool> inBounds(vectorType.getRank(), true);
@@ -1025,7 +1025,7 @@ struct VectorContractToAMXDotProduct
       auto vectorType = mlir::VectorType::get({16, 16}, opType);
       int64_t srcRank =
           (dyn_cast<ShapedType>(resultBuffer.getType())).getRank();
-      Value padding = ub::PoisonOp::create(rewriter, loc, opType);
+      Value padding = rewriter.createOrFold<ub::PoisonOp>(loc, opType);
       auto map = AffineMap::getMinorIdentityMap(srcRank, vectorType.getRank(),
                                                 rewriter.getContext());
       SmallVector<bool> inBounds(vectorType.getRank(), true);
@@ -1526,7 +1526,7 @@ struct VectorContractToAMXDotProduct
 
         int64_t srcRank =
             (dyn_cast<ShapedType>(resultBuffer.getType())).getRank();
-        Value padding = ub::PoisonOp::create(rewriter, loc, opType);
+        Value padding = rewriter.createOrFold<ub::PoisonOp>(loc, opType);
         auto map = AffineMap::getMinorIdentityMap(srcRank, vectorType.getRank(),
                                                   rewriter.getContext());
         SmallVector<bool> inBounds(vectorType.getRank(), true);

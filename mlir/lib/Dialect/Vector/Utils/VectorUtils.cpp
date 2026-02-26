@@ -695,7 +695,7 @@ LogicalResult vector::unrollVectorOp(Operation *op, PatternRewriter &rewriter,
     return rewriter.notifyMatchFailure(op, "cannot unroll scalable dim");
 
   Location loc = op->getLoc();
-  Value result = ub::PoisonOp::create(rewriter, loc, resultTy);
+  Value result = rewriter.createOrFold<ub::PoisonOp>(loc, resultTy);
   VectorType subTy = VectorType::Builder(resultTy).dropDim(0);
 
   for (int64_t i = 0, e = resultTy.getShape().front(); i < e; ++i) {

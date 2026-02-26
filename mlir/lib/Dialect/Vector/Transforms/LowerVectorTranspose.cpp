@@ -282,7 +282,7 @@ static Value transposeToShuffle16x16(OpBuilder &builder, Value source, int m,
 
   auto reshInputType = VectorType::get(
       {m, n}, cast<VectorType>(source.getType()).getElementType());
-  Value res = ub::PoisonOp::create(b, reshInputType);
+  Value res = b.createOrFold<ub::PoisonOp>(reshInputType);
   for (int64_t i = 0; i < m; ++i)
     res = vector::InsertOp::create(b, vs[i], res, i);
   return res;
@@ -342,7 +342,7 @@ public:
     // of the leftmost transposed dimensions. We traverse every transpose
     // element using a linearized index that we delinearize to generate the
     // appropriate indices for the extract/insert operations.
-    Value result = ub::PoisonOp::create(rewriter, loc, resType);
+    Value result = rewriter.createOrFold<ub::PoisonOp>(loc, resType);
     int64_t numTransposedElements = ShapedType::getNumElements(prunedInShape);
 
     for (int64_t linearIdx = 0; linearIdx < numTransposedElements;

@@ -102,7 +102,7 @@ static void packNonUnitDimOperandToVNNI(mlir::PatternRewriter &rewriter,
       });
 
   int64_t srcRank = (dyn_cast<ShapedType>(srcBuff.getType())).getRank();
-  Value padding = ub::PoisonOp::create(rewriter, loc, elemTy);
+  Value padding = rewriter.createOrFold<ub::PoisonOp>(loc, elemTy);
   auto map = AffineMap::getMinorIdentityMap(srcRank, flatTy.getRank(),
                                             rewriter.getContext());
   SmallVector<bool> inBounds(flatTy.getRank(), true);

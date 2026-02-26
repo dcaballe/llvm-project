@@ -216,9 +216,9 @@ func.func @gather_memref_2d(%base: memref<?x?xf32>, %v: vector<2x3xindex>, %mask
 // The `xegpu-vector-linearize` pass does not itself affect the XeGPU ops.
 
 // CHECK: gpu.func @test_kernel(%[[A:.*]]: memref<8x16xf16>, %[[B:.*]]: memref<16x16xf16>, %[[C:.*]]: memref<8x16xf32>) kernel {
-// CHECK: %[[POISON_F32:.*]] = ub.poison : vector<128xf32>
 // CHECK: %[[CST_A:.*]] = arith.constant dense<0.000000e+00> : vector<64xf16>
 // CHECK: %[[CST_C:.*]] = arith.constant dense<5.000000e+00> : vector<64xf32>
+// CHECK: %[[POISON_F32:.*]] = ub.poison : vector<128xf32>
 
 // CHECK: %[[A_TDESC:.*]] = xegpu.create_nd_tdesc %[[A]]
 // CHECK: %[[A_VAL:.*]] = xegpu.load_nd %[[A_TDESC]][0, 0]

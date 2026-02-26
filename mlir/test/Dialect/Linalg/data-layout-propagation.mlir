@@ -1557,8 +1557,8 @@ func.func @push_redcutionextract_through_generic_withoutsused_2(%arg0: tensor<12
 // CHECK-SAME:    %[[ARG0:[a-zA-Z0-9]+]]
 // CHECK-SAME:    %[[ARG1:[a-zA-Z0-9]+]]
 // CHECK-SAME:    %[[ARG2:[a-zA-Z0-9]+]]
-// CHECK:         %[[POISON_BF16:.+]] = ub.poison : bf16
 // CHECK:         %[[POISON_F32:.+]] = ub.poison : f32
+// CHECK:         %[[POISON_BF16:.+]] = ub.poison : bf16
 // CHECK:         %[[EXTRACT:.+]] = tensor.extract_slice %[[ARG0]][%[[ARG2]], %[[ARG2]]] [%[[ARG2]], %[[ARG2]]] [1, 1] : tensor<128x128xf32> to tensor<?x?xf32>
 // CHECK:         %[[PADDED:.+]] = tensor.pad %[[EXTRACT]]
 // CHECK:           tensor.yield %[[POISON_F32]] : f32

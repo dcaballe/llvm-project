@@ -296,12 +296,12 @@ func.func @masked_dynamic_vectorize_nd_tensor_extract_with_affine_apply_gather(%
 // CHECK:           %[[VAL_3:.*]] = arith.constant 16 : index
 // CHECK:           %[[VAL_4:.*]] = arith.constant 0 : index
 // CHECK:           %[[VAL_19:.*]] = arith.constant 1 : index
+// CHECK:           %[[VAL_9:.*]] = ub.poison : f32
 // CHECK:           %[[VAL_15:.*]] = arith.constant dense<true> : vector<1x4xi1>
 // CHECK:           %[[VAL_16:.*]] = arith.constant dense<0.000000e+00> : vector<1x4xf32>
 // CHECK:           %[[VAL_23:.*]] = arith.constant dense<16> : vector<1x4xindex>
 // CHECK:           %[[VAL_5:.*]] = tensor.dim %[[VAL_2]], %[[VAL_4]] : tensor<?x?xf32>
 // CHECK:           %[[VAL_7:.*]] = tensor.dim %[[VAL_2]], %[[VAL_19]] : tensor<?x?xf32>
-// CHECK:           %[[VAL_9:.*]] = ub.poison : f32
 // CHECK:           %[[VAL_10:.*]] = vector.create_mask %[[VAL_5]], %[[VAL_7]] : vector<1x4xi1>
 // CHECK:           %[[VAL_11:.*]] = vector.mask %[[VAL_10]] { vector.transfer_read %[[VAL_2]]{{\[}}%[[VAL_4]], %[[VAL_4]]], %[[VAL_9]] {in_bounds = [true, true]} : tensor<?x?xf32>, vector<1x4xf32> } : vector<1x4xi1> -> vector<1x4xf32>
 // CHECK:           %[[VAL_12:.*]] = vector.step : vector<4xindex>
@@ -349,13 +349,13 @@ func.func @extract_masked_vectorize(%arg0: tensor<?x?xf32>, %arg1: tensor<?x?xf3
 // CHECK:           %[[VAL_3:.*]] = arith.constant 2 : index
 // CHECK:           %[[VAL_4:.*]] = arith.constant 0 : index
 // CHECK:           %[[VAL_16:.*]] = arith.constant 1 : index
+// CHECK:           %[[VAL_9:.*]] = ub.poison : f32
 // CHECK:           %[[VAL_12:.*]] = arith.constant dense<true> : vector<3x3xi1>
 // CHECK:           %[[VAL_13:.*]] = arith.constant dense<0.000000e+00> : vector<3x3xf32>
 // CHECK:           %[[VAL_15:.*]] = arith.constant dense<1> : vector<3x3xindex>
 // CHECK:           %[[VAL_20:.*]] = arith.constant dense<2> : vector<3x3xindex>
 // CHECK:           %[[VAL_5:.*]] = tensor.dim %[[VAL_1]], %[[VAL_4]] : tensor<?x?xf32>
 // CHECK:           %[[VAL_7:.*]] = tensor.dim %[[VAL_1]], %[[VAL_16]] : tensor<?x?xf32>
-// CHECK:           %[[VAL_9:.*]] = ub.poison : f32
 // CHECK:           %[[VAL_10:.*]] = vector.create_mask %[[VAL_5]], %[[VAL_7]] : vector<3x3xi1>
 // CHECK:           %[[VAL_11:.*]] = vector.mask %[[VAL_10]] { vector.transfer_read %[[VAL_1]]{{\[}}%[[VAL_4]], %[[VAL_4]]], %[[VAL_9]] {in_bounds = [true, true]} : tensor<?x?xf32>, vector<3x3xf32> } : vector<3x3xi1> -> vector<3x3xf32>
 // CHECK:           %[[VAL_17:.*]] = tensor.dim %[[VAL_0]], %[[VAL_16]] : tensor<?x?xf32>
@@ -449,11 +449,10 @@ func.func @scalar_broadcast(%init : tensor<1x1x3xi32>, %src: tensor<1x3x2x4xi32>
 // CHECK:           %[[MASK_RES:.*]] = vector.create_mask %[[C1]], %[[C1]], %[[C3]] : vector<1x1x4xi1>
 
 /// Read and broadcast the scalar
-// CHECK:           %[[PAD:.*]] = ub.poison : i32
 // CHECK:           %[[MASK_READ:.*]] = vector.constant_mask [1] : vector<1xi1>
 // CHECK:           %[[READ:.*]] = vector.mask %[[MASK_READ]] {
-// CHECK-SAME:          vector.transfer_read %[[SRC]]{{\[}}%[[IDX]], %[[IDX]], %[[IDX]], %[[IDX]]],  %[[PAD]]
-// CHECK-SAME:          {in_bounds = [true, true, true], permutation_map = #[[$MAP]]} : tensor<1x3x2x4xi32>, vector<1x1x4xi32>
+// CHECK-SAME:          vector.transfer_read %[[SRC]]{{\[}}%[[IDX]], %[[IDX]], %[[IDX]], %[[IDX]]]
+// CHECK-SAME:          permutation_map = #[[$MAP]]} : tensor<1x3x2x4xi32>, vector<1x1x4xi32>
 // CHECK-SAME:      } : vector<1xi1> -> vector<1x1x4xi32>
 
 /// Save the result in the output tensor

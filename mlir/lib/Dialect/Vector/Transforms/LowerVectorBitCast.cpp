@@ -64,7 +64,7 @@ public:
         VectorType::get(shape, resultType.getElementType(), scalableDims);
 
     Location loc = op.getLoc();
-    Value result = ub::PoisonOp::create(rewriter, loc, resultType);
+    Value result = rewriter.createOrFold<ub::PoisonOp>(loc, resultType);
     for (auto position : *unrollIterator) {
       Value extract =
           vector::ExtractOp::create(rewriter, loc, op.getSource(), position);

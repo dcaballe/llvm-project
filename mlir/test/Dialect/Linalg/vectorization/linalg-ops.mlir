@@ -208,14 +208,13 @@ func.func @dynamic_generic_with_reduction_and_broadcast(%arg0: tensor<?x?xf32>, 
 // CHECK-SAME:      %[[VAL_1:.*]]: tensor<?x?xf32>) -> tensor<?x?xf32> {
 // CHECK:           %[[VAL_2:.*]] = arith.constant 0 : index
 // CHECK:           %[[VAL_4:.*]] = arith.constant 1 : index
+// CHECK:           %[[VAL_7:.*]] = ub.poison : f32
 // CHECK:           %[[VAL_3:.*]] = tensor.dim %[[VAL_0]], %[[VAL_2]] : tensor<?x?xf32>
 // CHECK:           %[[VAL_5:.*]] = tensor.dim %[[VAL_0]], %[[VAL_4]] : tensor<?x?xf32>
-// CHECK:           %[[VAL_7:.*]] = ub.poison : f32
 // CHECK:           %[[VAL_8:.*]] = vector.create_mask %[[VAL_3]], %[[VAL_5]] : vector<4x4xi1>
 // CHECK:           %[[VAL_9:.*]] = vector.mask %[[VAL_8]] { vector.transfer_read %[[VAL_0]]{{\[}}%[[VAL_2]], %[[VAL_2]]], %[[VAL_7]] {in_bounds = [true, true]} : tensor<?x?xf32>, vector<4x4xf32> } : vector<4x4xi1> -> vector<4x4xf32>
-// CHECK:           %[[VAL_10:.*]] = ub.poison : f32
 // CHECK:           %[[VAL_11:.*]] = vector.create_mask %[[VAL_3]] : vector<4xi1>
-// CHECK:           %[[VAL_12:.*]] = vector.mask %[[VAL_11]] { vector.transfer_read %[[VAL_1]]{{\[}}%[[VAL_2]], %[[VAL_2]]], %[[VAL_10]] {in_bounds = [true], permutation_map = #[[$MAP]]} : tensor<?x?xf32>, vector<4xf32> } : vector<4xi1> -> vector<4xf32>
+// CHECK:           %[[VAL_12:.*]] = vector.mask %[[VAL_11]] { vector.transfer_read %[[VAL_1]]{{\[}}%[[VAL_2]], %[[VAL_2]]], %[[VAL_7]] {in_bounds = [true], permutation_map = #[[$MAP]]} : tensor<?x?xf32>, vector<4xf32> } : vector<4xi1> -> vector<4xf32>
 // CHECK:           %[[VAL_13:.*]] = vector.mask %[[VAL_8]] { vector.multi_reduction <add>, %[[VAL_9]], %[[VAL_12]] [1] : vector<4x4xf32> to vector<4xf32> } : vector<4x4xi1> -> vector<4xf32>
 // CHECK:           %[[VAL_15:.*]] = vector.mask %[[VAL_11]] { vector.transfer_write %[[VAL_13]], %[[VAL_1]]{{\[}}%[[VAL_2]], %[[VAL_2]]] {in_bounds = [true], permutation_map = #[[$MAP]]} : vector<4xf32>, tensor<?x?xf32> } : vector<4xi1> -> tensor<?x?xf32>
 // CHECK:           return %[[VAL_15]] : tensor<?x?xf32>
@@ -249,13 +248,13 @@ func.func @vectorize_dynamic_2d_transpose(%arg0: tensor<?x?xf32>,
 // CHECK-LABEL:   @vectorize_dynamic_2d_transpose
 // CHECK:           %[[VAL_3:.*]] = arith.constant 1 : index
 // CHECK:           %[[VAL_5:.*]] = arith.constant 0 : index
+// CHECK:           %[[VAL_14:.*]] = ub.poison : f32
 // CHECK:           %[[VAL_4:.*]] = tensor.dim %{{.*}}, %[[VAL_3]] : tensor<?x?xf32>
 // CHECK:           %[[VAL_6:.*]] = tensor.dim %{{.*}}, %[[VAL_5]] : tensor<?x?xf32>
 // CHECK:           %[[VAL_9:.*]] = vector.create_mask %[[VAL_6]], %[[VAL_4]] : vector<8x4xi1>
 // CHECK:           %[[VAL_10:.*]] = vector.mask %[[VAL_9]] { vector.transfer_read %{{.*}} {in_bounds = [true, true], permutation_map = #{{.*}}} : tensor<?x?xf32>, vector<4x8xf32> } : vector<8x4xi1> -> vector<4x8xf32>
 // CHECK:           %[[VAL_12:.*]] = vector.create_mask %[[VAL_4]], %[[VAL_6]] : vector<4x8xi1>
 // CHECK:           %[[VAL_13:.*]] = vector.mask %[[VAL_12]] { vector.transfer_read %{{.*}} {in_bounds = [true, true]} : tensor<?x?xf32>, vector<4x8xf32> } : vector<4x8xi1> -> vector<4x8xf32>
-// CHECK:           %[[VAL_14:.*]] = ub.poison : f32
 // CHECK:           %[[VAL_15:.*]] = vector.mask %[[VAL_12]] { vector.transfer_read %{{.*}} {in_bounds = [true, true]} : tensor<?x?xf32>, vector<4x8xf32> } : vector<4x8xi1> -> vector<4x8xf32>
 // CHECK:           %[[VAL_16:.*]] = arith.addf %[[VAL_10]], %[[VAL_13]] : vector<4x8xf32>
 // CHECK:           %[[VAL_17:.*]] = vector.mask %[[VAL_12]] { vector.transfer_write %[[VAL_16]], %{{.*}} {in_bounds = [true, true]} : vector<4x8xf32>, tensor<?x?xf32> } : vector<4x8xi1> -> tensor<?x?xf32>
@@ -367,12 +366,11 @@ func.func @vectorize_dynamic_reduction_2d_scalable(%arg0: tensor<?x?xf32>,
 // CHECK-SAME:     %[[ARG_0:.*]]: tensor<?x?xf32>, %[[ARG_1:.*]]: tensor<?xf32>) -> tensor<?xf32> {
 // CHECK:    %[[C0_IDX:.*]] = arith.constant 0 : index
 // CHECK:    %[[C1_IDX:.*]] = arith.constant 1 : index
+// CHECK:    %[[PV:.*]] = ub.poison : f32
 // CHECK:    %[[DIM_A0_0:.*]] = tensor.dim %[[ARG_0]], %[[C0_IDX]] : tensor<?x?xf32>
 // CHECK:    %[[DIM_A0_1:.*]] = tensor.dim %[[ARG_0]], %[[C1_IDX]] : tensor<?x?xf32>
-// CHECK:    %[[PV:.*]] = ub.poison : f32
 // CHECK:    %[[MASK_2D:.*]] = vector.create_mask %[[DIM_A0_0]], %[[DIM_A0_1]] : vector<4x[8]xi1>
 // CHECK:    %[[VEC_RD_0:.*]] = vector.mask %[[MASK_2D]] { vector.transfer_read %[[ARG_0]][%[[C0_IDX]], %[[C0_IDX]]], %[[PV]] {in_bounds = [true, true]} : tensor<?x?xf32>, vector<4x[8]xf32> } : vector<4x[8]xi1> -> vector<4x[8]xf32>
-// CHECK:    %[[PV:.*]] = ub.poison : f32
 // CHECK:    %[[MASK_1D:.*]] = vector.create_mask %[[DIM_A0_0]] : vector<4xi1>
 // CHECK:    %[[VEC_RD_1:.*]] = vector.mask %[[MASK_1D]] { vector.transfer_read %[[ARG_1]][%[[C0_IDX]]], %[[PV]] {in_bounds = [true]} : tensor<?xf32>, vector<4xf32> } : vector<4xi1> -> vector<4xf32>
 // CHECK:    %[[REDUCE:.*]] = vector.mask %[[MASK_2D]] { vector.multi_reduction <add>, %[[VEC_RD_0]], %[[VEC_RD_1]] [1] : vector<4x[8]xf32> to vector<4xf32> } : vector<4x[8]xi1> -> vector<4xf32>
@@ -402,11 +400,10 @@ func.func @vectorize_dynamic_reduction_scalable_1d(%arg0: tensor<?xf32>,
 // CHECK-LABEL:  func.func @vectorize_dynamic_reduction_scalable_1d(
 // CHECK-SAME:     %[[ARG_0:.*]]: tensor<?xf32>, %[[ARG_1:.*]]: tensor<f32>) -> tensor<f32> {
 // CHECK:          %[[C0_IDX:.*]] = arith.constant 0 : index
-// CHECK:          %[[DIM_A0_0:.*]] = tensor.dim %[[ARG_0]], %[[C0_IDX]] : tensor<?xf32>
 // CHECK:          %[[PV:.*]] = ub.poison : f32
+// CHECK:          %[[DIM_A0_0:.*]] = tensor.dim %[[ARG_0]], %[[C0_IDX]] : tensor<?xf32>
 // CHECK:          %[[MASK:.*]] = vector.create_mask %[[DIM_A0_0]] : vector<[4]xi1>
 // CHECK:          %[[VEC_RD_0:.*]] = vector.mask %[[MASK]] { vector.transfer_read %[[ARG_0]][%[[C0_IDX]]], %[[PV]] {in_bounds = [true]} : tensor<?xf32>, vector<[4]xf32> } : vector<[4]xi1> -> vector<[4]xf32>
-// CHECK:          %[[PV:.*]] = ub.poison : f32
 // CHECK:          %[[VEC_RD_1:.*]] = vector.transfer_read %[[ARG_1]][], %[[PV]] : tensor<f32>, vector<f32>
 // CHECK:          %[[ACC_f32:.*]] = vector.extract %[[VEC_RD_1]][] : f32 from vector<f32>
 // CHECK:          %[[REDUCE:.*]] = vector.mask %[[MASK]] { vector.multi_reduction <add>, %[[VEC_RD_0]], %[[ACC_f32]] [0] : vector<[4]xf32> to f32 } : vector<[4]xi1> -> f32
@@ -531,10 +528,8 @@ func.func @vectorize_partial_dynamic_identity(%arg0: tensor<8x?xf32>,
 // CHECK-DAG:       %[[VAL_7:.*]] = arith.constant 8 : index
 // CHECK:           %[[VAL_8:.*]] = vector.create_mask %[[VAL_7]], %[[VAL_4]] : vector<8x32xi1>
 // CHECK:           %[[VAL_9:.*]] = vector.mask %[[VAL_8]] { vector.transfer_read %[[VAL_0]][%[[VAL_5]], %[[VAL_5]]], %[[VAL_6]] {in_bounds = [true, true]} : tensor<8x?xf32>, vector<8x32xf32> } : vector<8x32xi1> -> vector<8x32xf32>
-// CHECK:           %[[VAL_10:.*]] = ub.poison : f32
-// CHECK:           %[[VAL_11:.*]] = vector.mask %[[VAL_8]] { vector.transfer_read %[[VAL_1]][%[[VAL_5]], %[[VAL_5]]], %[[VAL_10]] {in_bounds = [true, true]} : tensor<8x?xf32>, vector<8x32xf32> } : vector<8x32xi1> -> vector<8x32xf32>
-// CHECK:           %[[VAL_12:.*]] = ub.poison : f32
-// CHECK:           %[[VAL_13:.*]] = vector.mask %[[VAL_8]] { vector.transfer_read %[[VAL_2]][%[[VAL_5]], %[[VAL_5]]], %[[VAL_12]] {in_bounds = [true, true]} : tensor<8x?xf32>, vector<8x32xf32> } : vector<8x32xi1> -> vector<8x32xf32>
+// CHECK:           %[[VAL_11:.*]] = vector.mask %[[VAL_8]] { vector.transfer_read %[[VAL_1]][%[[VAL_5]], %[[VAL_5]]], %[[VAL_6]] {in_bounds = [true, true]} : tensor<8x?xf32>, vector<8x32xf32> } : vector<8x32xi1> -> vector<8x32xf32>
+// CHECK:           %[[VAL_13:.*]] = vector.mask %[[VAL_8]] { vector.transfer_read %[[VAL_2]][%[[VAL_5]], %[[VAL_5]]], %[[VAL_6]] {in_bounds = [true, true]} : tensor<8x?xf32>, vector<8x32xf32> } : vector<8x32xi1> -> vector<8x32xf32>
 // CHECK:           %[[VAL_14:.*]] = arith.addf %[[VAL_9]], %[[VAL_11]] : vector<8x32xf32>
 // CHECK:           %[[VAL_16:.*]] = vector.mask %[[VAL_8]] { vector.transfer_write %[[VAL_14]], %[[VAL_2]][%[[VAL_5]], %[[VAL_5]]] {in_bounds = [true, true]} : vector<8x32xf32>, tensor<8x?xf32> } : vector<8x32xi1> -> tensor<8x?xf32>
 
@@ -574,10 +569,8 @@ func.func @vectorize_partial_dynamic_identity_scalable(%arg0: tensor<8x?xf32>,
 // CHECK-DAG:       %[[VAL_7:.*]] = arith.constant 8 : index
 // CHECK:           %[[VAL_8:.*]] = vector.create_mask %[[VAL_7]], %[[VAL_4]] : vector<8x[32]xi1>
 // CHECK:           %[[VAL_9:.*]] = vector.mask %[[VAL_8]] { vector.transfer_read %[[VAL_0]][%[[VAL_5]], %[[VAL_5]]], %[[VAL_6]] {in_bounds = [true, true]} : tensor<8x?xf32>, vector<8x[32]xf32> } : vector<8x[32]xi1> -> vector<8x[32]xf32>
-// CHECK:           %[[VAL_10:.*]] = ub.poison : f32
-// CHECK:           %[[VAL_11:.*]] = vector.mask %[[VAL_8]] { vector.transfer_read %[[VAL_1]][%[[VAL_5]], %[[VAL_5]]], %[[VAL_10]] {in_bounds = [true, true]} : tensor<8x?xf32>, vector<8x[32]xf32> } : vector<8x[32]xi1> -> vector<8x[32]xf32>
-// CHECK:           %[[VAL_12:.*]] = ub.poison : f32
-// CHECK:           %[[VAL_13:.*]] = vector.mask %[[VAL_8]] { vector.transfer_read %[[VAL_2]][%[[VAL_5]], %[[VAL_5]]], %[[VAL_12]] {in_bounds = [true, true]} : tensor<8x?xf32>, vector<8x[32]xf32> } : vector<8x[32]xi1> -> vector<8x[32]xf32>
+// CHECK:           %[[VAL_11:.*]] = vector.mask %[[VAL_8]] { vector.transfer_read %[[VAL_1]][%[[VAL_5]], %[[VAL_5]]], %[[VAL_6]] {in_bounds = [true, true]} : tensor<8x?xf32>, vector<8x[32]xf32> } : vector<8x[32]xi1> -> vector<8x[32]xf32>
+// CHECK:           %[[VAL_13:.*]] = vector.mask %[[VAL_8]] { vector.transfer_read %[[VAL_2]][%[[VAL_5]], %[[VAL_5]]], %[[VAL_6]] {in_bounds = [true, true]} : tensor<8x?xf32>, vector<8x[32]xf32> } : vector<8x[32]xi1> -> vector<8x[32]xf32>
 // CHECK:           %[[VAL_14:.*]] = arith.addf %[[VAL_9]], %[[VAL_11]] : vector<8x[32]xf32>
 // CHECK:           %[[VAL_16:.*]] = vector.mask %[[VAL_8]] { vector.transfer_write %[[VAL_14]], %[[VAL_2]][%[[VAL_5]], %[[VAL_5]]] {in_bounds = [true, true]} : vector<8x[32]xf32>, tensor<8x?xf32> } : vector<8x[32]xi1> -> tensor<8x?xf32>
 
@@ -645,10 +638,8 @@ func.func @vectorize_static_shape_with_mask(%arg0: tensor<8x30xf32>,
 // CHECK-DAG:       %[[VAL_6:.*]] = arith.constant 30 : index
 // CHECK:           %[[VAL_7:.*]] = vector.create_mask %[[VAL_5]], %[[VAL_6]] : vector<8x32xi1>
 // CHECK:           %[[VAL_8:.*]] = vector.mask %[[VAL_7]] { vector.transfer_read %[[VAL_0]][%[[VAL_3]], %[[VAL_3]]], %[[VAL_4]] {in_bounds = [true, true]} : tensor<8x30xf32>, vector<8x32xf32> } : vector<8x32xi1> -> vector<8x32xf32>
-// CHECK:           %[[VAL_9:.*]] = ub.poison : f32
-// CHECK:           %[[VAL_10:.*]] = vector.mask %[[VAL_7]] { vector.transfer_read %[[VAL_1]][%[[VAL_3]], %[[VAL_3]]], %[[VAL_9]] {in_bounds = [true, true]} : tensor<8x30xf32>, vector<8x32xf32> } : vector<8x32xi1> -> vector<8x32xf32>
-// CHECK:           %[[VAL_11:.*]] = ub.poison : f32
-// CHECK:           %[[VAL_12:.*]] = vector.mask %[[VAL_7]] { vector.transfer_read %[[VAL_2]][%[[VAL_3]], %[[VAL_3]]], %[[VAL_11]] {in_bounds = [true, true]} : tensor<8x30xf32>, vector<8x32xf32> } : vector<8x32xi1> -> vector<8x32xf32>
+// CHECK:           %[[VAL_10:.*]] = vector.mask %[[VAL_7]] { vector.transfer_read %[[VAL_1]][%[[VAL_3]], %[[VAL_3]]], %[[VAL_4]] {in_bounds = [true, true]} : tensor<8x30xf32>, vector<8x32xf32> } : vector<8x32xi1> -> vector<8x32xf32>
+// CHECK:           %[[VAL_12:.*]] = vector.mask %[[VAL_7]] { vector.transfer_read %[[VAL_2]][%[[VAL_3]], %[[VAL_3]]], %[[VAL_4]] {in_bounds = [true, true]} : tensor<8x30xf32>, vector<8x32xf32> } : vector<8x32xi1> -> vector<8x32xf32>
 // CHECK:           %[[VAL_13:.*]] = arith.addf %[[VAL_8]], %[[VAL_10]] : vector<8x32xf32>
 // CHECK:           %[[VAL_15:.*]] = vector.mask %[[VAL_7]] { vector.transfer_write %[[VAL_13]], %[[VAL_2]][%[[VAL_3]], %[[VAL_3]]] {in_bounds = [true, true]} : vector<8x32xf32>, tensor<8x30xf32> } : vector<8x32xi1> -> tensor<8x30xf32>
 
@@ -686,10 +677,8 @@ func.func @vectorize_static_shape_with_mask_scalable(%arg0: tensor<8x30xf32>,
 // CHECK-DAG:       %[[VAL_6:.*]] = arith.constant 30 : index
 // CHECK:           %[[VAL_7:.*]] = vector.create_mask %[[VAL_5]], %[[VAL_6]] : vector<8x[32]xi1>
 // CHECK:           %[[VAL_8:.*]] = vector.mask %[[VAL_7]] { vector.transfer_read %[[VAL_0]][%[[VAL_3]], %[[VAL_3]]], %[[VAL_4]] {in_bounds = [true, true]} : tensor<8x30xf32>, vector<8x[32]xf32> } : vector<8x[32]xi1> -> vector<8x[32]xf32>
-// CHECK:           %[[VAL_9:.*]] = ub.poison : f32
-// CHECK:           %[[VAL_10:.*]] = vector.mask %[[VAL_7]] { vector.transfer_read %[[VAL_1]][%[[VAL_3]], %[[VAL_3]]], %[[VAL_9]] {in_bounds = [true, true]} : tensor<8x30xf32>, vector<8x[32]xf32> } : vector<8x[32]xi1> -> vector<8x[32]xf32>
-// CHECK:           %[[VAL_11:.*]] = ub.poison : f32
-// CHECK:           %[[VAL_12:.*]] = vector.mask %[[VAL_7]] { vector.transfer_read %[[VAL_2]][%[[VAL_3]], %[[VAL_3]]], %[[VAL_11]] {in_bounds = [true, true]} : tensor<8x30xf32>, vector<8x[32]xf32> } : vector<8x[32]xi1> -> vector<8x[32]xf32>
+// CHECK:           %[[VAL_10:.*]] = vector.mask %[[VAL_7]] { vector.transfer_read %[[VAL_1]][%[[VAL_3]], %[[VAL_3]]], %[[VAL_4]] {in_bounds = [true, true]} : tensor<8x30xf32>, vector<8x[32]xf32> } : vector<8x[32]xi1> -> vector<8x[32]xf32>
+// CHECK:           %[[VAL_12:.*]] = vector.mask %[[VAL_7]] { vector.transfer_read %[[VAL_2]][%[[VAL_3]], %[[VAL_3]]], %[[VAL_4]] {in_bounds = [true, true]} : tensor<8x30xf32>, vector<8x[32]xf32> } : vector<8x[32]xi1> -> vector<8x[32]xf32>
 // CHECK:           %[[VAL_13:.*]] = arith.addf %[[VAL_8]], %[[VAL_10]] : vector<8x[32]xf32>
 // CHECK:           %[[VAL_15:.*]] = vector.mask %[[VAL_7]] { vector.transfer_write %[[VAL_13]], %[[VAL_2]][%[[VAL_3]], %[[VAL_3]]] {in_bounds = [true, true]} : vector<8x[32]xf32>, tensor<8x30xf32> } : vector<8x[32]xi1> -> tensor<8x30xf32>
 
@@ -721,15 +710,13 @@ func.func @vectorize_dynamic_matvec_trailing_reduction_dim(%arg0: tensor<?x?xf32
 // CHECK-SAME:     %[[ARG_0:.*]]: tensor<?x?xf32>, %[[ARG_1:.*]]: tensor<?xf32>, %[[ARG_2:.*]]: tensor<?xf32>) {
 // CHECK:    %[[C0_idx:.*]] = arith.constant 0 : index
 // CHECK:    %[[C1_idx:.*]] = arith.constant 1 : index
+// CHECK:    %[[PV:.*]] = ub.poison : f32
 // CHECK:    %[[DIM_A0_0:.*]] = tensor.dim %[[ARG_0]], %[[C0_idx]] : tensor<?x?xf32>
 // CHECK:    %[[DIM_A0_1:.*]] = tensor.dim %[[ARG_0]], %[[C1_idx]] : tensor<?x?xf32>
-// CHECK:    %[[PV:.*]] = ub.poison : f32
 // CHECK:    %[[MASK_2d:.*]] = vector.create_mask %[[DIM_A0_0]], %[[DIM_A0_1]] : vector<4x[4]xi1>
 // CHECK:    %[[VEC_RD_0:.*]] = vector.mask %[[MASK_2d]] { vector.transfer_read %[[ARG_0]][%[[C0_idx]], %[[C0_idx]]], %[[PV]] {in_bounds = [true, true]} : tensor<?x?xf32>, vector<4x[4]xf32> } : vector<4x[4]xi1> -> vector<4x[4]xf32>
-// CHECK:    %[[PV:.*]] = ub.poison : f32
 // CHECK:    %[[MASK_d1:.*]] = vector.create_mask %[[DIM_A0_1]] : vector<[4]xi1>
 // CHECK:    %[[VEC_RD_1:.*]] = vector.mask %[[MASK_d1]] { vector.transfer_read %[[ARG_1]][%[[C0_idx]]], %[[PV]] {in_bounds = [true, true], permutation_map = #map} : tensor<?xf32>, vector<4x[4]xf32> } : vector<[4]xi1> -> vector<4x[4]xf32>
-// CHECK:    %[[PV:.*]] = ub.poison : f32
 // CHECK:    %[[MASK_d2:.*]] = vector.create_mask %[[DIM_A0_0]] : vector<4xi1>
 // CHECK:    %[[VEC_RD_2:.*]] = vector.mask %[[MASK_d2]] { vector.transfer_read %[[ARG_2]][%[[C0_idx]]], %[[PV]] {in_bounds = [true]} : tensor<?xf32>, vector<4xf32> } : vector<4xi1> -> vector<4xf32>
 // CHECK:    %[[MUL:.*]] = arith.mulf %[[VEC_RD_0:.*]], %[[VEC_RD_1:.*]] : vector<4x[4]xf32>
@@ -762,15 +749,13 @@ func.func @vectorize_dynamic_matvec_trailing_reduction_dim(%arg0: tensor<?x?xf32
 // CHECK-SAME:     %[[ARG_0:.*]]: tensor<?x?xf32>, %[[ARG_1:.*]]: tensor<?xf32>, %[[ARG_2:.*]]: tensor<?xf32>) -> tensor<?xf32> {
 // CHECK:    %[[C0_idx:.*]] = arith.constant 0 : index
 // CHECK:    %[[C1_idx:.*]] = arith.constant 1 : index
+// CHECK:    %[[PV:.*]] = ub.poison : f32
 // CHECK:    %[[DIM_A0_0:.*]] = tensor.dim %[[ARG_0]], %[[C0_idx]] : tensor<?x?xf32>
 // CHECK:    %[[DIM_A0_1:.*]] = tensor.dim %[[ARG_0]], %[[C1_idx]] : tensor<?x?xf32>
-// CHECK:    %[[PV:.*]] = ub.poison : f32
 // CHECK:    %[[MASK_2d:.*]] = vector.create_mask %[[DIM_A0_0]], %[[DIM_A0_1]] : vector<[4]x4xi1>
 // CHECK:    %[[VEC_RD_0:.*]] = vector.mask %[[MASK_2d]] { vector.transfer_read %[[ARG_0]][%[[C0_idx]], %[[C0_idx]]], %[[PV]] {in_bounds = [true, true]} : tensor<?x?xf32>, vector<[4]x4xf32> } : vector<[4]x4xi1> -> vector<[4]x4xf32>
-// CHECK:    %[[PV:.*]] = ub.poison : f32
 // CHECK:    %[[MASK_d1:.*]] = vector.create_mask %[[DIM_A0_1]] : vector<4xi1>
 // CHECK:    %[[VEC_RD_1:.*]] = vector.mask %[[MASK_d1]] { vector.transfer_read %[[ARG_1]][%[[C0_idx]]], %[[PV]] {in_bounds = [true, true], permutation_map = #map} : tensor<?xf32>, vector<[4]x4xf32> } : vector<4xi1> -> vector<[4]x4xf32>
-// CHECK:    %[[PV:.*]] = ub.poison : f32
 // CHECK:    %[[MASK_d2:.*]] = vector.create_mask %[[DIM_A0_0]] : vector<[4]xi1>
 // CHECK:    %[[VEC_RD_2:.*]] = vector.mask %[[MASK_d2]] { vector.transfer_read %[[ARG_2]][%[[C0_idx]]], %[[PV]] {in_bounds = [true]} : tensor<?xf32>, vector<[4]xf32> } : vector<[4]xi1> -> vector<[4]xf32>
 // CHECK:    %[[MUL:.*]] = arith.mulf %[[VEC_RD_0:.*]], %[[VEC_RD_1:.*]] : vector<[4]x4xf32>
@@ -807,8 +792,8 @@ func.func @vectorize_linalg_index_scalable(%dest: tensor<?xindex>) -> tensor<?xi
 // CHECK-LABEL:   func.func @vectorize_linalg_index_scalable(
 // CHECK-SAME:      %[[DEST:.*]]: tensor<?xindex>) -> tensor<?xindex> {
 // CHECK:           %[[C0:.*]] = arith.constant 0 : index
-// CHECK:           %[[D0:.*]] = tensor.dim %[[DEST]], %[[C0]] : tensor<?xindex>
 // CHECK:           %[[PV:.*]] = ub.poison : index
+// CHECK:           %[[D0:.*]] = tensor.dim %[[DEST]], %[[C0]] : tensor<?xindex>
 // CHECK:           %[[MASK:.*]] = vector.create_mask %[[D0]] : vector<[4]xi1>
 // TODO: This xfer_read is not used - avoid creating it.
 // CHECK:           %[[READ:.*]] = vector.mask %[[MASK]] { vector.transfer_read %[[DEST]]{{\[}}%[[C0]]], %[[PV]] {in_bounds = [true]} : tensor<?xindex>, vector<[4]xindex> } : vector<[4]xi1> -> vector<[4]xindex>
@@ -1697,19 +1682,17 @@ func.func @batch_matmul(%A: memref<?x?x?xf32>, %B: memref<?x?x?xf32>, %C: memref
 // CHECK:       %[[C0:.*]] = arith.constant 0 : index
 // CHECK:       %[[C1:.*]] = arith.constant 1 : index
 // CHECK:       %[[C2:.*]] = arith.constant 2 : index
+// CHECK:       %[[P0:.*]] = ub.poison : f32
 // CHECK:       %[[BATCH_DIM:.*]] = memref.dim %[[A]], %[[C0]] : memref<?x?x?xf32>
 // CHECK:       %[[M:.*]] = memref.dim %[[A]], %[[C1]] : memref<?x?x?xf32>
 // CHECK:       %[[N:.*]] = memref.dim %[[B]], %[[C2]] : memref<?x?x?xf32>
 // CHECK:       %[[K:.*]] = memref.dim %[[A]], %[[C2]] : memref<?x?x?xf32>
-// CHECK:       %[[P0:.*]] = ub.poison : f32
 // CHECK:       %[[MA:.*]] = vector.create_mask %[[BATCH_DIM]], %[[M]], %[[K]] : vector<4x8x4xi1>
 // CHECK:       %[[VA:.*]] = vector.mask %[[MA]] { vector.transfer_read %[[A]][%[[C0]], %[[C0]], %[[C0]]], %[[P0]] {in_bounds = [true, true, true, true], permutation_map = #{{.*}}} : memref<?x?x?xf32>, vector<4x8x16x4xf32> } : vector<4x8x4xi1> -> vector<4x8x16x4xf32>
-// CHECK:       %[[P1:.*]] = ub.poison : f32
 // CHECK:       %[[MB:.*]] = vector.create_mask %[[BATCH_DIM]], %[[K]], %[[N]] : vector<4x4x16xi1>
-// CHECK:       %[[VB:.*]] = vector.mask %[[MB]] { vector.transfer_read %[[B]][%[[C0]], %[[C0]], %[[C0]]], %[[P1]] {in_bounds = [true, true, true, true], permutation_map = #{{.*}}} : memref<?x?x?xf32>, vector<4x8x16x4xf32> } : vector<4x4x16xi1> -> vector<4x8x16x4xf32>
-// CHECK:       %[[P2:.*]] = ub.poison : f32
+// CHECK:       %[[VB:.*]] = vector.mask %[[MB]] { vector.transfer_read %[[B]][%[[C0]], %[[C0]], %[[C0]]], %[[P0]] {in_bounds = [true, true, true, true], permutation_map = #{{.*}}} : memref<?x?x?xf32>, vector<4x8x16x4xf32> } : vector<4x4x16xi1> -> vector<4x8x16x4xf32>
 // CHECK:       %[[MC:.*]] = vector.create_mask %[[BATCH_DIM]], %[[M]], %[[N]] : vector<4x8x16xi1>
-// CHECK:       %[[VC:.*]] = vector.mask %[[MC]] { vector.transfer_read %[[C]][%[[C0]], %[[C0]], %[[C0]]], %[[P2]] {in_bounds = [true, true, true]} : memref<?x?x?xf32>, vector<4x8x16xf32> } : vector<4x8x16xi1> -> vector<4x8x16xf32>
+// CHECK:       %[[VC:.*]] = vector.mask %[[MC]] { vector.transfer_read %[[C]][%[[C0]], %[[C0]], %[[C0]]], %[[P0]] {in_bounds = [true, true, true]} : memref<?x?x?xf32>, vector<4x8x16xf32> } : vector<4x8x16xi1> -> vector<4x8x16xf32>
 // CHECK:       %[[MUL:.*]] = arith.mulf %[[VA]], %[[VB]] : vector<4x8x16x4xf32>
 // CHECK:       %[[MRED:.*]] = vector.create_mask %[[BATCH_DIM]], %[[M]], %[[N]], %[[K]] : vector<4x8x16x4xi1>
 // CHECK:       %[[RED:.*]] = vector.mask %[[MRED]] { vector.multi_reduction <add>, %[[MUL]], %[[VC]] [3] : vector<4x8x16x4xf32> to vector<4x8x16xf32> } : vector<4x8x16x4xi1> -> vector<4x8x16xf32>
@@ -1736,19 +1719,17 @@ func.func @batch_matmul_scalable(%A: memref<?x?x?xf32>, %B: memref<?x?x?xf32>, %
 // CHECK:       %[[C0:.*]] = arith.constant 0 : index
 // CHECK:       %[[C1:.*]] = arith.constant 1 : index
 // CHECK:       %[[C2:.*]] = arith.constant 2 : index
+// CHECK:       %[[P0:.*]] = ub.poison : f32
 // CHECK:       %[[BATCH_DIM:.*]] = memref.dim %[[A]], %[[C0]] : memref<?x?x?xf32>
 // CHECK:       %[[M:.*]] = memref.dim %[[A]], %[[C1]] : memref<?x?x?xf32>
 // CHECK:       %[[N:.*]] = memref.dim %[[B]], %[[C2]] : memref<?x?x?xf32>
 // CHECK:       %[[K:.*]] = memref.dim %[[A]], %[[C2]] : memref<?x?x?xf32>
-// CHECK:       %[[P0:.*]] = ub.poison : f32
 // CHECK:       %[[MA:.*]] = vector.create_mask %[[BATCH_DIM]], %[[M]], %[[K]] : vector<4x8x4xi1>
 // CHECK:       %[[VA:.*]] = vector.mask %[[MA]] { vector.transfer_read %[[A]][%[[C0]], %[[C0]], %[[C0]]], %[[P0]] {in_bounds = [true, true, true, true], permutation_map = #{{.*}}} : memref<?x?x?xf32>, vector<4x8x[16]x4xf32> } : vector<4x8x4xi1> -> vector<4x8x[16]x4xf32>
-// CHECK:       %[[P1:.*]] = ub.poison : f32
 // CHECK:       %[[MB:.*]] = vector.create_mask %[[BATCH_DIM]], %[[K]], %[[N]] : vector<4x4x[16]xi1>
-// CHECK:       %[[VB:.*]] = vector.mask %[[MB]] { vector.transfer_read %[[B]][%[[C0]], %[[C0]], %[[C0]]], %[[P1]] {in_bounds = [true, true, true, true], permutation_map = #{{.*}}} : memref<?x?x?xf32>, vector<4x8x[16]x4xf32> } : vector<4x4x[16]xi1> -> vector<4x8x[16]x4xf32>
-// CHECK:       %[[P2:.*]] = ub.poison : f32
+// CHECK:       %[[VB:.*]] = vector.mask %[[MB]] { vector.transfer_read %[[B]][%[[C0]], %[[C0]], %[[C0]]], %[[P0]] {in_bounds = [true, true, true, true], permutation_map = #{{.*}}} : memref<?x?x?xf32>, vector<4x8x[16]x4xf32> } : vector<4x4x[16]xi1> -> vector<4x8x[16]x4xf32>
 // CHECK:       %[[MC:.*]] = vector.create_mask %[[BATCH_DIM]], %[[M]], %[[N]] : vector<4x8x[16]xi1>
-// CHECK:       %[[VC:.*]] = vector.mask %[[MC]] { vector.transfer_read %[[C]][%[[C0]], %[[C0]], %[[C0]]], %[[P2]] {in_bounds = [true, true, true]} : memref<?x?x?xf32>, vector<4x8x[16]xf32> } : vector<4x8x[16]xi1> -> vector<4x8x[16]xf32>
+// CHECK:       %[[VC:.*]] = vector.mask %[[MC]] { vector.transfer_read %[[C]][%[[C0]], %[[C0]], %[[C0]]], %[[P0]] {in_bounds = [true, true, true]} : memref<?x?x?xf32>, vector<4x8x[16]xf32> } : vector<4x8x[16]xi1> -> vector<4x8x[16]xf32>
 // CHECK:       %[[MUL:.*]] = arith.mulf %[[VA]], %[[VB]] : vector<4x8x[16]x4xf32>
 // CHECK:       %[[MRED:.*]] = vector.create_mask %[[BATCH_DIM]], %[[M]], %[[N]], %[[K]] : vector<4x8x[16]x4xi1>
 // CHECK:       %[[RED:.*]] = vector.mask %[[MRED]] { vector.multi_reduction <add>, %[[MUL]], %[[VC]] [3] : vector<4x8x[16]x4xf32> to vector<4x8x[16]xf32> } : vector<4x8x[16]x4xi1> -> vector<4x8x[16]xf32>

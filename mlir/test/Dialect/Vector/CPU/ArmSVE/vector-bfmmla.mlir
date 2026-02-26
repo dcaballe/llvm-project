@@ -12,9 +12,9 @@
 
 // CHECK-LABEL: @test_vector_contract_to_bfmmla
 // CHECK-SAME:    %[[LHS:.+]]: vector<4x4xbf16>, %[[RHS:.+]]: vector<[4]x4xbf16>, %[[ACC:.+]]: vector<4x[4]xf32>) -> vector<4x[4]xf32> {
-// CHECK-NEXT:    %[[T0:.+]]  = ub.poison : vector<[8]xf32>
-// CHECK-NEXT:    %[[UB:.+]] = ub.poison : vector<4x[4]xf32>
 // CHECK-NEXT:    %[[T2:.+]]  = ub.poison : vector<[8]xbf16>
+// CHECK-NEXT:    %[[UB:.+]] = ub.poison : vector<4x[4]xf32>
+// CHECK-NEXT:    %[[T0:.+]]  = ub.poison : vector<[8]xf32>
 
 // Extract rows 0 and 1 of the LHS, concatenate them, and replicate the resulting 8xbf16 vector
 // VSCALE times to obtain a [8]xbf16 vector.

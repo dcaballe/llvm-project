@@ -326,7 +326,8 @@ Value VectorContractRewriter::lower(vector::ContractionOp op,
     auto t = vector::ShuffleOp::create(rewriter, loc, r0, r1, shuffleIdx);
     // Turn it into a scalable vector.
     auto s = vector::ScalableInsertOp::create(
-        rewriter, loc, t, ub::PoisonOp::create(rewriter, loc, flatLhsType), 0);
+        rewriter, loc, t,
+        rewriter.createOrFold<ub::PoisonOp>(loc, flatLhsType), 0);
     // Replicate the sub-tile VSCALE times to fill the entire vector.
     auto r = arm_sve::DupQLaneOp::create(rewriter, loc, s, 0);
     lhsTile.push_back(r);
@@ -386,10 +387,10 @@ Value VectorContractRewriter::lower(vector::ContractionOp op,
     }
 
   // Unpack the OUT sub-tiles and insert into the result.
-  Value result = ub::PoisonOp::create(rewriter, loc, op.getResultType());
+  Value result = rewriter.createOrFold<ub::PoisonOp>(loc, op.getResultType());
   for (int64_t i = 0; i < m / 2; ++i) {
     // Collect a number of sub-tiles in a row.
-    Value row = ub::PoisonOp::create(rewriter, loc, accRowX2Ty);
+    Value row = rewriter.createOrFold<ub::PoisonOp>(loc, accRowX2Ty);
     for (int64_t j = 0; j < n / 2; ++j)
       row = vector::ScalableInsertOp::create(
           rewriter, loc, outTile[i * n / 2 + j], row, j * 4);

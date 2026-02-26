@@ -132,7 +132,7 @@ void ControlFlowToSCFTransformation::createCFGSwitchOp(
 Value ControlFlowToSCFTransformation::getUndefValue(Location loc,
                                                     OpBuilder &builder,
                                                     Type type) {
-  return ub::PoisonOp::create(builder, loc, type, nullptr);
+  return builder.createOrFold<ub::PoisonOp>(loc, type, nullptr);
 }
 
 FailureOr<Operation *>

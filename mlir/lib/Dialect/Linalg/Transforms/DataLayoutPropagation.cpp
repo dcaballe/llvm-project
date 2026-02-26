@@ -339,8 +339,8 @@ static std::tuple<Value, AffineMap> getOrCreatePackedViewOfOperand(
 
   auto empty = linalg::PackOp::createDestinationTensor(
       b, loc, opOperand->get(), innerTileSizes, innerDimsPos, outerDimsPerm);
-  auto poison = ub::PoisonOp::create(
-      b, loc, getElementTypeOrSelf(opOperand->get().getType()));
+  Value poison = b.createOrFold<ub::PoisonOp>(
+      loc, getElementTypeOrSelf(opOperand->get().getType()));
   PackOp packedOperand =
       linalg::PackOp::create(b, loc, opOperand->get(), empty, innerDimsPos,
                              innerTileSizes, poison, outerDimsPerm);
@@ -1542,8 +1542,8 @@ pushDownExtractSliceOpThroughGenericOp(RewriterBase &rewriter,
           sub(sub(sliceDimInfo.outputSize, sliceDimInfo.offset),
               sliceDimInfo.sliceSize);
     }
-    auto paddingValue = ub::PoisonOp::create(
-        rewriter, loc, getElementTypeOrSelf(operand->get().getType()));
+    Value paddingValue = rewriter.createOrFold<ub::PoisonOp>(
+        loc, getElementTypeOrSelf(operand->get().getType()));
     auto paddedOperand = tensor::PadOp::create(
         rewriter, loc, Type(), operand->get(), operandLowPads, operandHighPads,
         paddingValue, /*nofold=*/false);
@@ -1586,7 +1586,7 @@ pushDownExtractSliceOpThroughGenericOp(RewriterBase &rewriter,
     newPadOutput =
         tensor::EmptyOp::create(rewriter, loc, OutputShape, outputElType);
   } else {
-    auto paddingValue = ub::PoisonOp::create(rewriter, loc, outputElType);
+    Value paddingValue = rewriter.createOrFold<ub::PoisonOp>(loc, outputElType);
     newPadOutput = tensor::PadOp::create(
         rewriter, loc, Type(), genericOp.getDpsInits()[0], outputLowPads,
         outputHighPads, paddingValue, /*nofold=*/false);

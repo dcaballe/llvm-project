@@ -65,7 +65,7 @@ struct LowerDelinearizeIndexOps
     SmallVector<int64_t> tileShape(shape.size(), 1);
 
     SmallVector<Value> resultVecs(numResults);
-    Value poison = ub::PoisonOp::create(rewriter, loc, vecTy);
+    Value poison = rewriter.createOrFold<ub::PoisonOp>(loc, vecTy);
     for (unsigned r = 0; r < numResults; ++r)
       resultVecs[r] = poison;
 
@@ -125,7 +125,7 @@ struct LowerLinearizeIndexOps final : OpRewritePattern<AffineLinearizeIndexOp> {
     SmallVector<int64_t> tileShape(shape.size(), 1);
     ValueRange multiIndex = op.getMultiIndex();
 
-    Value result = ub::PoisonOp::create(rewriter, loc, vecTy);
+    Value result = rewriter.createOrFold<ub::PoisonOp>(loc, vecTy);
 
     for (SmallVector<int64_t> pos : StaticTileOffsetRange(shape, tileShape)) {
       SmallVector<OpFoldResult> scalarIndices;

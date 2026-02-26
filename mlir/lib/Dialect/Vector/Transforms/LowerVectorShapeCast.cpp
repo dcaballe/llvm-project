@@ -138,7 +138,7 @@ class ShapeCastOpRewritePattern : public OpRewritePattern<vector::ShapeCastOp> {
     const int64_t resultLeading = delta > 0 ? 0 : -delta;
 
     const Value source = shapeCast.getSource();
-    const Value poison = ub::PoisonOp::create(rewriter, loc, resultType);
+    const Value poison = rewriter.createOrFold<ub::PoisonOp>(loc, resultType);
     const Value extracted = vector::ExtractOp::create(
         rewriter, loc, source, SmallVector<int64_t>(sourceLeading, 0));
     const Value result =
@@ -170,7 +170,7 @@ class ShapeCastOpRewritePattern : public OpRewritePattern<vector::ShapeCastOp> {
     const int64_t nSlices = llvm::product_of(sourceShape.take_front(sourceDim));
     SmallVector<int64_t> extractIndex(sourceDim, 0);
     SmallVector<int64_t> insertIndex(resultDim, 0);
-    Value result = ub::PoisonOp::create(rewriter, loc, resultType);
+    Value result = rewriter.createOrFold<ub::PoisonOp>(loc, resultType);
 
     for (int i = 0; i < nSlices; ++i) {
       Value extracted =
@@ -275,9 +275,9 @@ public:
     Value extracted = {};
     Value extractedStrided = {};
     Value insertedSlice = {};
-    Value result = ub::PoisonOp::create(rewriter, loc, resultType);
+    Value result = rewriter.createOrFold<ub::PoisonOp>(loc, resultType);
     const Value partResult =
-        ub::PoisonOp::create(rewriter, loc, insertStridedType);
+        rewriter.createOrFold<ub::PoisonOp>(loc, insertStridedType);
 
     for (size_t i = 0; i < nAtomicSlices; ++i) {
 
@@ -393,7 +393,7 @@ public:
     auto extractionVectorType = VectorType::get(
         {minExtractionSize}, sourceVectorType.getElementType(), {true});
 
-    Value result = ub::PoisonOp::create(rewriter, loc, resultVectorType);
+    Value result = rewriter.createOrFold<ub::PoisonOp>(loc, resultVectorType);
     SmallVector<int64_t> srcIdx(srcRank, 0);
     SmallVector<int64_t> resIdx(resRank, 0);
 

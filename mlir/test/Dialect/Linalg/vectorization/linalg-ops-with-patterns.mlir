@@ -1852,8 +1852,8 @@ module attributes {transform.with_named_sequence} {
 
 // CHECK-LABEL:   func.func @generic_with_reduction_and_broadcast(
 // CHECK-SAME:                                                    %[[VAL_0:.*]]: tensor<1x12x197x197xf32>) -> tensor<1x12x197x1xf32> {
-// CHECK:           %[[VAL_1:.*]] = ub.poison : f32
 // CHECK:           %[[VAL_2:.*]] = arith.constant 0 : index
+// CHECK:           %[[VAL_1:.*]] = ub.poison : f32
 // CHECK:           %[[VAL_3:.*]] = tensor.empty() : tensor<1x12x197x1xf32>
 // CHECK:           %[[VAL_4:.*]] = vector.transfer_read %[[VAL_0]]{{\[}}%[[VAL_2]], %[[VAL_2]], %[[VAL_2]], %[[VAL_2]]], %[[VAL_1]] {in_bounds = [true, true, true, true]} : tensor<1x12x197x197xf32>, vector<1x12x197x197xf32>
 // CHECK:           %[[VAL_5:.*]] = vector.transfer_read %[[VAL_3]]{{\[}}%[[VAL_2]], %[[VAL_2]], %[[VAL_2]], %[[VAL_2]]], %[[VAL_1]] {in_bounds = [true, true, true], permutation_map = #[[$ATTR_32]]} : tensor<1x12x197x1xf32>, vector<1x12x197xf32>

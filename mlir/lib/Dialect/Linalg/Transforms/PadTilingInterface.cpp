@@ -236,8 +236,8 @@ static Value padOperand(OpBuilder &builder, TilingInterface opToPad,
                                                  complexTy, complexAttr);
     }
   } else if (matchPattern(paddingValueAttr, ub::m_Poison())) {
-    paddingValue = ub::PoisonOp::create(builder, opToPad.getLoc(),
-                                        getElementTypeOrSelf(v.getType()));
+    paddingValue = builder.createOrFold<ub::PoisonOp>(
+        opToPad.getLoc(), getElementTypeOrSelf(v.getType()));
   } else if (auto typedAttr = dyn_cast<TypedAttr>(paddingValueAttr)) {
     paddingValue =
         builder.createOrFold<arith::ConstantOp>(opToPad.getLoc(), typedAttr);

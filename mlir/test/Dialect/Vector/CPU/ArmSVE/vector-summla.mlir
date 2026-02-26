@@ -12,9 +12,9 @@
 // CHECK-SAME: %[[RHS:arg1]]: vector<[4]x8xi8>
 // CHECK-SAME: %[[ACC:arg2]]: vector<4x[4]xi32>
 
-// CHECK:         [[P0:[0-9]+]] = ub.poison : vector<[8]xi32>
+// CHECK:         [[P2:[0-9]+]] = ub.poison : vector<[16]xi8>
 // CHECK-NEXT:    [[P1:[0-9]+]] = ub.poison : vector<4x[4]xi32>
-// CHECK-NEXT:    [[P2:[0-9]+]] = ub.poison : vector<[16]xi8>
+// CHECK-NEXT:    [[P0:[0-9]+]] = ub.poison : vector<[8]xi32>
 
 // Extract LHS rows 0 and 1, concatenate, turn into scalable vector
 // CHECK:         %[[T3:[0-9]+]] = vector.extract %[[LHS]][0] : vector<8xi8> from vector<4x8xi8>

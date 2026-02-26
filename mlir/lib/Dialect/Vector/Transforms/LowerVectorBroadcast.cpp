@@ -76,7 +76,7 @@ public:
       VectorType resType = VectorType::Builder(dstType).dropDim(0);
       Value bcst =
           vector::BroadcastOp::create(rewriter, loc, resType, op.getSource());
-      Value result = ub::PoisonOp::create(rewriter, loc, dstType);
+      Value result = rewriter.createOrFold<ub::PoisonOp>(loc, dstType);
       for (int64_t d = 0, dim = dstType.getDimSize(0); d < dim; ++d)
         result = vector::InsertOp::create(rewriter, loc, bcst, result, d);
       rewriter.replaceOp(op, result);
@@ -126,7 +126,7 @@ public:
       return failure();
     }
 
-    Value result = ub::PoisonOp::create(rewriter, loc, dstType);
+    Value result = rewriter.createOrFold<ub::PoisonOp>(loc, dstType);
     if (m == 0) {
       // Stetch at start.
       Value ext = vector::ExtractOp::create(rewriter, loc, op.getSource(), 0);

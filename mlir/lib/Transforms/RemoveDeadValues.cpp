@@ -521,7 +521,7 @@ static void processBranchOp(BranchOpInterface branchOp, RunLivenessAnalysis &la,
 static Value createPoisonedValue(OpBuilder &b, Value value) {
   if (value.use_empty())
     return Value();
-  return ub::PoisonOp::create(b, value.getLoc(), value.getType()).getResult();
+  return b.createOrFold<ub::PoisonOp>(value.getLoc(), value.getType());
 }
 
 namespace {

@@ -1030,7 +1030,8 @@ Operation *SPIRVDialect::materializeConstant(OpBuilder &builder,
                                              Attribute value, Type type,
                                              Location loc) {
   if (auto poison = dyn_cast<ub::PoisonAttr>(value))
-    return ub::PoisonOp::create(builder, loc, type, poison);
+    return builder.createOrFold<ub::PoisonOp>(loc, type, poison)
+        .getDefiningOp();
 
   if (!spirv::ConstantOp::isBuildableWith(type))
     return nullptr;

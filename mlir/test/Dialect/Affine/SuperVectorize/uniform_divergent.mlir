@@ -14,6 +14,7 @@ func.func @uniform_arg(%in : memref<512xf32>, %uniform : f32) {
 }
 
 // CHECK-NEXT: %[[bcast:.*]] = vector.broadcast %[[uniform]] : f32 to vector<128xf32>
+// CHECK-NEXT: %{{.*}} = ub.poison : f32
 // CHECK-NEXT: affine.for
 // CHECK:        arith.addf %{{.*}}, %[[bcast]] : vector<128xf32>
 
@@ -32,6 +33,7 @@ func.func @multi_use_uniform_arg(%in : memref<512xf32>, %uniform : f32) {
 }
 
 // CHECK-NEXT: %[[bcast:.*]] = vector.broadcast %[[uniform]] : f32 to vector<128xf32>
+// CHECK-NEXT: %{{.*}} = ub.poison : f32
 // CHECK-NOT:  vector.broadcast
 // CHECK-NEXT: affine.for
 // CHECK:        arith.addf %{{.*}}, %[[bcast]] : vector<128xf32>

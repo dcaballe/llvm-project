@@ -3631,7 +3631,7 @@ public:
     auto replaceOperandWithPoison = [&](OpOperand &operand) {
       // Do not replace if the operand is already poison.
       if (!matchPattern(operand.get(), ub::m_Poison())) {
-        Value poison = ub::PoisonOp::create(rewriter, op.getLoc(),
+        Value poison = rewriter.createOrFold<ub::PoisonOp>(op.getLoc(),
                                             operand.get().getType());
         rewriter.modifyOpInPlace(op, [&]() { operand.set(poison); });
         return success();
@@ -5046,7 +5046,7 @@ void TransferReadOp::build(OpBuilder &builder, OperationState &result,
 
   Type elemType = llvm::cast<ShapedType>(source.getType()).getElementType();
   if (!padding)
-    padding = ub::PoisonOp::create(builder, result.location, elemType);
+    padding = builder.createOrFold<ub::PoisonOp>(result.location, elemType);
   // Delegate to the most general builder (see
   // `mlir/Dialect/Vector/IR/VectorOps.cpp.inc`)
   build(builder, result, vectorType, source, indices, permutationMapAttr,

@@ -2022,8 +2022,7 @@ struct WarpOpScfIfOp : public WarpDistributionPattern {
       Operation *yield = newWarpOp.getTerminator();
       rewriter.modifyOpInPlace(yield, [&]() {
         for (auto [origIdx, ifResultIdx] : ifResultMapping) {
-          Value poison = ub::PoisonOp::create(
-              rewriter, ifOp.getLoc(), ifOp.getResult(ifResultIdx).getType());
+          Value poison = rewriter.createOrFold<ub::PoisonOp>(ifOp.getLoc(), ifOp.getResult(ifResultIdx).getType());
           yield->setOperand(origIdx, poison);
         }
       });

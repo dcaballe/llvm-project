@@ -259,13 +259,11 @@ func.func @main() -> (i32, i32) {
 // CHECK-NEXT:    %[[p0:.*]] = ub.poison : i32
 // CHECK-NEXT:    %[[while:.*]]:3 = scf.while (%{{.*}} = %[[p0]], %[[arg4:.*]] = %[[arg2]]) : (i32, i32) -> (i32, i32, i32) {
 // CHECK-NEXT:      %[[add1:.*]] = arith.addi %[[arg4]], %[[arg4]] : i32
-// CHECK-NEXT:      %[[p1:.*]] = ub.poison : i32
-// CHECK-NEXT:      scf.condition(%[[arg0]]) %[[add1]], %[[arg4]], %[[p1]] : i32, i32, i32
+// CHECK-NEXT:      scf.condition(%[[arg0]]) %[[add1]], %[[arg4]], %[[p0]] : i32, i32, i32
 // CHECK-NEXT:    } do {
 // CHECK-NEXT:    ^bb0(%{{.*}}: i32, %[[arg6:.*]]: i32, %{{.*}}: i32):
 // CHECK-NEXT:      %[[add2:.*]] = arith.addi %[[arg6]], %[[arg6]] : i32
-// CHECK-NEXT:      %[[p2:.*]] = ub.poison : i32
-// CHECK-NEXT:      scf.yield %[[p2]], %[[add2]] : i32, i32
+// CHECK-NEXT:      scf.yield %[[p0]], %[[add2]] : i32, i32
 // CHECK-NEXT:    }
 // CHECK-NEXT:    return %[[while]]#0 : i32
 // CHECK-NEXT:  }
@@ -366,6 +364,7 @@ func.func private @identity(%arg1 : i32) -> (i32) {
 // Note that this cleanup cannot be done by the `canonicalize` pass.
 //
 // CHECK-CANONICALIZE:       func.func @clean_region_branch_op_remove_result(%[[arg0:.*]]: index, %[[arg1:.*]]: memref<i32>) {
+// CHECK-CANONICALIZE-NEXT:    ub.poison : i32
 // CHECK-CANONICALIZE-NEXT:    scf.index_switch %[[arg0]]
 // CHECK-CANONICALIZE-NEXT:    case 1 {
 // CHECK-CANONICALIZE-NEXT:      %[[c10:.*]] = arith.constant 10
@@ -631,11 +630,10 @@ func.func private @keep_region_branch_operands_valid(%arg0: memref<f64>) {
   %0 = memref.load %arg0[] {name = "caller"} : memref<f64>
   memref.store %cst, %arg0[] {name = "callee"} : memref<f64>
   // CHECK: %[[COND:.*]] = ub.poison : i1
+  // CHECK: %[[YIELD:.*]] = ub.poison : memref<f64>
   // CHECK: scf.if %[[COND]]
-  // CHECK: %[[YIELD0:.*]] = ub.poison : memref<f64>
-  // CHECK: scf.yield %[[YIELD0]] : memref<f64>
-  // CHECK: %[[YIELD1:.*]] = ub.poison : memref<f64>
-  // CHECK: scf.yield %[[YIELD1]] : memref<f64>
+  // CHECK: scf.yield %[[YIELD]] : memref<f64>
+  // CHECK: scf.yield %[[YIELD]] : memref<f64>
   %1 = scf.if %false -> (memref<f64>) {
     scf.yield %arg0 : memref<f64>
   } else {
@@ -803,27 +801,26 @@ func.func @affine_loop_no_use_iv_has_side_effect_op() {
 
 // CHECK-LABEL: func @scf_while_dead_iter_args()
 // CHECK:         %[[c5:.*]] = arith.constant 5 : i32
+// CHECK:         %[[p0:.*]] = ub.poison : i32
 // CHECK:         %[[while:.*]]:2 = scf.while (%[[arg0:.*]] = %[[c5]]) : (i32) -> (i32, i32) {
 // CHECK:           vector.print %[[arg0]]
 // CHECK:           %[[cmpi:.*]] = arith.cmpi
-// CHECK:           %[[p0:.*]] = ub.poison : i32
 // CHECK:           scf.condition(%[[cmpi]]) %[[arg0]], %[[p0]]
 // CHECK:         } do {
 // CHECK:         ^bb0(%[[arg1:.*]]: i32, %[[arg2:.*]]: i32):
-// CHECK:           %[[p1:.*]] = ub.poison : i32
-// CHECK:           scf.yield %[[p1]]
+// CHECK:           scf.yield %[[p0]]
 // CHECK:         }
 // CHECK:         return %[[while]]#0
 
 // CHECK-CANONICALIZE-LABEL: func @scf_while_dead_iter_args()
 // CHECK-CANONICALIZE:         %[[c5:.*]] = arith.constant 5 : i32
+// CHECK-CANONICALIZE:         %[[p0:.*]] = ub.poison : i32
 // CHECK-CANONICALIZE:         %[[while:.*]] = scf.while (%[[arg0:.*]] = %[[c5]]) : (i32) -> i32 {
 // CHECK-CANONICALIZE:           vector.print %[[arg0]]
 // CHECK-CANONICALIZE:           %[[cmpi:.*]] = arith.cmpi
 // CHECK-CANONICALIZE:           scf.condition(%[[cmpi]]) %[[arg0]]
 // CHECK-CANONICALIZE:         } do {
 // CHECK-CANONICALIZE:         ^bb0(%[[arg1:.*]]: i32):
-// CHECK-CANONICALIZE:           %[[p0:.*]] = ub.poison : i32
 // CHECK-CANONICALIZE:           scf.yield %[[p0]]
 // CHECK-CANONICALIZE:         }
 // CHECK-CANONICALIZE:         return %[[while]]
@@ -861,9 +858,9 @@ func.func @replace_dead_operation_results_with_poison(%0: vector<1xindex>) -> ve
     // the condition itself is well-formed IR. This prevents a crash in the
     // canonicalization phase which happens after the dead value removal phase.
     // Also check that only used results of an erased op are replaced with ub.poison.
-    // CHECK-CANONICALIZE:      %[[COND:.*]] = ub.poison : i1
-    // CHECK-CANONICALIZE-NEXT: %[[NEXT:.*]] = ub.poison : vector<1xindex>
-    // CHECK-CANONICALIZE-NEXT: scf.condition(%[[COND]]) %[[NEXT]]
+    // CHECK-CANONICALIZE:      %[[NEXT:.*]] = ub.poison : vector<1xindex>
+    // CHECK-CANONICALIZE-NEXT: %[[COND:.*]] = ub.poison : i1
+    // CHECK-CANONICALIZE:      scf.condition(%[[COND]]) %[[NEXT]]
     // CHECK-CANONICALIZE-NOT: ub.poison : i32
     // CHECK-CANONICALIZE-NOT: "test.three"
     %cond, %unused, %next = "test.three"(%1) : (vector<1xindex>) -> (i1, i32, vector<1xindex>)

@@ -75,7 +75,7 @@ SmallVector<MemorySlot> memref::AllocaOp::getPromotableSlots() {
 
 Value memref::AllocaOp::getDefaultValue(const MemorySlot &slot,
                                         OpBuilder &builder) {
-  return ub::PoisonOp::create(builder, getLoc(), slot.elemType);
+  return builder.createOrFold<ub::PoisonOp>(getLoc(), slot.elemType);
 }
 
 std::optional<PromotableAllocationOpInterface>
