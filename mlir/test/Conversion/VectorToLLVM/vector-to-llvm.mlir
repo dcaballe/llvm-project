@@ -1509,9 +1509,9 @@ func.func @constant_mask_2d_trailing_scalable() -> vector<4x[4]xi1> {
   return %0 : vector<4x[4]xi1>
 }
 // CHECK-LABEL:   func.func @constant_mask_2d_trailing_scalable
-// CHECK:           %[[VAL_0:.*]] = arith.constant dense<true> : vector<[4]xi1>
 // CHECK:           %[[VAL_1:.*]] = arith.constant dense<false> : vector<4x[4]xi1>
 // CHECK:           %[[VAL_2:.*]] = builtin.unrealized_conversion_cast %[[VAL_1]] : vector<4x[4]xi1> to !llvm.array<4 x vector<[4]xi1>>
+// CHECK:           %[[VAL_0:.*]] = arith.constant dense<true> : vector<[4]xi1>
 // CHECK:           %[[VAL_3:.*]] = llvm.insertvalue %[[VAL_0]], %[[VAL_2]][0] : !llvm.array<4 x vector<[4]xi1>>
 // CHECK:           %[[VAL_4:.*]] = llvm.insertvalue %[[VAL_0]], %[[VAL_3]][1] : !llvm.array<4 x vector<[4]xi1>>
 // CHECK:           %[[VAL_5:.*]] = builtin.unrealized_conversion_cast %[[VAL_4]] : !llvm.array<4 x vector<[4]xi1>> to vector<4x[4]xi1>
@@ -1578,8 +1578,8 @@ func.func @create_mask_1d_scalable(%num_elems : index) -> vector<[4]xi1> {
 
 // CHECK-LABEL: func @create_mask_1d_scalable
 // CHECK-SAME: %[[NUM_ELEMS:.*]]: index
-// CHECK:  %[[INDICES:.*]] = llvm.intr.stepvector : vector<[4]xi32>
 // CHECK:  %[[MAX:.*]] = arith.constant 2147483647 : index
+// CHECK:  %[[INDICES:.*]] = llvm.intr.stepvector : vector<[4]xi32>
 // CHECK:  %[[CLAMPED:.*]] = arith.minsi %[[NUM_ELEMS]], %[[MAX]] : index
 // CHECK:  %[[NUM_ELEMS_i32:.*]] = arith.index_cast %[[CLAMPED]] : index to i32
 // CHECK:  %[[BOUNDS_INSERT:.*]] = llvm.insertelement %[[NUM_ELEMS_i32]], {{.*}} : vector<[4]xi32>

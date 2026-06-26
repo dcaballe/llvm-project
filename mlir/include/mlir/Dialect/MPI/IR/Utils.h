@@ -29,8 +29,8 @@ LogicalResult FoldToDLTIConst(OpT op, const char *key,
     return mlir::failure();
   if (!isa<IntegerAttr>(dltiAttr.value()))
     return op->emitError() << "Expected an integer attribute for " << key;
-  Value res = arith::ConstantOp::create(
-      b, op.getLoc(), b.getI32Type(),
+  Value res = b.createOrFold<arith::ConstantOp>(
+      op.getLoc(), b.getI32Type(),
       b.getI32IntegerAttr(cast<IntegerAttr>(dltiAttr.value()).getInt()));
   if (Value retVal = op.getRetval())
     b.replaceOp(op, {retVal, res});

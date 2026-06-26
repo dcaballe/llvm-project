@@ -121,13 +121,13 @@ static Value getZero(OpBuilder &b, Location loc, Type elementType) {
   assert(elementType.isIntOrIndexOrFloat() &&
          "expected scalar type while computing zero value");
   if (isa<IntegerType>(elementType))
-    return arith::ConstantIntOp::create(b, loc, elementType, 0);
+    return b.createOrFold<arith::ConstantIntOp>(loc, elementType, 0);
   if (elementType.isIndex())
-    return arith::ConstantIndexOp::create(b, loc, 0);
+    return b.createOrFold<arith::ConstantIndexOp>(loc, 0);
   // Assume float.
   auto floatType = cast<FloatType>(elementType);
-  return arith::ConstantFloatOp::create(
-      b, loc, floatType, APFloat::getZero(floatType.getFloatSemantics()));
+  return b.createOrFold<arith::ConstantFloatOp>(
+      loc, floatType, APFloat::getZero(floatType.getFloatSemantics()));
 }
 
 GenericOp

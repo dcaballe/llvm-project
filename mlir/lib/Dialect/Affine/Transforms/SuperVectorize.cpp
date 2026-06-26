@@ -675,7 +675,8 @@ namespace {
 
 struct VectorizationState {
 
-  VectorizationState(MLIRContext *context) : builder(context) {}
+  VectorizationState(MLIRContext *context)
+      : opCache(context), builder(context, /*listener=*/nullptr, &opCache) {}
 
   /// Registers the vector replacement of a scalar operation and its result
   /// values. Both operations must have the same number of results.
@@ -743,6 +744,7 @@ struct VectorizationState {
 
   // Used to build and insert all the new operations created. The insertion
   // point is preserved and updated along the vectorization process.
+  IsolatedRegionScopedConstantLikeCache opCache;
   OpBuilder builder;
 
   // Maps input scalar operations to their vector counterparts.
@@ -960,8 +962,8 @@ static arith::ConstantOp vectorizeConstant(arith::ConstantOp constOp,
          isa<AffineForOp>(parentOp) && "Expected a vectorized for op");
   auto vecForOp = cast<AffineForOp>(parentOp);
   state.builder.setInsertionPointToStart(vecForOp.getBody());
-  auto newConstOp =
-      arith::ConstantOp::create(state.builder, constOp.getLoc(), vecAttr);
+  auto newConstOp = cast<arith::ConstantOp>(
+      state.builder.createOrFold<arith::ConstantOp>(constOp.getLoc(), vecAttr).getDefiningOp());
 
   // Register vector replacement for future uses in the scope.
   state.registerOpVectorReplacement(constOp, newConstOp);
@@ -972,10 +974,9 @@ static arith::ConstantOp vectorizeConstant(arith::ConstantOp constOp,
   // value in the vectorized loop body instead of falling back to the original
   // constant, which will be erased along with the scalar loop.
   if (isa<IndexType>(scalarTy)) {
-    auto scalarConstOp = arith::ConstantOp::create(
-        state.builder, constOp.getLoc(), constOp.getValue());
-    state.registerValueScalarReplacement(constOp.getResult(),
-                                         scalarConstOp.getResult());
+    Value scalarConst = state.builder.createOrFold<arith::ConstantOp>(
+        constOp.getLoc(), constOp.getValue());
+    state.registerValueScalarReplacement(constOp.getResult(), scalarConst);
   }
 
   return newConstOp;
@@ -1022,7 +1023,8 @@ static arith::ConstantOp createInitialVector(arith::AtomicRMWKind reductionKind,
   auto vecTy = getVectorType(scalarTy, state.strategy);
   auto vecAttr = DenseElementsAttr::get(vecTy, valueAttr);
   auto newConstOp =
-      arith::ConstantOp::create(state.builder, oldOperand.getLoc(), vecAttr);
+      cast<arith::ConstantOp>(state.builder.createOrFold<arith::ConstantOp>(
+          oldOperand.getLoc(), vecAttr).getDefiningOp());
 
   return newConstOp;
 }

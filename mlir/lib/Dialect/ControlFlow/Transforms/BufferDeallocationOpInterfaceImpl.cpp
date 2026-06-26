@@ -122,8 +122,8 @@ struct CondBranchOpInterface
     DeallocOp elseTakenDeallocOp = insertDeallocForBranch(
         condBr.getFalseDest(), condBr.getFalseDestOperandsMutable(),
         [&](Value cond) {
-          Value trueVal = arith::ConstantOp::create(builder, condBr.getLoc(),
-                                                    builder.getBoolAttr(true));
+          Value trueVal = builder.createOrFold<arith::ConstantOp>(
+              condBr.getLoc(), builder.getBoolAttr(true));
           Value negation = arith::XOrIOp::create(
               builder, condBr.getLoc(), trueVal, condBr.getCondition());
           return arith::AndIOp::create(builder, condBr.getLoc(), cond,

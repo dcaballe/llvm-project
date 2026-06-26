@@ -30,8 +30,8 @@ module attributes {transform.with_named_sequence} {
 // CHECK-SAME: (%{{.*}}: tensor<?x42xf32>, %{{.*}}: tensor<?x42xf32>, %[[ARG2:.+]]: tensor<?x?xf32>)
 func.func @promote_out(%arg0: tensor<?x42xf32>, %arg1: tensor<?x42xf32>, %arg2: tensor<?x?xf32>) -> tensor<?x?xf32> {
     // CHECK:  %[[C0:.+]] = arith.constant 0
-    // CHECK:  %[[DIM0:.+]] = tensor.dim %[[ARG2]], %[[C0]]
     // CHECK:  %[[C1:.+]] = arith.constant 1
+    // CHECK:  %[[DIM0:.+]] = tensor.dim %[[ARG2]], %[[C0]]
     // CHECK:  %[[DIM1:.+]] = tensor.dim %[[ARG2]], %[[C1]]
     // CHECK:  %[[ALLOC:.+]] = bufferization.alloc_tensor(%[[DIM0]], %[[DIM1]]) {memory_space = 1 : i64}
     // CHECK-NOT: materialize_in_destination
@@ -64,8 +64,8 @@ func.func @promote_in0_out_bufferize(%arg0: tensor<?x42xf32>, %arg1: tensor<42x?
     // CHECK:  %{{.+}} = bufferization.to_buffer %arg2 : tensor<?x?xf32> to memref<?x?xf32, strided<[?, ?], offset: ?>>
     // CHECK:  %{{.+}} = bufferization.to_buffer %arg2 : tensor<?x?xf32> to memref<?x?xf32, strided<[?, ?], offset: ?>>
     // CHECK:  %[[C0:.+]] = arith.constant 0 : index
-    // CHECK:  %{{.+}} = memref.dim %{{.+}}, %[[C0]] : memref<?x?xf32, strided<[?, ?], offset: ?>>
     // CHECK:  %[[C1:.+]] = arith.constant 1 : index
+    // CHECK:  %{{.+}} = memref.dim %{{.+}}, %[[C0]] : memref<?x?xf32, strided<[?, ?], offset: ?>>
     // CHECK:  %{{.+}} = memref.dim %{{.+}}, %[[C1]] : memref<?x?xf32, strided<[?, ?], offset: ?>>
     // CHECK:  %[[ALLOC_OUT:.+]] = memref.alloc(%{{.+}}, %{{.+}}) {alignment = 64 : i64} : memref<?x?xf32, 1>
     // CHECK:  %{{.+}} = arith.constant 0 : index

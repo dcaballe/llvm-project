@@ -155,8 +155,8 @@ handleMultidimensionalVectors(ImplicitLocOpBuilder &builder,
   // Stitch results together into one large vector.
   Type resultEltType = cast<VectorType>(results[0].getType()).getElementType();
   Type resultExpandedType = VectorType::get(expandedShape, resultEltType);
-  Value result = arith::ConstantOp::create(
-      builder, resultExpandedType, builder.getZeroAttr(resultExpandedType));
+  Value result = builder.createOrFold<arith::ConstantOp>(
+      resultExpandedType, builder.getZeroAttr(resultExpandedType));
 
   for (int64_t i = 0; i < maxIndex; ++i)
     result = vector::InsertOp::create(builder, results[i], result,
@@ -172,23 +172,25 @@ handleMultidimensionalVectors(ImplicitLocOpBuilder &builder,
 //----------------------------------------------------------------------------//
 
 static Value boolCst(ImplicitLocOpBuilder &builder, bool value) {
-  return arith::ConstantOp::create(builder, builder.getBoolAttr(value));
+  return builder.createOrFold<arith::ConstantOp>(builder.getBoolAttr(value));
 }
 
 static Value floatCst(ImplicitLocOpBuilder &builder, float value,
                       Type elementType) {
   assert((elementType.isF16() || elementType.isF32()) &&
          "x must be f16 or f32 type.");
-  return arith::ConstantOp::create(builder,
-                                   builder.getFloatAttr(elementType, value));
+  return builder.createOrFold<arith::ConstantOp>(
+      builder.getFloatAttr(elementType, value));
 }
 
 static Value f32Cst(ImplicitLocOpBuilder &builder, double value) {
-  return arith::ConstantOp::create(builder, builder.getF32FloatAttr(value));
+  return builder.createOrFold<arith::ConstantOp>(
+      builder.getF32FloatAttr(value));
 }
 
 static Value i32Cst(ImplicitLocOpBuilder &builder, int32_t value) {
-  return arith::ConstantOp::create(builder, builder.getI32IntegerAttr(value));
+  return builder.createOrFold<arith::ConstantOp>(
+      builder.getI32IntegerAttr(value));
 }
 
 static Value f32FromBits(ImplicitLocOpBuilder &builder, uint32_t bits) {
@@ -1632,7 +1634,7 @@ CbrtApproximation::matchAndRewrite(math::CbrtOp op,
   intTy = broadcast(intTy, shape);
 
   auto bconst = [&](TypedAttr attr) -> Value {
-    Value value = arith::ConstantOp::create(b, attr);
+    Value value = b.createOrFold<arith::ConstantOp>(attr);
     return broadcast(b, value, shape);
   };
 

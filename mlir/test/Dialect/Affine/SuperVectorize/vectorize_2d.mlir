@@ -47,6 +47,10 @@ func.func @vec2d(%A : memref<?x?x?xf32>) {
 }
 
 func.func @vector_add_2d(%M : index, %N : index) -> f32 {
+  // CHECK: [[C1:%.*]] = arith.constant dense<1.000000e+00> : vector<32x256xf32>
+  // CHECK: [[C3:%.*]] = arith.constant dense<2.000000e+00> : vector<32x256xf32>
+  // CHECK: [[SPLAT1:%.*]] = arith.constant dense<1.000000e+00> : vector<32x256xf32>
+  // CHECK: [[SPLAT2:%.*]] = arith.constant dense<2.000000e+00> : vector<32x256xf32>
   %A = memref.alloc (%M, %N) : memref<?x?xf32, 0>
   %B = memref.alloc (%M, %N) : memref<?x?xf32, 0>
   %C = memref.alloc (%M, %N) : memref<?x?xf32, 0>
@@ -54,7 +58,6 @@ func.func @vector_add_2d(%M : index, %N : index) -> f32 {
   %f2 = arith.constant 2.0 : f32
   affine.for %i0 = 0 to %M {
     affine.for %i1 = 0 to %N {
-      // CHECK: [[C1:%.*]] = arith.constant dense<1.000000e+00> : vector<32x256xf32>
       // CHECK: vector.transfer_write [[C1]], {{.*}} : vector<32x256xf32>, memref<?x?xf32>
       // non-scoped %f1
       affine.store %f1, %A[%i0, %i1] : memref<?x?xf32, 0>
@@ -62,7 +65,6 @@ func.func @vector_add_2d(%M : index, %N : index) -> f32 {
   }
   affine.for %i2 = 0 to %M {
     affine.for %i3 = 0 to %N {
-      // CHECK: [[C3:%.*]] = arith.constant dense<2.000000e+00> : vector<32x256xf32>
       // CHECK: vector.transfer_write [[C3]], {{.*}}  : vector<32x256xf32>, memref<?x?xf32>
       // non-scoped %f2
       affine.store %f2, %B[%i2, %i3] : memref<?x?xf32, 0>
@@ -70,8 +72,6 @@ func.func @vector_add_2d(%M : index, %N : index) -> f32 {
   }
   affine.for %i4 = 0 to %M {
     affine.for %i5 = 0 to %N {
-      // CHECK: [[SPLAT2:%.*]] = arith.constant dense<2.000000e+00> : vector<32x256xf32>
-      // CHECK: [[SPLAT1:%.*]] = arith.constant dense<1.000000e+00> : vector<32x256xf32>
       // CHECK: [[A5:%.*]] = vector.transfer_read %{{.*}}[{{.*}}], %{{.*}} : memref<?x?xf32>, vector<32x256xf32>
       // CHECK: [[B5:%.*]] = vector.transfer_read %{{.*}}[{{.*}}], %{{.*}} : memref<?x?xf32>, vector<32x256xf32>
       // CHECK: [[S5:%.*]] = arith.addf [[A5]], [[B5]] : vector<32x256xf32>
@@ -107,12 +107,12 @@ func.func @vectorize_matmul(%arg0: memref<?x?xf32>, %arg1: memref<?x?xf32>, %arg
   %N = memref.dim %arg2, %c1 : memref<?x?xf32>
   //      VECT: %[[C0:.*]] = arith.constant 0 : index
   // VECT-NEXT: %[[C1:.*]] = arith.constant 1 : index
-  // VECT-NEXT: %[[M:.*]] = memref.dim %{{.*}}, %[[C0]] : memref<?x?xf32>
+  // VECT-NEXT: %[[VC0:.*]] = arith.constant dense<0.000000e+00> : vector<4x8xf32>
+  //      VECT: %[[M:.*]] = memref.dim %{{.*}}, %[[C0]] : memref<?x?xf32>
   // VECT-NEXT: %[[K:.*]] = memref.dim %{{.*}}, %[[C1]] : memref<?x?xf32>
   // VECT-NEXT: %[[N:.*]] = memref.dim %{{.*}}, %[[C1]] : memref<?x?xf32>
   //      VECT: {{.*}} #[[$map_id1]](%[[M]]) step 4 {
   // VECT-NEXT:   {{.*}} #[[$map_id1]](%[[N]]) step 8 {
-  //      VECT:     %[[VC0:.*]] = arith.constant dense<0.000000e+00> : vector<4x8xf32>
   // VECT-NEXT:     vector.transfer_write %[[VC0]], %{{.*}}[%{{.*}}, %{{.*}}] : vector<4x8xf32>, memref<?x?xf32>
   affine.for %i0 = affine_map<(d0) -> (d0)>(%c0) to affine_map<(d0) -> (d0)>(%M) {
     affine.for %i1 = affine_map<(d0) -> (d0)>(%c0) to affine_map<(d0) -> (d0)>(%N) {

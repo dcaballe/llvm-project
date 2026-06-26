@@ -1000,7 +1000,7 @@ struct ConvertUIToFP final : OpConversionPattern<arith::UIToFPOp> {
       pow2Attr = SplatElementsAttr::get(vecTy, pow2Attr);
 
     Value pow2Val =
-        arith::ConstantOp::create(rewriter, loc, resultTy, pow2Attr);
+        rewriter.createOrFold<arith::ConstantOp>(loc, resultTy, pow2Attr);
 
     Value hiVal = arith::MulFOp::create(rewriter, loc, hiFp, pow2Val);
     Value result = arith::AddFOp::create(rewriter, loc, lowFp, hiVal);
@@ -1038,7 +1038,7 @@ struct ConvertFPToSI final : OpConversionPattern<arith::FPToSIOp> {
     // result is UB.
 
     TypedAttr zeroAttr = rewriter.getZeroAttr(fpTy);
-    Value zeroCst = arith::ConstantOp::create(rewriter, loc, zeroAttr);
+    Value zeroCst = rewriter.createOrFold<arith::ConstantOp>(loc, zeroAttr);
     Value zeroCstInt = createScalarOrSplatConstant(rewriter, loc, intTy, 0);
 
     // Get the absolute value. One could have used math.absf here, but that
@@ -1110,7 +1110,7 @@ struct ConvertFPToUI final : OpConversionPattern<arith::FPToUIOp> {
     if (auto vecType = dyn_cast<VectorType>(fpTy))
       powBitwidthAttr = SplatElementsAttr::get(vecType, powBitwidthAttr);
     Value powBitwidthFloatCst =
-        arith::ConstantOp::create(rewriter, loc, powBitwidthAttr);
+        rewriter.createOrFold<arith::ConstantOp>(loc, powBitwidthAttr);
 
     Value fpDivPowBitwidth =
         arith::DivFOp::create(rewriter, loc, inFp, powBitwidthFloatCst);

@@ -109,7 +109,8 @@ struct MemRefPointerLikeModel
       for (int64_t i = 0; i < memrefTy.getRank(); ++i) {
         if (memrefTy.isDynamicDim(i)) {
           // Extract the size of dimension i from the original variable
-          auto indexValue = arith::ConstantIndexOp::create(builder, loc, i);
+          auto indexValue =
+              builder.createOrFold<arith::ConstantIndexOp>(loc, i);
           auto dimSize =
               memref::DimOp::create(builder, loc, originalVar, indexValue);
           dynamicSizes.push_back(dimSize);

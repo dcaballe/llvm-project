@@ -200,7 +200,8 @@ static void rewriteScalarizableFunction(func::FuncOp func,
   SmallVector<Value> zeroIndices;
   if (tensorType.getRank() != 0) {
     rewriter.setInsertionPointToStart(&func.getBody().front());
-    Value zero = arith::ConstantIndexOp::create(rewriter, func.getLoc(), 0);
+    Value zero =
+        rewriter.createOrFold<arith::ConstantIndexOp>(func.getLoc(), 0);
     zeroIndices.assign(tensorType.getRank(), zero);
   }
 

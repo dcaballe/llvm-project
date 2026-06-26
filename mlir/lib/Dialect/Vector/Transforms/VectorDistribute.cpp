@@ -246,7 +246,7 @@ struct WarpOpToScfIfPattern : public WarpDistributionPattern {
     rewriter.setInsertionPoint(warpOp);
 
     // Step 1: Create scf.if op.
-    Value c0 = arith::ConstantIndexOp::create(rewriter, loc, 0);
+    Value c0 = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
     Value isLane0 = arith::CmpIOp::create(
         rewriter, loc, arith::CmpIPredicate::eq, warpOp.getLaneid(), c0);
     auto ifOp = scf::IfOp::create(rewriter, loc, isLane0,
@@ -738,7 +738,7 @@ struct WarpOpConstant : public WarpDistributionPattern {
         cast<ShapedType>(warpOp.getResult(operandIndex).getType()), scalarAttr);
     Location loc = warpOp.getLoc();
     rewriter.setInsertionPointAfter(warpOp);
-    Value distConstant = arith::ConstantOp::create(rewriter, loc, newAttr);
+    Value distConstant = rewriter.createOrFold<arith::ConstantOp>(loc, newAttr);
     rewriter.replaceAllUsesWith(warpOp.getResult(operandIndex), distConstant);
     rewriter.finalizeOpModification(warpOp);
     return success();
@@ -1195,7 +1195,7 @@ struct WarpOpCreateMask : public WarpDistributionPattern {
       auto dimSizes = constantMaskOp.getMaskDimSizesAttr().asArrayRef();
       for (auto dimSize : dimSizes)
         materializedOperands.push_back(
-            arith::ConstantIndexOp::create(rewriter, loc, dimSize).getResult());
+            rewriter.createOrFold<arith::ConstantIndexOp>(loc, dimSize));
     }
 
     rewriter.setInsertionPointAfter(warpOp);
@@ -1579,11 +1579,10 @@ struct WarpOpExtractScalar : public WarpDistributionPattern {
     Value broadcastFromTid = affine::makeComposedAffineApply(
         rewriter, loc, sym0.ceilDiv(elementsPerLane), pos);
     // Extract at position: pos % elementsPerLane
-    Value newPos =
-        elementsPerLane == 1
-            ? arith::ConstantIndexOp::create(rewriter, loc, 0).getResult()
-            : affine::makeComposedAffineApply(rewriter, loc,
-                                              sym0 % elementsPerLane, pos);
+    Value newPos = elementsPerLane == 1
+                       ? rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0)
+                       : affine::makeComposedAffineApply(
+                             rewriter, loc, sym0 % elementsPerLane, pos);
     Value extracted =
         vector::ExtractOp::create(rewriter, loc, distributedVec, newPos);
 
@@ -1781,8 +1780,8 @@ struct WarpOpInsert : public WarpDistributionPattern {
       SmallVector<OpFoldResult> pos = insertOp.getMixedPosition();
       SmallVector<int64_t> newPos = getAsIntegers(pos);
       // tid of inserting lane: pos / elementsPerLane
-      Value insertingLane = arith::ConstantIndexOp::create(
-          rewriter, loc, newPos[distrDestDim] / elementsPerLane);
+      Value insertingLane = rewriter.createOrFold<arith::ConstantIndexOp>(
+          loc, newPos[distrDestDim] / elementsPerLane);
       Value isInsertingLane =
           arith::CmpIOp::create(rewriter, loc, arith::CmpIPredicate::eq,
                                 newWarpOp.getLaneid(), insertingLane);

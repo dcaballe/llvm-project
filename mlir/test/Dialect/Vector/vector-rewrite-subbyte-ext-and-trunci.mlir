@@ -39,9 +39,9 @@ func.func @aligned_extsi_i4_to_i8(%a: vector<8xi4>) -> vector<8xi8> {
 // CHECK-LABEL: func.func @aligned_extsi_i2_to_i8(
 func.func @aligned_extsi_i2_to_i8(%a: vector<8xi2>) -> vector<8xi8> {
 // CHECK-SAME:      %[[IN:.*]]: vector<8xi2>) -> vector<8xi8> {
-// CHECK:           %[[CST_2:.*]] = arith.constant dense<2> : vector<2xi8>
-// CHECK:           %[[CST_4:.*]] = arith.constant dense<4> : vector<2xi8>
-// CHECK:           %[[CST_6:.*]] = arith.constant dense<6> : vector<2xi8>
+// CHECK-DAG:       %[[CST_2:.*]] = arith.constant dense<2> : vector<2xi8>
+// CHECK-DAG:       %[[CST_4:.*]] = arith.constant dense<4> : vector<2xi8>
+// CHECK-DAG:       %[[CST_6:.*]] = arith.constant dense<6> : vector<2xi8>
 // CHECK:           %[[BITCAST:.*]] = vector.bitcast %[[IN]] : vector<8xi2> to vector<2xi8>
 // Extract bits 0-1
 // CHECK:           %[[SHL_6:.*]] = arith.shli %[[BITCAST]], %[[CST_6]] : vector<2xi8>
@@ -78,9 +78,9 @@ func.func @aligned_extsi_i4_to_i32(%a: vector<8xi4>) -> vector<8xi32> {
 // CHECK-LABEL: func.func @aligned_extsi_i2_to_i32(
 func.func @aligned_extsi_i2_to_i32(%a: vector<8xi2>) -> vector<8xi32> {
 // CHECK-SAME:      %[[IN:.*]]: vector<8xi2>) -> vector<8xi32> {
-// CHECK:           %[[CST_2:.*]] = arith.constant dense<2> : vector<2xi8>
-// CHECK:           %[[CST_4:.*]] = arith.constant dense<4> : vector<2xi8>
-// CHECK:           %[[CST_6:.*]] = arith.constant dense<6> : vector<2xi8>
+// CHECK-DAG:       %[[CST_2:.*]] = arith.constant dense<2> : vector<2xi8>
+// CHECK-DAG:       %[[CST_4:.*]] = arith.constant dense<4> : vector<2xi8>
+// CHECK-DAG:       %[[CST_6:.*]] = arith.constant dense<6> : vector<2xi8>
 // CHECK:           %[[BITCAST:.*]] = vector.bitcast %[[IN]] : vector<8xi2> to vector<2xi8>
 // Extract bits 0-1
 // CHECK:           %[[SHL_6:.*]] = arith.shli %[[BITCAST]], %[[CST_6]] : vector<2xi8>
@@ -118,9 +118,9 @@ func.func @aligned_extsi_i4_to_i32_2d(%a: vector<8x32xi4>) -> vector<8x32xi32> {
 // CHECK-LABEL: func.func @aligned_extsi_i2_to_i32_2d(
 func.func @aligned_extsi_i2_to_i32_2d(%a: vector<8x32xi2>) -> vector<8x32xi32> {
 // CHECK-SAME:      %[[IN:.*]]: vector<8x32xi2>) -> vector<8x32xi32> {
-// CHECK:           %[[CST_2:.*]] = arith.constant dense<2> : vector<8x8xi8>
-// CHECK:           %[[CST_4:.*]] = arith.constant dense<4> : vector<8x8xi8>
-// CHECK:           %[[CST_6:.*]] = arith.constant dense<6> : vector<8x8xi8>
+// CHECK-DAG:       %[[CST_2:.*]] = arith.constant dense<2> : vector<8x8xi8>
+// CHECK-DAG:       %[[CST_4:.*]] = arith.constant dense<4> : vector<8x8xi8>
+// CHECK-DAG:       %[[CST_6:.*]] = arith.constant dense<6> : vector<8x8xi8>
 // CHECK:           %[[BITCAST:.*]] = vector.bitcast %[[IN]] : vector<8x32xi2> to vector<8x8xi8>
 // Extract bits 0-1
 // CHECK:           %[[SHL_6:.*]] = arith.shli %[[BITCAST]], %[[CST_6]] : vector<8x8xi8>
@@ -191,8 +191,8 @@ func.func @aligned_trunci_2d(%a: vector<8x32xi32>) -> vector<8x32xi4> {
 // CHECK-LABEL: func.func @aligned_trunci_nd(
 // CHECK-SAME: %[[IN:.*]]: vector<3x8x32xi32>) -> vector<3x8x32xi4> {
 func.func @aligned_trunci_nd(%a: vector<3x8x32xi32>) -> vector<3x8x32xi4> {
-  // CHECK: %[[LEFT_SHIFT_BITS:.*]] = arith.constant dense<4> : vector<3x8x16xi8>
-  // CHECK: %[[I4_MASK:.*]] = arith.constant dense<15> : vector<3x8x16xi8>
+  // CHECK-DAG: %[[LEFT_SHIFT_BITS:.*]] = arith.constant dense<4> : vector<3x8x16xi8>
+  // CHECK-DAG: %[[I4_MASK:.*]] = arith.constant dense<15> : vector<3x8x16xi8>
   // CHECK: %[[I8:.*]] = arith.trunci %[[IN]] : vector<3x8x32xi32> to vector<3x8x32xi8>
   // CHECK: %[[LOW:.*]], %[[HIGH:.*]] = vector.deinterleave %[[I8]] : vector<3x8x32xi8> -> vector<3x8x16xi8>
   // CHECK: %[[ZEROED_LOW:.*]] = arith.andi %[[LOW]], %[[I4_MASK]] : vector<3x8x16xi8>
@@ -219,8 +219,8 @@ func.func @aligned_trunci_i8_to_i2_no_match(%a: vector<8xi8>) -> vector<8xi2> {
 // CHECK-LABEL: func.func @aligned_extui_i4_to_i8(
 func.func @aligned_extui_i4_to_i8(%a: vector<8xi4>) -> vector<8xi8> {
 // CHECK-SAME:                             %[[IN:.*]]: vector<8xi4>) -> vector<8xi8> {
-// CHECK:           %[[I4_BITS:.*]] = arith.constant dense<4> : vector<4xi8>
-// CHECK:           %[[LOWBITS_MASK:.*]] = arith.constant dense<15> : vector<4xi8>
+// CHECK-DAG:       %[[I4_BITS:.*]] = arith.constant dense<4> : vector<4xi8>
+// CHECK-DAG:       %[[LOWBITS_MASK:.*]] = arith.constant dense<15> : vector<4xi8>
 // CHECK:           %[[BITCAST:.*]] = vector.bitcast %[[IN]] : vector<8xi4> to vector<4xi8>
 // CHECK:           %[[LOW:.*]] = arith.andi %[[BITCAST]], %[[LOWBITS_MASK]] : vector<4xi8>
 // CHECK:           %[[HIGH:.*]] = arith.shrui %[[BITCAST]], %[[I4_BITS]] : vector<4xi8>
@@ -232,10 +232,10 @@ func.func @aligned_extui_i4_to_i8(%a: vector<8xi4>) -> vector<8xi8> {
 // CHECK-LABEL: func.func @aligned_extui_i2_to_i8(
 func.func @aligned_extui_i2_to_i8(%a: vector<8xi2>) -> vector<8xi8> {
 // CHECK-SAME:      %[[IN:.*]]: vector<8xi2>) -> vector<8xi8> {
-// CHECK:           %[[CST_6:.*]] = arith.constant dense<6> : vector<2xi8>
-// CHECK:           %[[CST_4:.*]] = arith.constant dense<4> : vector<2xi8>
-// CHECK:           %[[CST_2:.*]] = arith.constant dense<2> : vector<2xi8>
-// CHECK:           %[[LOWBITS_MASK:.*]] = arith.constant dense<3> : vector<2xi8>
+// CHECK-DAG:       %[[CST_6:.*]] = arith.constant dense<6> : vector<2xi8>
+// CHECK-DAG:       %[[CST_4:.*]] = arith.constant dense<4> : vector<2xi8>
+// CHECK-DAG:       %[[CST_2:.*]] = arith.constant dense<2> : vector<2xi8>
+// CHECK-DAG:       %[[LOWBITS_MASK:.*]] = arith.constant dense<3> : vector<2xi8>
 // CHECK:           %[[BITCAST:.*]] = vector.bitcast %[[IN]] : vector<8xi2> to vector<2xi8>
 // Extract bits 0-1
 // CHECK:           %[[ELEM0:.*]] = arith.andi %[[BITCAST]], %[[LOWBITS_MASK]] : vector<2xi8>
@@ -257,8 +257,8 @@ func.func @aligned_extui_i2_to_i8(%a: vector<8xi2>) -> vector<8xi8> {
 // CHECK-LABEL: func.func @aligned_extui_i4_to_i32(
 func.func @aligned_extui_i4_to_i32(%a: vector<8xi4>) -> vector<8xi32> {
 // CHECK-SAME:                             %[[IN:.*]]: vector<8xi4>) -> vector<8xi32> {
-// CHECK:           %[[I4_BITS:.*]] = arith.constant dense<4> : vector<4xi8>
-// CHECK:           %[[LOWBITS_MASK:.*]] = arith.constant dense<15> : vector<4xi8>
+// CHECK-DAG:       %[[I4_BITS:.*]] = arith.constant dense<4> : vector<4xi8>
+// CHECK-DAG:       %[[LOWBITS_MASK:.*]] = arith.constant dense<15> : vector<4xi8>
 // CHECK:           %[[BITCAST:.*]] = vector.bitcast %[[IN]] : vector<8xi4> to vector<4xi8>
 // CHECK:           %[[LOW:.*]] = arith.andi %[[BITCAST]], %[[LOWBITS_MASK]] : vector<4xi8>
 // CHECK:           %[[HIGH:.*]] = arith.shrui %[[BITCAST]], %[[I4_BITS]] : vector<4xi8>
@@ -271,10 +271,10 @@ func.func @aligned_extui_i4_to_i32(%a: vector<8xi4>) -> vector<8xi32> {
 // CHECK-LABEL: func.func @aligned_extui_i2_to_i32(
 func.func @aligned_extui_i2_to_i32(%a: vector<8xi2>) -> vector<8xi32> {
 // CHECK-SAME:      %[[IN:.*]]: vector<8xi2>) -> vector<8xi32> {
-// CHECK:           %[[CST_6:.*]] = arith.constant dense<6> : vector<2xi8>
-// CHECK:           %[[CST_4:.*]] = arith.constant dense<4> : vector<2xi8>
-// CHECK:           %[[CST_2:.*]] = arith.constant dense<2> : vector<2xi8>
-// CHECK:           %[[LOWBITS_MASK:.*]] = arith.constant dense<3> : vector<2xi8>
+// CHECK-DAG:       %[[CST_6:.*]] = arith.constant dense<6> : vector<2xi8>
+// CHECK-DAG:       %[[CST_4:.*]] = arith.constant dense<4> : vector<2xi8>
+// CHECK-DAG:       %[[CST_2:.*]] = arith.constant dense<2> : vector<2xi8>
+// CHECK-DAG:       %[[LOWBITS_MASK:.*]] = arith.constant dense<3> : vector<2xi8>
 // CHECK:           %[[BITCAST:.*]] = vector.bitcast %[[IN]] : vector<8xi2> to vector<2xi8>
 // Extract bits 0-1
 // CHECK:           %[[ELEM0:.*]] = arith.andi %[[BITCAST]], %[[LOWBITS_MASK]] : vector<2xi8>
@@ -297,8 +297,8 @@ func.func @aligned_extui_i2_to_i32(%a: vector<8xi2>) -> vector<8xi32> {
 // CHECK-LABEL: func.func @aligned_extui_i4_to_i32_2d(
 func.func @aligned_extui_i4_to_i32_2d(%a: vector<8x32xi4>) -> vector<8x32xi32> {
 // CHECK-SAME:                                %[[VAL_0:.*]]: vector<8x32xi4>) -> vector<8x32xi32> {
-// CHECK:           %[[I4_BITS:.*]] = arith.constant dense<4> : vector<8x16xi8>
-// CHECK:           %[[LOWBITS_MASK:.*]] = arith.constant dense<15> : vector<8x16xi8>
+// CHECK-DAG:       %[[I4_BITS:.*]] = arith.constant dense<4> : vector<8x16xi8>
+// CHECK-DAG:       %[[LOWBITS_MASK:.*]] = arith.constant dense<15> : vector<8x16xi8>
 // CHECK:           %[[BITCAST:.*]] = vector.bitcast %[[VAL_0]] : vector<8x32xi4> to vector<8x16xi8>
 // CHECK:           %[[LOW:.*]] = arith.andi %[[BITCAST]], %[[LOWBITS_MASK]] : vector<8x16xi8>
 // CHECK:           %[[HIGH:.*]] = arith.shrui %[[BITCAST]], %[[I4_BITS]] : vector<8x16xi8>
@@ -311,10 +311,10 @@ func.func @aligned_extui_i4_to_i32_2d(%a: vector<8x32xi4>) -> vector<8x32xi32> {
 // CHECK-LABEL: func.func @aligned_extui_i2_to_i32_2d(
 func.func @aligned_extui_i2_to_i32_2d(%a: vector<8x32xi2>) -> vector<8x32xi32> {
 // CHECK-SAME:      %[[IN:.*]]: vector<8x32xi2>) -> vector<8x32xi32> {
-// CHECK:           %[[CST_6:.*]] = arith.constant dense<6> : vector<8x8xi8>
-// CHECK:           %[[CST_4:.*]] = arith.constant dense<4> : vector<8x8xi8>
-// CHECK:           %[[CST_2:.*]] = arith.constant dense<2> : vector<8x8xi8>
-// CHECK:           %[[LOWBITS_MASK:.*]] = arith.constant dense<3> : vector<8x8xi8>
+// CHECK-DAG:       %[[CST_6:.*]] = arith.constant dense<6> : vector<8x8xi8>
+// CHECK-DAG:       %[[CST_4:.*]] = arith.constant dense<4> : vector<8x8xi8>
+// CHECK-DAG:       %[[CST_2:.*]] = arith.constant dense<2> : vector<8x8xi8>
+// CHECK-DAG:       %[[LOWBITS_MASK:.*]] = arith.constant dense<3> : vector<8x8xi8>
 // CHECK:           %[[BITCAST:.*]] = vector.bitcast %[[IN]] : vector<8x32xi2> to vector<8x8xi8>
 // Extract bits 0-1
 // CHECK:           %[[ELEM0:.*]] = arith.andi %[[BITCAST]], %[[LOWBITS_MASK]] : vector<8x8xi8>
@@ -377,8 +377,8 @@ func.func @aligned_sitofp_2d(%a: vector<8x32xi4>) -> vector<8x32xf32> {
 // CHECK-LABEL: func.func @aligned_uitofp(
 func.func @aligned_uitofp(%a: vector<8xi4>) -> vector<8xf32> {
 // CHECK-SAME:    %[[IN:.*]]: vector<8xi4>) -> vector<8xf32> {
-// CHECK:           %[[I4_BITS:.*]] = arith.constant dense<4> : vector<4xi8>
-// CHECK:           %[[LOWBITS_MASK:.*]] = arith.constant dense<15> : vector<4xi8>
+// CHECK-DAG:       %[[I4_BITS:.*]] = arith.constant dense<4> : vector<4xi8>
+// CHECK-DAG:       %[[LOWBITS_MASK:.*]] = arith.constant dense<15> : vector<4xi8>
 // CHECK:           %[[BITCAST:.*]] = vector.bitcast %[[IN]] : vector<8xi4> to vector<4xi8>
 // CHECK:           %[[LOW:.*]] = arith.andi %[[BITCAST]], %[[LOWBITS_MASK]] : vector<4xi8>
 // CHECK:           %[[HIGH:.*]] = arith.shrui %[[BITCAST]], %[[I4_BITS]] : vector<4xi8>
@@ -391,8 +391,8 @@ func.func @aligned_uitofp(%a: vector<8xi4>) -> vector<8xf32> {
 // CHECK-LABEL: func.func @aligned_uitofp_2d(
 func.func @aligned_uitofp_2d(%a: vector<8x32xi4>) -> vector<8x32xf32> {
 // CHECK-SAME:    %[[IN:.*]]: vector<8x32xi4>) -> vector<8x32xf32> {
-// CHECK:           %[[I4_BITS:.*]] = arith.constant dense<4> : vector<8x16xi8>
-// CHECK:           %[[LOWBITS_MASK:.*]] = arith.constant dense<15> : vector<8x16xi8>
+// CHECK-DAG:       %[[I4_BITS:.*]] = arith.constant dense<4> : vector<8x16xi8>
+// CHECK-DAG:       %[[LOWBITS_MASK:.*]] = arith.constant dense<15> : vector<8x16xi8>
 // CHECK:           %[[BITCAST:.*]] = vector.bitcast %[[IN]] : vector<8x32xi4> to vector<8x16xi8>
 // CHECK:           %[[LOW:.*]] = arith.andi %[[BITCAST]], %[[LOWBITS_MASK]] : vector<8x16xi8>
 // CHECK:           %[[HIGH:.*]] = arith.shrui %[[BITCAST]], %[[I4_BITS]] : vector<8x16xi8>

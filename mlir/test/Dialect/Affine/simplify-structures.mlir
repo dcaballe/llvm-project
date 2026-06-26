@@ -603,8 +603,8 @@ func.func @semiaffine_simplification_floordiv_and_ceildiv_const(%arg0: tensor<?x
   %dim = tensor.dim %arg0, %c0 : tensor<?xf32>
   %a = affine.apply affine_map<()[s0, s1, s2] -> (s0 floordiv (s1 + (-s1 + 2) * (-s1 + s1 * s2 + 1)))>()[%c13, %dim, %c1]
   %b = affine.apply affine_map<()[s0, s1, s2] -> (s0 ceildiv (s1 + (-s1 + 2) * (-s1 + s1 * s2 + 1)))>()[%c13, %dim, %c1]
-  // CHECK:      %[[C6:.*]] = arith.constant 6 : index
-  // CHECK-NEXT: %[[C7:.*]] = arith.constant 7 : index
-  // CHECK-NEXT: return %[[C6]], %[[C7]]
+  // CHECK-DAG:  %[[C6:.*]] = arith.constant 6 : index
+  // CHECK-DAG:  %[[C7:.*]] = arith.constant 7 : index
+  // CHECK:      return %[[C6]], %[[C7]]
   return %a, %b : index, index
 }

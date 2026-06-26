@@ -9,9 +9,11 @@ gpu.module @create_nd_tdesc {
   %stride1: index, %stride2: index, %offset1: index, %offset2: index, %dyn: memref<?x?xf16>) kernel {
         // CHECK: %[[INTPTR_5:.*]] = memref.extract_aligned_pointer_as_index %[[DYN]] : memref<?x?xf16> -> index
         // CHECK: %[[DYN_ADDR:.*]] = arith.index_castui %[[INTPTR_5]] : index to i64
+        // CHECK: %[[CST:.*]] = arith.constant dense<0> : vector<8xi32>
+        // CHECK: %[[C32_I64:.*]] = arith.constant 32 : i64
+        // CHECK: %[[C16_I64:.*]] = arith.constant 16 : i64
         // CHECK: %[[VAR0:.*]] = index.castu %[[ARG1]] : ui64 to index
         // CHECK: %[[BASE_ADDR:.*]] = arith.index_castui %[[VAR0]] : index to i64
-        // CHECK: %[[CST:.*]] = arith.constant dense<0> : vector<8xi32>
         // CHECK: %[[SHAPE_W:.*]] = arith.index_cast %[[ARG3]] : index to i32
         // CHECK: %[[SHAPE_H:.*]] = arith.index_cast %[[ARG2]] : index to i32
         // CHECK: %[[PITCH:.*]] = arith.index_cast %[[ARG4]] : index to i32
@@ -29,14 +31,10 @@ gpu.module @create_nd_tdesc {
 
         // CHECK: %[[INTPTR:.*]] = memref.extract_aligned_pointer_as_index %[[MEMSPACECAST]] : memref<16x32xf32> -> index
         // CHECK: %[[BASE_ADDR2:.*]] = arith.index_castui %[[INTPTR]] : index to i64
-        // CHECK: %[[CST_1:.*]] = arith.constant dense<0> : vector<8xi32>
-        // CHECK: %[[C32_I64:.*]] = arith.constant 32 : i64
         // CHECK: %[[SHAPE_W2:.*]] = arith.trunci %[[C32_I64]] : i64 to i32
-        // CHECK: %[[C16_I64:.*]] = arith.constant 16 : i64
         // CHECK: %[[SHAPE_H2:.*]] = arith.trunci %[[C16_I64]] : i64 to i32
-        // CHECK: %[[C32_I64_2:.*]] = arith.constant 32 : i64
-        // CHECK: %[[PITCH2:.*]] = arith.trunci %[[C32_I64_2]] : i64 to i32
-        // CHECK: %[[VAR14:.*]] = vector.bitcast %[[CST_1]] : vector<8xi32> to vector<4xi64>
+        // CHECK: %[[PITCH2:.*]] = arith.trunci %[[C32_I64]] : i64 to i32
+        // CHECK: %[[VAR14:.*]] = vector.bitcast %[[CST]] : vector<8xi32> to vector<4xi64>
         // CHECK: %[[VAR15:.*]] = vector.insert %[[BASE_ADDR2_OFFSET:.*]], %[[VAR14]] [0] : i64 into vector<4xi64>
         // CHECK: %[[VAR16:.*]] = vector.bitcast %[[VAR15]] : vector<4xi64> to vector<8xi32>
         // CHECK: %[[VAR17:.*]] = vector.insert %[[SHAPE_W2]], %[[VAR16]] [2] : i32 into vector<8xi32>
@@ -50,11 +48,10 @@ gpu.module @create_nd_tdesc {
         %size_x = arith.constant 64 : index
         // CHECK: %[[C16:.*]] = arith.constant 16 : index
         %BLOCK_DMODEL = arith.constant 16 : index
-        // CHECK: %[[CST_3:.*]] = arith.constant dense<0> : vector<8xi32>
         // CHECK: %[[SHAPE_W3:.*]] = arith.index_cast %[[C16]] : index to i32
         // CHECK: %[[SHAPE_H3:.*]] = arith.index_cast %[[C64]] : index to i32
         // CHECK: %[[PITCH3:.*]] = arith.index_cast %[[C16]] : index to i32
-        // CHECK: %[[VAR25:.*]] = vector.bitcast %[[CST_3]] : vector<8xi32> to vector<4xi64>
+        // CHECK: %[[VAR25:.*]] = vector.bitcast %[[CST]] : vector<8xi32> to vector<4xi64>
         // CHECK: %[[VAR26:.*]] = vector.insert %[[DYN_ADDR_OFFSET:.*]], %[[VAR25]] [0] : i64 into vector<4xi64>
         // CHECK: %[[VAR27:.*]] = vector.bitcast %[[VAR26]] : vector<4xi64> to vector<8xi32>
         // CHECK: %[[VAR28:.*]] = vector.insert %[[SHAPE_W3]], %[[VAR27]] [2] : i32 into vector<8xi32>

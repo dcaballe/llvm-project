@@ -88,7 +88,7 @@ class ScatterOpConverter : public OpRewritePattern<tosa::ScatterOp> {
 
   static Value createIndexConst(OpBuilder &builder, Location loc,
                                 int64_t value) {
-    return arith::ConstantIndexOp::create(builder, loc, value);
+    return builder.createOrFold<arith::ConstantIndexOp>(loc, value);
   }
 
 public:

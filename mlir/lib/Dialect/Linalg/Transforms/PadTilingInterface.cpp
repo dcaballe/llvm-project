@@ -240,7 +240,7 @@ static Value padOperand(OpBuilder &builder, TilingInterface opToPad,
                                         getElementTypeOrSelf(v.getType()));
   } else if (auto typedAttr = dyn_cast<TypedAttr>(paddingValueAttr)) {
     paddingValue =
-        arith::ConstantOp::create(builder, opToPad.getLoc(), typedAttr);
+        builder.createOrFold<arith::ConstantOp>(opToPad.getLoc(), typedAttr);
   }
   assert(paddingValue && "failed to create value from padding attribute");
 

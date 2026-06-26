@@ -149,7 +149,7 @@ FailureOr<SplitReductionResult> mlir::linalg::splitReduction(
     emptyOrAllocTensor = tensor::EmptyOp::create(
         b, loc, newOutputShape, op.getRegionOutputArgs()[0].getType());
   }
-  Value constantOp = arith::ConstantOp::create(b, loc, *identity);
+  Value constantOp = b.createOrFold<arith::ConstantOp>(loc, *identity);
   Value identityTensor =
       linalg::FillOp::create(b, op->getLoc(), constantOp, emptyOrAllocTensor)
           .getResult(0);
@@ -323,7 +323,7 @@ FailureOr<SplitReductionResult> mlir::linalg::splitReductionByScaling(
       emptyOrAllocTensor = tensor::EmptyOp::create(b, loc, newT.getShape(),
                                                    t.getElementType(), dims);
     }
-    Value constantOp = arith::ConstantOp::create(b, loc, std::get<1>(it));
+    Value constantOp = b.createOrFold<arith::ConstantOp>(loc, std::get<1>(it));
     fillOps.push_back(linalg::FillOp::create(b, op->getLoc(), constantOp,
                                              emptyOrAllocTensor));
     newOutputs.push_back(fillOps.back().getResult(0));

@@ -387,11 +387,11 @@ module attributes {transform.with_named_sequence} {
 
 // CHECK-LABEL: @insert_prefetch_dpas_a_nb_param2
 func.func @insert_prefetch_dpas_a_nb_param2(%arg0: memref<4096x4096xf16>, %arg1: memref<4096x4096xf16>, %arg2: memref<4096x4096xf16>) {
-  // CHECK: %[[C64:.+]] = arith.constant 64 : index
-  // CHECK: %[[C32:.+]] = arith.constant 32 : index
+  // CHECK-DAG: %[[C64:.+]] = arith.constant 64 : index
+  // CHECK-DAG: %[[C32:.+]] = arith.constant 32 : index
   %c32 = arith.constant 32 : index
   %c4096 = arith.constant 4096 : index
-  // CHECK: %[[C0:.+]] = arith.constant 0 : index
+  // CHECK-DAG: %[[C0:.+]] = arith.constant 0 : index
   %c0 = arith.constant 0 : index
   %0 = xegpu.create_nd_tdesc %arg2 : memref<4096x4096xf16> -> !xegpu.tensor_desc<256x256xf16>
   %1 = xegpu.load_nd %0[0, 0]  : !xegpu.tensor_desc<256x256xf16> -> vector<256x256xf16>

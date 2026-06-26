@@ -688,8 +688,8 @@ convertConstantOpMmaSync(RewriterBase &rewriter, arith::ConstantOp op,
     return rewriter.notifyMatchFailure(op, "not a splat");
   }
 
-  Value result = arith::ConstantOp::create(
-      rewriter, op.getLoc(), vectorType,
+  Value result = rewriter.createOrFold<arith::ConstantOp>(
+      op.getLoc(), vectorType,
       DenseElementsAttr::get(vectorType, dense.getSplatValue<Attribute>()));
   valueMapping[op.getResult()] = result;
   return success();
@@ -814,8 +814,8 @@ createNonLdMatrixLoads(RewriterBase &rewriter, vector::TransferReadOp op,
   Type loadedElType = regInfo->registerLLVMType;
   VectorType vectorType = getMmaSyncVectorOperandType(*regInfo);
 
-  Value fill = arith::ConstantOp::create(
-      rewriter, op.getLoc(), vectorType.getElementType(),
+  Value fill = rewriter.createOrFold<arith::ConstantOp>(
+      op.getLoc(), vectorType.getElementType(),
       rewriter.getZeroAttr(vectorType.getElementType()));
   Value result =
       vector::BroadcastOp::create(rewriter, op.getLoc(), vectorType, fill);
@@ -835,8 +835,8 @@ createNonLdMatrixLoads(RewriterBase &rewriter, vector::TransferReadOp op,
       if (failed(coords))
         return rewriter.notifyMatchFailure(op, "no coords");
 
-      Value logicalValueId = arith::ConstantOp::create(
-          rewriter, loc, rewriter.getIndexType(),
+      Value logicalValueId = rewriter.createOrFold<arith::ConstantOp>(
+          loc, rewriter.getIndexType(),
           rewriter.getIndexAttr(i * regInfo->elementsPerRegister));
       SmallVector<Value, 4> newIndices;
       getXferIndices<vector::TransferReadOp>(
@@ -854,8 +854,8 @@ createNonLdMatrixLoads(RewriterBase &rewriter, vector::TransferReadOp op,
       for (unsigned innerIdx = 0; innerIdx < vectorType.getShape()[1];
            innerIdx++) {
 
-        Value logicalValueId = arith::ConstantOp::create(
-            rewriter, loc, rewriter.getIndexType(),
+        Value logicalValueId = rewriter.createOrFold<arith::ConstantOp>(
+            loc, rewriter.getIndexType(),
             rewriter.getIndexAttr(i * regInfo->elementsPerRegister + innerIdx));
         FailureOr<AffineMap> coords = nvgpu::getLaneIdAndValueIdToOperandCoord(
             rewriter, op.getLoc(), *warpMatrixInfo);
@@ -945,8 +945,8 @@ convertTransferWriteToStores(RewriterBase &rewriter, vector::TransferWriteOp op,
   Value laneId = gpu::LaneIdOp::create(rewriter, loc, /*upper_bound=*/nullptr);
 
   for (unsigned i = 0; i < vectorType.getShape()[0]; i++) {
-    Value logicalValueId = arith::ConstantOp::create(
-        rewriter, loc, rewriter.getIndexType(),
+    Value logicalValueId = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getIndexType(),
         rewriter.getIndexAttr(i * regInfo->elementsPerRegister));
     FailureOr<AffineMap> coords = nvgpu::getLaneIdAndValueIdToOperandCoord(
         rewriter, op.getLoc(), *warpMatrixInfo);
@@ -1103,7 +1103,7 @@ convertConstantOp(RewriterBase &rewriter, arith::ConstantOp op,
   auto splat =
       cast<SplatElementsAttr>(op.getValue()).getSplatValue<TypedAttr>();
   auto scalarConstant =
-      arith::ConstantOp::create(rewriter, op.getLoc(), splat.getType(), splat);
+      rewriter.createOrFold<arith::ConstantOp>(op.getLoc(), splat.getType(), splat);
   const char *fragType = inferFragType(op);
   auto vecType = cast<VectorType>(op.getType());
   gpu::MMAMatrixType type = gpu::MMAMatrixType::get(

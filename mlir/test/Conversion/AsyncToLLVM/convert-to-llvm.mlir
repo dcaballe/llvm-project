@@ -3,10 +3,10 @@
 // CHECK-LABEL: reference_counting
 func.func @reference_counting(%arg0: !async.token) {
   // CHECK: %[[C2:.*]] = arith.constant 2 : i64
+  // CHECK: %[[C1:.*]] = arith.constant 1 : i64
   // CHECK: call @mlirAsyncRuntimeAddRef(%arg0, %[[C2]])
   async.runtime.add_ref %arg0 {count = 2 : i64} : !async.token
 
-  // CHECK: %[[C1:.*]] = arith.constant 1 : i64
   // CHECK: call @mlirAsyncRuntimeDropRef(%arg0, %[[C1]])
   async.runtime.drop_ref %arg0 {count = 1 : i64} : !async.token
 
@@ -17,6 +17,7 @@ func.func @reference_counting(%arg0: !async.token) {
 
 // CHECK-LABEL: execute_no_async_args
 func.func @execute_no_async_args(%arg0: f32, %arg1: memref<1xf32>) {
+  // CHECK: %[[TRUE:.*]] = arith.constant true
   // CHECK: %[[TOKEN:.*]] = call @async_execute_fn(%arg0, %arg1)
   %token = async.execute {
     %c0 = arith.constant 0 : index
@@ -25,7 +26,6 @@ func.func @execute_no_async_args(%arg0: f32, %arg1: memref<1xf32>) {
   }
   // CHECK: call @mlirAsyncRuntimeAwaitToken(%[[TOKEN]])
   // CHECK: %[[IS_ERROR:.*]] = call @mlirAsyncRuntimeIsTokenError(%[[TOKEN]])
-  // CHECK: %[[TRUE:.*]] = arith.constant true
   // CHECK: %[[NOT_ERROR:.*]] = arith.xori %[[IS_ERROR]], %[[TRUE]] : i1
   // CHECK: cf.assert %[[NOT_ERROR]]
   // CHECK-NEXT: return
@@ -72,6 +72,7 @@ func.func @execute_no_async_args(%arg0: f32, %arg1: memref<1xf32>) {
 
 // CHECK-LABEL: nested_async_execute
 func.func @nested_async_execute(%arg0: f32, %arg1: f32, %arg2: memref<1xf32>) {
+  // CHECK: %[[TRUE:.*]] = arith.constant true
   // CHECK: %[[TOKEN:.*]] = call @async_execute_fn_0(%arg0, %arg2, %arg1)
   %token0 = async.execute {
     %c0 = arith.constant 0 : index
@@ -88,7 +89,6 @@ func.func @nested_async_execute(%arg0: f32, %arg1: f32, %arg2: memref<1xf32>) {
   }
   // CHECK: call @mlirAsyncRuntimeAwaitToken(%[[TOKEN]])
   // CHECK: %[[IS_ERROR:.*]] = call @mlirAsyncRuntimeIsTokenError(%[[TOKEN]])
-  // CHECK: %[[TRUE:.*]] = arith.constant true
   // CHECK: %[[NOT_ERROR:.*]] = arith.xori %[[IS_ERROR]], %[[TRUE]] : i1
   // CHECK: cf.assert %[[NOT_ERROR]]
   async.await %token0 : !async.token

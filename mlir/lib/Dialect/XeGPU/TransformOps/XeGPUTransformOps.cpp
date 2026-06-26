@@ -330,7 +330,8 @@ transform::SetGPULaunchThreadsOp::apply(transform::TransformRewriter &rewriter,
 
   rewriter.setInsertionPoint(launchOp);
   auto createConstValue = [&](int value) {
-    return arith::ConstantIndexOp::create(rewriter, launchOp.getLoc(), value);
+    return rewriter.createOrFold<arith::ConstantIndexOp>(launchOp.getLoc(),
+                                                         value);
   };
 
   // Replace threads in-place.
@@ -414,7 +415,7 @@ transform::InsertPrefetchOp::apply(transform::TransformRewriter &rewriter,
   // Clone reduction loop to emit initial prefetches.
   // Compute upper bound of the init loop: start + nbPrefetch * step.
   auto nbPrefetchCst =
-      arith::ConstantIndexOp::create(rewriter, forOp.getLoc(), nbPrefetch);
+      rewriter.createOrFold<arith::ConstantIndexOp>(forOp.getLoc(), nbPrefetch);
   auto nbStep = rewriter.createOrFold<arith::MulIOp>(
       forOp.getLoc(), nbPrefetchCst, forOp.getStep());
   auto initUpBound = rewriter.createOrFold<arith::AddIOp>(

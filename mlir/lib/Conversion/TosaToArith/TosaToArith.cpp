@@ -51,8 +51,8 @@ TypedAttr getConstantAttr(Type type, int64_t value, PatternRewriter &rewriter) {
 
 Value getConstantValue(Location loc, Type type, int64_t value,
                        PatternRewriter &rewriter) {
-  return arith::ConstantOp::create(rewriter, loc,
-                                   getConstantAttr(type, value, rewriter));
+  return rewriter.createOrFold<arith::ConstantOp>(
+      loc, getConstantAttr(type, value, rewriter));
 }
 
 // This converts the TOSA ApplyScale operator to a set of arithmetic ops,

@@ -556,7 +556,7 @@ class TransferReadDropUnitDimsPattern
     LDBG() << "  -> Creating rank-reduced subview and new transfer_read";
     Value reducedShapeSource =
         rankReducingSubviewDroppingUnitDims(rewriter, loc, source);
-    Value c0 = arith::ConstantIndexOp::create(rewriter, loc, 0);
+    Value c0 = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
     Repeated<Value> zeros(reducedRank, c0);
     auto identityMap = rewriter.getMultiDimIdentityMap(reducedRank);
     SmallVector<bool> inBounds(reducedVectorType.getRank(), true);
@@ -675,7 +675,7 @@ class TransferWriteDropUnitDimsPattern
     LDBG() << "  -> Creating rank-reduced subview and new transfer_write";
     Value reducedShapeSource =
         rankReducingSubviewDroppingUnitDims(rewriter, loc, source);
-    Value c0 = arith::ConstantIndexOp::create(rewriter, loc, 0);
+    Value c0 = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
     Repeated<Value> zeros(reducedRank, c0);
     auto identityMap = rewriter.getMultiDimIdentityMap(reducedRank);
     SmallVector<bool> inBounds(reducedVectorType.getRank(), true);
@@ -763,7 +763,7 @@ static SmallVector<Value> getCollapsedIndices(RewriterBase &rewriter,
   // one would get the following offset:
   //    %offset = %arg0 * 43
   OpFoldResult collapsedOffset =
-      arith::ConstantIndexOp::create(rewriter, loc, 0).getResult();
+      rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
 
   auto collapsedStrides = computeSuffixProduct(
       ArrayRef<int64_t>(shape.begin() + firstDimToCollapse, shape.end()));
@@ -777,8 +777,9 @@ static SmallVector<Value> getCollapsedIndices(RewriterBase &rewriter,
   if (auto value = dyn_cast<Value>(collapsedOffset)) {
     indicesAfterCollapsing.push_back(value);
   } else {
-    indicesAfterCollapsing.push_back(arith::ConstantIndexOp::create(
-        rewriter, loc, *getConstantIntValue(collapsedOffset)));
+    indicesAfterCollapsing.push_back(
+        rewriter.createOrFold<arith::ConstantIndexOp>(
+            loc, *getConstantIntValue(collapsedOffset)));
   }
 
   return indicesAfterCollapsing;
@@ -1093,8 +1094,8 @@ public:
       if (auto value = dyn_cast<Value>(composedIdx)) {
         newIndices[idx] = value;
       } else {
-        newIndices[idx] = arith::ConstantIndexOp::create(
-            rewriter, extractOp.getLoc(), *getConstantIntValue(composedIdx));
+        newIndices[idx] = rewriter.createOrFold<arith::ConstantIndexOp>(
+            extractOp.getLoc(), *getConstantIntValue(composedIdx));
       }
     }
     if (isa<MemRefType>(xferOp.getBase().getType())) {

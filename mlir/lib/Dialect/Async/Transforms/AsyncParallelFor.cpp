@@ -276,15 +276,16 @@ static ParallelComputeFunction createParallelComputeFunction(
   BlockArgument blockSize = args.blockSize();
 
   // Constants used below.
-  Value c0 = arith::ConstantIndexOp::create(b, 0);
-  Value c1 = arith::ConstantIndexOp::create(b, 1);
+  Value c0 = b.createOrFold<arith::ConstantIndexOp>(0);
+  Value c1 = b.createOrFold<arith::ConstantIndexOp>(1);
 
   // Materialize known constants as constant operation in the function body.
   auto values = [&](ArrayRef<BlockArgument> args, ArrayRef<IntegerAttr> attrs) {
     return llvm::map_to_vector(llvm::zip(args, attrs),
                                [&](auto tuple) -> Value {
                                  if (IntegerAttr attr = std::get<1>(tuple))
-                                   return arith::ConstantOp::create(b, attr);
+                                   return b.createOrFold<arith::ConstantOp>(
+                                       attr);
                                  return std::get<0>(tuple);
                                });
   };
@@ -486,8 +487,8 @@ createAsyncDispatchFunction(ParallelComputeFunction &computeFunc,
   b.setInsertionPointToEnd(block);
 
   Type indexTy = b.getIndexType();
-  Value c1 = arith::ConstantIndexOp::create(b, 1);
-  Value c2 = arith::ConstantIndexOp::create(b, 2);
+  Value c1 = b.createOrFold<arith::ConstantIndexOp>(1);
+  Value c2 = b.createOrFold<arith::ConstantIndexOp>(2);
 
   // Get the async group that will track async dispatch completion.
   Value group = block->getArgument(0);
@@ -578,8 +579,8 @@ static void doAsyncDispatch(ImplicitLocOpBuilder &b, PatternRewriter &rewriter,
   func::FuncOp asyncDispatchFunction =
       createAsyncDispatchFunction(parallelComputeFunction, rewriter);
 
-  Value c0 = arith::ConstantIndexOp::create(b, 0);
-  Value c1 = arith::ConstantIndexOp::create(b, 1);
+  Value c0 = b.createOrFold<arith::ConstantIndexOp>(0);
+  Value c1 = b.createOrFold<arith::ConstantIndexOp>(1);
 
   // Appends operands shared by async dispatch and parallel compute functions to
   // the given operands vector.
@@ -647,8 +648,8 @@ doSequentialDispatch(ImplicitLocOpBuilder &b, PatternRewriter &rewriter,
 
   func::FuncOp compute = parallelComputeFunction.func;
 
-  Value c0 = arith::ConstantIndexOp::create(b, 0);
-  Value c1 = arith::ConstantIndexOp::create(b, 1);
+  Value c0 = b.createOrFold<arith::ConstantIndexOp>(0);
+  Value c1 = b.createOrFold<arith::ConstantIndexOp>(1);
 
   // Create an async.group to wait on all async tokens from the concurrent
   // execution of multiple parallel compute function. First block will be
@@ -741,7 +742,7 @@ AsyncParallelForRewrite::matchAndRewrite(scf::ParallelOp op,
 
   // Short circuit no-op parallel loops (zero iterations) that can arise from
   // the memrefs with dynamic dimension(s) equal to zero.
-  Value c0 = arith::ConstantIndexOp::create(b, 0);
+  Value c0 = b.createOrFold<arith::ConstantIndexOp>(0);
   Value isZeroIterations =
       arith::CmpIOp::create(b, arith::CmpIPredicate::eq, tripCount, c0);
 
@@ -797,7 +798,8 @@ AsyncParallelForRewrite::matchAndRewrite(scf::ParallelOp op,
 
     Value numWorkerThreadsVal;
     if (numWorkerThreads >= 0)
-      numWorkerThreadsVal = arith::ConstantIndexOp::create(b, numWorkerThreads);
+      numWorkerThreadsVal =
+          b.createOrFold<arith::ConstantIndexOp>(numWorkerThreads);
     else
       numWorkerThreadsVal = async::RuntimeNumWorkerThreadsOp::create(b);
 
@@ -818,14 +820,14 @@ AsyncParallelForRewrite::matchAndRewrite(scf::ParallelOp op,
         {4, 4.0f}, {8, 2.0f}, {16, 1.0f}, {32, 0.8f}, {64, 0.6f}};
     const float initialOvershardingFactor = 8.0f;
 
-    Value scalingFactor = arith::ConstantFloatOp::create(
-        b, b.getF32Type(), llvm::APFloat(initialOvershardingFactor));
+    Value scalingFactor = b.createOrFold<arith::ConstantFloatOp>(
+        b.getF32Type(), llvm::APFloat(initialOvershardingFactor));
     for (const std::pair<int, float> &p : overshardingBrackets) {
-      Value bracketBegin = arith::ConstantIndexOp::create(b, p.first);
+      Value bracketBegin = b.createOrFold<arith::ConstantIndexOp>(p.first);
       Value inBracket = arith::CmpIOp::create(
           b, arith::CmpIPredicate::sgt, numWorkerThreadsVal, bracketBegin);
-      Value bracketScalingFactor = arith::ConstantFloatOp::create(
-          b, b.getF32Type(), llvm::APFloat(p.second));
+      Value bracketScalingFactor = b.createOrFold<arith::ConstantFloatOp>(
+          b.getF32Type(), llvm::APFloat(p.second));
       scalingFactor = arith::SelectOp::create(
           b, inBracket, bracketScalingFactor, scalingFactor);
     }
@@ -841,7 +843,7 @@ AsyncParallelForRewrite::matchAndRewrite(scf::ParallelOp op,
         arith::IndexCastOp::create(b, b.getIndexType(), scaledNumInt);
 
     Value maxComputeBlocks = arith::MaxSIOp::create(
-        b, arith::ConstantIndexOp::create(b, 1), scaledWorkers);
+        b, b.createOrFold<arith::ConstantIndexOp>(1), scaledWorkers);
 
     // Compute parallel block size from the parallel problem size:
     //   blockSize = min(tripCount,
@@ -879,8 +881,8 @@ AsyncParallelForRewrite::matchAndRewrite(scf::ParallelOp op,
       ImplicitLocOpBuilder b(loc, nestedBuilder);
       // Align the block size to be a multiple of the statically known
       // number of iterations in the inner loops.
-      Value numIters = arith::ConstantIndexOp::create(
-          b, numIterations[op.getNumLoops() - numUnrollableLoops]);
+      Value numIters = b.createOrFold<arith::ConstantIndexOp>(
+          numIterations[op.getNumLoops() - numUnrollableLoops]);
       Value alignedBlockSize = arith::MulIOp::create(
           b, arith::CeilDivSIOp::create(b, blockSize, numIters), numIters);
       doDispatch(b, rewriter, compute, op, alignedBlockSize, blockCount,
@@ -892,8 +894,8 @@ AsyncParallelForRewrite::matchAndRewrite(scf::ParallelOp op,
     // size is larger than the number of iterations in the unrollable inner
     // loops, because otherwise it can reduce the available parallelism.
     if (numUnrollableLoops > 0) {
-      Value numIters = arith::ConstantIndexOp::create(
-          b, numIterations[op.getNumLoops() - numUnrollableLoops]);
+      Value numIters = b.createOrFold<arith::ConstantIndexOp>(
+          numIterations[op.getNumLoops() - numUnrollableLoops]);
       Value useBlockAlignedComputeFn = arith::CmpIOp::create(
           b, arith::CmpIPredicate::sge, blockSize, numIters);
 
@@ -921,7 +923,7 @@ void AsyncParallelForPass::runOnOperation() {
   populateAsyncParallelForPatterns(
       patterns, asyncDispatch, numWorkerThreads,
       [&](ImplicitLocOpBuilder builder, scf::ParallelOp op) {
-        return arith::ConstantIndexOp::create(builder, minTaskSize);
+        return builder.createOrFold<arith::ConstantIndexOp>(minTaskSize);
       });
   if (failed(applyPatternsGreedily(getOperation(), std::move(patterns))))
     signalPassFailure();

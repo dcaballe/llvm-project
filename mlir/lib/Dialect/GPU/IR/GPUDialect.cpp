@@ -139,8 +139,8 @@ Value GPUMappingMaskAttr::createLogicalLinearMappingId(
     OpBuilder &b, Value physicalLinearMappingId) const {
   Location loc = physicalLinearMappingId.getLoc();
   Value mask =
-      arith::ConstantOp::create(b, loc, b.getI64IntegerAttr(getMask()));
-  Value one = arith::ConstantOp::create(b, loc, b.getI64IntegerAttr(1));
+      b.createOrFold<arith::ConstantOp>(loc, b.getI64IntegerAttr(getMask()));
+  Value one = b.createOrFold<arith::ConstantOp>(loc, b.getI64IntegerAttr(1));
   Value filter = arith::ShLIOp::create(b, loc, one, physicalLinearMappingId);
   filter = arith::SubIOp::create(b, loc, filter, one);
   Value filteredId = arith::AndIOp::create(b, loc, mask, filter);
@@ -161,11 +161,11 @@ Value GPUMappingMaskAttr::createIsActiveIdPredicate(
     OpBuilder &b, Value physicalLinearMappingId) const {
   Location loc = physicalLinearMappingId.getLoc();
   Value mask =
-      arith::ConstantOp::create(b, loc, b.getI64IntegerAttr(getMask()));
-  Value one = arith::ConstantOp::create(b, loc, b.getI64IntegerAttr(1));
+      b.createOrFold<arith::ConstantOp>(loc, b.getI64IntegerAttr(getMask()));
+  Value one = b.createOrFold<arith::ConstantOp>(loc, b.getI64IntegerAttr(1));
   Value filter = arith::ShLIOp::create(b, loc, one, physicalLinearMappingId);
   Value filtered = arith::AndIOp::create(b, loc, mask, filter);
-  Value zero = arith::ConstantOp::create(b, loc, b.getI64IntegerAttr(0));
+  Value zero = b.createOrFold<arith::ConstantOp>(loc, b.getI64IntegerAttr(0));
   return arith::CmpIOp::create(b, loc, arith::CmpIPredicate::ne, filtered,
                                zero);
 }
@@ -1206,8 +1206,8 @@ struct FoldLaunchArguments : public OpRewritePattern<LaunchOp> {
         // Create a zero value the first time.
         OpBuilder::InsertionGuard guard(rewriter);
         rewriter.setInsertionPointToStart(&op.getBody().front());
-        zero =
-            arith::ConstantIndexOp::create(rewriter, op.getLoc(), /*value=*/0);
+        zero = rewriter.createOrFold<arith::ConstantIndexOp>(op.getLoc(),
+                                                             /*value=*/0);
       }
       rewriter.replaceAllUsesWith(id, zero);
       simplified = true;
@@ -1504,10 +1504,10 @@ static void printLaunchFuncOperands(OpAsmPrinter &printer, Operation *,
 void ShuffleOp::build(OpBuilder &builder, OperationState &result, Value value,
                       int32_t offset, int32_t width, ShuffleMode mode) {
   build(builder, result, value,
-        arith::ConstantOp::create(builder, result.location,
-                                  builder.getI32IntegerAttr(offset)),
-        arith::ConstantOp::create(builder, result.location,
-                                  builder.getI32IntegerAttr(width)),
+        builder.createOrFold<arith::ConstantOp>(
+            result.location, builder.getI32IntegerAttr(offset)),
+        builder.createOrFold<arith::ConstantOp>(
+            result.location, builder.getI32IntegerAttr(width)),
         mode);
 }
 

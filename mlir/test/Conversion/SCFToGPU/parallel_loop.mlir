@@ -252,12 +252,12 @@ module {
 // CHECK:           %[[C0:.*]] = arith.constant 0 : index
 // CHECK:           %[[C3:.*]] = arith.constant 3 : index
 // CHECK:           %[[C2:.*]] = arith.constant 2 : index
+// CHECK:           [[VAL_9:%.*]] = arith.constant 1 : index
+// CHECK:           [[VAL_12:%.*]] = arith.constant 4 : index
 // CHECK:           [[VAL_7:%.*]] = memref.dim [[VAL_0]], %[[C0]] : memref<?x?xf32, strided<[?, 1], offset: ?>>
 // CHECK:           [[VAL_8:%.*]] = memref.dim [[VAL_0]], %[[C1]] : memref<?x?xf32, strided<[?, 1], offset: ?>>
-// CHECK:           [[VAL_9:%.*]] = arith.constant 1 : index
 // CHECK:           [[VAL_10:%.*]] = affine.apply #[[$MAP1]]([[VAL_7]]){{\[}}%[[C0]], %[[C2]]]
 // CHECK:           [[VAL_11:%.*]] = affine.apply #[[$MAP1]]([[VAL_8]]){{\[}}%[[C0]], %[[C3]]]
-// CHECK:           [[VAL_12:%.*]] = arith.constant 4 : index
 // CHECK:           [[VAL_13:%.*]] = affine.apply #[[$MAP1]]([[VAL_12]]){{\[}}%[[C0]], %[[C1]]]
 // CHECK:           [[VAL_15:%.*]] = affine.apply #[[$MAP1]](%[[C3]]){{\[}}%[[C0]], %[[C1]]]
 // CHECK:           gpu.launch blocks([[VAL_16:%.*]], [[VAL_17:%.*]], [[VAL_18:%.*]]) in ([[VAL_19:%.*]] = [[VAL_10]], [[VAL_20:%.*]] = [[VAL_11]], [[VAL_21:%.*]] = [[VAL_9]]) threads([[VAL_22:%.*]], [[VAL_23:%.*]], [[VAL_24:%.*]]) in ([[VAL_25:%.*]] = [[VAL_13]], [[VAL_26:%.*]] = [[VAL_15]], [[VAL_27:%.*]] = [[VAL_9]]) {

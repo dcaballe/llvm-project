@@ -108,9 +108,9 @@ static Value buildNumReadElements(OpBuilder &b, Location loc,
   // Note: There is one more `sz` than `pos`. The loop end with the last `pos`.
   for (auto [pos, sz] : llvm::zip(transferMask->extractPosition,
                                   transferMask->createMaskOp->getOperands())) {
-    Value cmp =
-        arith::CmpIOp::create(b, loc, arith::CmpIPredicate::slt,
-                              arith::ConstantIndexOp::create(b, loc, pos), sz);
+    Value cmp = arith::CmpIOp::create(
+        b, loc, arith::CmpIPredicate::slt,
+        b.createOrFold<arith::ConstantIndexOp>(loc, pos), sz);
     if (!cond) {
       cond = cmp;
       continue;
@@ -119,7 +119,7 @@ static Value buildNumReadElements(OpBuilder &b, Location loc,
   }
   return arith::SelectOp::create(
       b, loc, cond, transferMask->createMaskOp->getOperands().back(),
-      arith::ConstantIndexOp::create(b, loc, 0));
+      b.createOrFold<arith::ConstantIndexOp>(loc, 0));
 }
 
 /// Return "true" if the conversion to async copy is supported by "async copy".

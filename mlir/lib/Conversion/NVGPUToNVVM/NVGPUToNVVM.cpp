@@ -2335,8 +2335,8 @@ struct NVGPUFPCanonicalizePattern : public OpRewritePattern<CvtOp> {
 
     if (needsPad) {
       auto paddedTy = VectorType::get({paddedElems}, srcElemTy);
-      Value zero = arith::ConstantOp::create(
-          b, DenseElementsAttr::get(paddedTy, b.getZeroAttr(srcElemTy)));
+      Value zero = b.createOrFold<arith::ConstantOp>(
+          DenseElementsAttr::get(paddedTy, b.getZeroAttr(srcElemTy)));
       input = vector::InsertStridedSliceOp::create(
           b, input, zero, SmallVector<int64_t>{0}, SmallVector<int64_t>{1});
     }

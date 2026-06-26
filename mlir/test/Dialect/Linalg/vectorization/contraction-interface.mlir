@@ -55,52 +55,42 @@ func.func @matmul_dynamic(%A: tensor<?x?xf32>, %B: tensor<?x?xf32>,
 // CHECK-SAME:    %[[C:.*]]: tensor<?x?xf32>)
 
 /// Get the contraction dimensions
-//  CHECK: %[[MATMUL_DIM_M_IDX:.*]] = arith.constant 0 : index
-//  CHECK: %[[MATMUL_DIM_M:.*]] = tensor.dim %[[A]], %[[MATMUL_DIM_M_IDX]] : tensor<?x?xf32>
-//  CHECK: %[[MATMUL_DIM_N_IDX:.*]] = arith.constant 1 : index
-//  CHECK: %[[MATMUL_DIM_N:.*]] = tensor.dim %[[B]], %[[MATMUL_DIM_N_IDX]] : tensor<?x?xf32>
-//  CHECK: %[[MATMUL_DIM_K_IDX:.*]] = arith.constant 1 : index
-//  CHECK: %[[MATMUL_DIM_K:.*]] = tensor.dim %[[A]], %[[MATMUL_DIM_K_IDX]] : tensor<?x?xf32>
+//  CHECK: %[[C0:.*]] = arith.constant 0 : index
+//  CHECK: %[[C1:.*]] = arith.constant 1 : index
+//  CHECK: %[[MATMUL_DIM_M:.*]] = tensor.dim %[[A]], %[[C0]] : tensor<?x?xf32>
+//  CHECK: %[[MATMUL_DIM_N:.*]] = tensor.dim %[[B]], %[[C1]] : tensor<?x?xf32>
+//  CHECK: %[[MATMUL_DIM_K:.*]] = tensor.dim %[[A]], %[[C1]] : tensor<?x?xf32>
 
 /// Create a mask for the A matrix
-//      CHECK: %[[A_OFFSET:.*]] = arith.constant 0 : index
-//      CHECK: %[[A_DIM_M_IDX:.*]] = arith.constant 0 : index
-//      CHECK: %[[A_DIM_M:.*]] = tensor.dim %[[A]], %[[A_DIM_M_IDX]] : tensor<?x?xf32>
-//      CHECK: %[[A_DIM_K_IDX:.*]] = arith.constant 1 : index
-//      CHECK: %[[A_DIM_K:.*]] = tensor.dim %[[A]], %[[A_DIM_K_IDX]] : tensor<?x?xf32>
+//      CHECK: %[[A_DIM_M:.*]] = tensor.dim %[[A]], %[[C0]] : tensor<?x?xf32>
+//      CHECK: %[[A_DIM_K:.*]] = tensor.dim %[[A]], %[[C1]] : tensor<?x?xf32>
 //      CHECK: %[[LOAD_A_MASK:.*]] = vector.create_mask
 // CHECK-SAME:   %[[A_DIM_M]], %[[A_DIM_K]] : vector<8x4xi1>
 /// Read the A matrix
 //      CHECK: %[[LOAD_A:.*]] = vector.mask %[[LOAD_A_MASK]]
-// CHECK-SAME:   { vector.transfer_read %[[A]]{{\[}}%[[A_OFFSET]], %[[A_OFFSET]]{{\]}}
+// CHECK-SAME:   { vector.transfer_read %[[A]]{{\[}}%[[C0]], %[[C0]]{{\]}}
 // CHECK-SAME:     : tensor<?x?xf32>, vector<8x4xf32> }
 // CHECK-SAME:   : vector<8x4xi1> -> vector<8x4xf32>
 
 /// Create a mask for the B matrix
-//      CHECK: %[[B_OFFSET:.*]] = arith.constant 0 : index
-//      CHECK: %[[B_DIM_K_IDX:.*]] = arith.constant 0 : index
-//      CHECK: %[[B_DIM_K:.*]] = tensor.dim %[[B]], %[[B_DIM_K_IDX]] : tensor<?x?xf32>
-//      CHECK: %[[B_DIM_N_IDX:.*]] = arith.constant 1 : index
-//      CHECK: %[[B_DIM_N:.*]] = tensor.dim %[[B]], %[[B_DIM_N_IDX]] : tensor<?x?xf32>
+//      CHECK: %[[B_DIM_K:.*]] = tensor.dim %[[B]], %[[C0]] : tensor<?x?xf32>
+//      CHECK: %[[B_DIM_N:.*]] = tensor.dim %[[B]], %[[C1]] : tensor<?x?xf32>
 //      CHECK: %[[LOAD_B_MASK:.*]] = vector.create_mask
 // CHECK-SAME:   %[[B_DIM_K]], %[[B_DIM_N]] : vector<4x16xi1>
 /// Read the B matrix
 //      CHECK: %[[LOAD_B:.*]] = vector.mask %[[LOAD_B_MASK]]
-// CHECK-SAME:   { vector.transfer_read %[[B]]{{\[}}%[[B_OFFSET]], %[[B_OFFSET]]{{\]}}
+// CHECK-SAME:   { vector.transfer_read %[[B]]{{\[}}%[[C0]], %[[C0]]{{\]}}
 // CHECK-SAME:     : tensor<?x?xf32>, vector<4x16xf32> }
 // CHECK-SAME:   : vector<4x16xi1> -> vector<4x16xf32>
 
 /// Create a mask for the C matrix
-//      CHECK: %[[C_OFFSET:.*]] = arith.constant 0 : index
-//      CHECK: %[[C_DIM_M_IDX:.*]] = arith.constant 0 : index
-//      CHECK: %[[C_DIM_M:.*]] = tensor.dim %[[C]], %[[C_DIM_M_IDX]] : tensor<?x?xf32>
-//      CHECK: %[[C_DIM_N_IDX:.*]] = arith.constant 1 : index
-//      CHECK: %[[C_DIM_N:.*]] = tensor.dim %[[C]], %[[C_DIM_N_IDX]] : tensor<?x?xf32>
+//      CHECK: %[[C_DIM_M:.*]] = tensor.dim %[[C]], %[[C0]] : tensor<?x?xf32>
+//      CHECK: %[[C_DIM_N:.*]] = tensor.dim %[[C]], %[[C1]] : tensor<?x?xf32>
 //      CHECK: %[[LOAD_C_MASK:.*]] = vector.create_mask
 // CHECK-SAME:   %[[C_DIM_M]], %[[C_DIM_N]] : vector<8x16xi1>
 /// Read the C matrix
 //      CHECK: %[[LOAD_C:.*]] = vector.mask %[[LOAD_C_MASK]]
-// CHECK-SAME:   { vector.transfer_read %[[C]]{{\[}}%[[C_OFFSET]], %[[C_OFFSET]]{{\]}}
+// CHECK-SAME:   { vector.transfer_read %[[C]]{{\[}}%[[C0]], %[[C0]]{{\]}}
 // CHECK-SAME:     : tensor<?x?xf32>, vector<8x16xf32> }
 // CHECK-SAME:   : vector<8x16xi1> -> vector<8x16xf32>
 
@@ -117,16 +107,13 @@ func.func @matmul_dynamic(%A: tensor<?x?xf32>, %B: tensor<?x?xf32>,
 // CHECK-SAME:   } : vector<8x16x4xi1> -> vector<8x16xf32>
 
 /// Create a mask for the result
-//      CHECK: %[[D_OFFSET:.*]] = arith.constant 0 : index
-//      CHECK: %[[D_DIM_M_IDX:.*]] = arith.constant 0 : index
-//      CHECK: %[[D_DIM_M:.*]] = tensor.dim %[[C]], %[[D_DIM_M_IDX]] : tensor<?x?xf32>
-//      CHECK: %[[D_DIM_N_IDX:.*]] = arith.constant 1 : index
-//      CHECK: %[[D_DIM_N:.*]] = tensor.dim %[[C]], %[[D_DIM_N_IDX]] : tensor<?x?xf32>
+//      CHECK: %[[D_DIM_M:.*]] = tensor.dim %[[C]], %[[C0]] : tensor<?x?xf32>
+//      CHECK: %[[D_DIM_N:.*]] = tensor.dim %[[C]], %[[C1]] : tensor<?x?xf32>
 //      CHECK: %[[LOAD_D_MASK:.*]] = vector.create_mask
 // CHECK-SAME:   %[[D_DIM_M]], %[[D_DIM_N]] : vector<8x16xi1>
 /// Write the result
 //      CHECK: vector.mask %[[LOAD_D_MASK]]
-// CHECK-SAME: { vector.transfer_write %[[D]], %[[C]]{{\[}}%[[D_OFFSET]], %[[D_OFFSET]]{{\]}}
+// CHECK-SAME: { vector.transfer_write %[[D]], %[[C]]{{\[}}%[[C0]], %[[C0]]{{\]}}
 // CHECK-SAME:   : vector<8x16xf32>, tensor<?x?xf32> }
 // CHECK-SAME: : vector<8x16xi1> -> tensor<?x?xf32>
 

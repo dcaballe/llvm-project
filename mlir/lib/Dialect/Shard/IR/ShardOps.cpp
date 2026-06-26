@@ -89,7 +89,7 @@ mlir::shard::getMixedAsValues(OpBuilder b, const Location &loc,
       values.emplace_back(*(dyn++));
     } else {
       TypedAttr val = type == i64 ? b.getI64IntegerAttr(s) : b.getIndexAttr(s);
-      values.emplace_back(arith::ConstantOp::create(b, loc, type, val));
+      values.emplace_back(b.createOrFold<arith::ConstantOp>(loc, type, val));
     }
   }
   return values;

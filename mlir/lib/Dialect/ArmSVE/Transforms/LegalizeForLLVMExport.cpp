@@ -87,8 +87,8 @@ struct SvboolConversionOpLowering : public ConvertOpToLLVMPattern<Op> {
     VectorType sourceType = source.getType();
     VectorType resultType = convertOp.getResult().getType();
 
-    Value result = arith::ConstantOp::create(rewriter, loc, resultType,
-                                             rewriter.getZeroAttr(resultType));
+    Value result = rewriter.createOrFold<arith::ConstantOp>(
+        loc, resultType, rewriter.getZeroAttr(resultType));
 
     // We want to iterate over the input vector in steps of the trailing
     // dimension. So this creates tile shape where all leading dimensions are 1,

@@ -604,10 +604,10 @@ public:
 
       // Assert that the awaited operands is not in the error state.
       Value isError = RuntimeIsErrorOp::create(builder, i1, operand);
-      Value notError = arith::XOrIOp::create(
-          builder, isError,
-          arith::ConstantOp::create(builder, loc, i1,
-                                    builder.getIntegerAttr(i1, 1)));
+      Value notError =
+          arith::XOrIOp::create(builder, isError,
+                                builder.createOrFold<arith::ConstantOp>(
+                                    loc, i1, builder.getIntegerAttr(i1, 1)));
 
       cf::AssertOp::create(builder, notError,
                            "Awaited async operand is in error state");

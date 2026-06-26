@@ -4,11 +4,11 @@ gpu.module @load_store_check {
     // CHECK-LABEL: gpu.func @load_store_matrix_a
     // CHECK-SAME: %[[ARG0:.*]]: memref<16x128xi4, 1>, %[[ARG1:.*]]: memref<16x128xi4, 1>
     gpu.func @load_store_matrix_a(%src: memref<16x128xi4, 1>, %dst: memref<16x128xi4, 1>) kernel {
-        // CHECK: %[[C64_I32:.*]] = arith.constant 64 : i32
-        // CHECK: %[[C8_I32:.*]] = arith.constant 8 : i32
-        // CHECK: %[[CST:.*]] = arith.constant dense<0> : vector<4xi64>
-        // CHECK: %[[C16_I32:.*]] = arith.constant 16 : i32
-        // CHECK: %[[C128_I32:.*]] = arith.constant 128 : i32
+        // CHECK-DAG: %[[C64_I32:.*]] = arith.constant 64 : i32
+        // CHECK-DAG: %[[C8_I32:.*]] = arith.constant 8 : i32
+        // CHECK-DAG: %[[CST:.*]] = arith.constant dense<0> : vector<4xi64>
+        // CHECK-DAG: %[[C16_I32:.*]] = arith.constant 16 : i32
+        // CHECK-DAG: %[[C128_I32:.*]] = arith.constant 128 : i32
         // CHECK: %[[SRCCE:.*]] = memref.memory_space_cast %[[ARG0]]
         // CHECK: %[[SRCINDEX:.*]] = memref.extract_aligned_pointer_as_index %[[SRCCE]]
         // CHECK: %[[SRCPTR64:.*]] = arith.index_castui %[[SRCINDEX]] : index to i64
@@ -57,9 +57,9 @@ gpu.module @load_store_check {
 
     // CHECK-LABEL: gpu.func @load_matrix_b_request_pack
     gpu.func @load_matrix_b_request_pack(%src: memref<64x128xi4, 1>, %dst: memref<64x128xi4, 1>) kernel {
-        // CHECK: %[[C16_I32:.*]] = arith.constant 16 : i32
-        // CHECK: %[[C32_I32:.*]] = arith.constant 32 : i32
-        // CHECK: %[[C64_I32:.*]] = arith.constant 64 : i32
+        // CHECK-DAG: %[[C16_I32:.*]] = arith.constant 16 : i32
+        // CHECK-DAG: %[[C32_I32:.*]] = arith.constant 32 : i32
+        // CHECK-DAG: %[[C64_I32:.*]] = arith.constant 64 : i32
         %srcce = memref.memory_space_cast %src : memref<64x128xi4, 1> to memref<64x128xi4>
         %dstte = memref.memory_space_cast %dst : memref<64x128xi4, 1> to memref<64x128xi4>
 

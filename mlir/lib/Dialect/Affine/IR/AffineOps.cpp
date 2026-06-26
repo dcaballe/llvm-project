@@ -5099,8 +5099,8 @@ struct DropUnitExtentBasis
     Type indexType = delinearizeOp.getLinearIndex().getType();
     auto getZero = [&]() -> Value {
       if (!zero)
-        zero = arith::ConstantOp::create(rewriter, loc,
-                                         rewriter.getZeroAttr(indexType));
+        zero = rewriter.createOrFold<arith::ConstantOp>(
+            loc, rewriter.getZeroAttr(indexType));
       return zero.value();
     };
 

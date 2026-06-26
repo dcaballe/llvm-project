@@ -683,8 +683,8 @@ public:
     sparse_tensor::YieldOp::create(rewriter, loc, present->getArgument(0));
     rewriter.createBlock(&semiring.getAbsentRegion(), {}, {}, {});
     rewriter.setInsertionPointToStart(&semiring.getAbsentRegion().front());
-    auto zero =
-        arith::ConstantOp::create(rewriter, loc, rewriter.getZeroAttr(rtp));
+    auto zero = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getZeroAttr(rtp));
     sparse_tensor::YieldOp::create(rewriter, loc, zero);
     rewriter.setInsertionPointAfter(semiring);
     // CustomReduce {

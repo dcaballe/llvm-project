@@ -63,8 +63,8 @@ func.func @transfer_to_maskedload_fatrawbuffer_dynamic_i8(%mem : memref<?x?xi8, 
   %res = vector.maskedload %mem[%idx0, %idx1], %mask, %passthru : memref<?x?xi8, #amdgpu.address_space<fat_raw_buffer>>, vector<4xi1>, vector<4xi8> into vector<4xi8>
   return %res : vector<4xi8>
 }
-// CHECK:     %[[C0:.*]] = arith.constant 0 : index
 // CHECK:     %[[C4:.*]] = arith.constant 4 : index
+// CHECK:     %[[C0:.*]] = arith.constant 0 : index
 // CHECK:     %[[BASE:.*]], %[[OFFSET:.*]], %[[SIZES:.*]]:2, %[[STRIDES:.*]]:2 = memref.extract_strided_metadata %[[ARG0]]
 // CHECK-DAG: %[[SIZE:.*]] = affine.max #[[MAP1]]()[%[[STRIDES]]#0, %[[SIZES]]#0, %[[SIZES]]#1]
 // CHECK-DAG: %[[LINEAR:.*]] = affine.apply #[[MAP]]()[%[[ARG1]], %[[STRIDES]]#0, %[[ARG2]]]

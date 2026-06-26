@@ -17,11 +17,13 @@ gpu.module @load_check {
         // The element byte size used for the surface-width/pitch computation is
         // still the original 16-bit element size (2 bytes).
         // CHECK: %[[ELEM_BYTES:.*]] = arith.constant 2 : i32
-        // CHECK: %[[OFFSET_W:.*]] = arith.trunci %{{.*}} : i64 to i32
-        // CHECK: %[[OFFSET_H:.*]] = arith.trunci %{{.*}} : i64 to i32
 
         // 32 / 16 = 2, so offsetW is shifted right by log2(2) = 1.
         // CHECK: %[[SHIFT:.*]] = arith.constant 1 : i32
+
+        // CHECK: vector.extract %{{.*}}[0] : i64 from vector<4xi64>
+        // CHECK: %[[OFFSET_W:.*]] = arith.trunci %{{.*}} : i64 to i32
+        // CHECK: %[[OFFSET_H:.*]] = arith.trunci %{{.*}} : i64 to i32
         // CHECK: %[[OFFSET_W_SCALED:.*]] = arith.shrsi %[[OFFSET_W]], %[[SHIFT]] : i32
 
         // The block load is issued with 32-bit elements, the tile width scaled

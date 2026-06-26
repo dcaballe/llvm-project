@@ -18,11 +18,11 @@
 // CHECK: #[[$ATTR_0:.+]] = #sparse_tensor.encoding<{ map = (d0, d1) -> (d0 : compressed(nonunique), d1 : singleton) }>
 // CHECK-LABEL:   func.func @sparse_index_2d_coo(
 // CHECK-SAME:      %[[ARG0:.*]]: tensor<8x8xi64, #[[$ATTR_0]]>) -> tensor<8x8xi64> {
-// CHECK:           %[[CONSTANT_0:.*]] = arith.constant true
 // CHECK:           %[[CONSTANT_1:.*]] = arith.constant false
-// CHECK:           %[[CONSTANT_2:.*]] = arith.constant 1 : index
-// CHECK:           %[[CONSTANT_3:.*]] = arith.constant 0 : index
 // CHECK:           %[[CONSTANT_4:.*]] = arith.constant 0 : i64
+// CHECK:           %[[CONSTANT_3:.*]] = arith.constant 0 : index
+// CHECK:           %[[CONSTANT_2:.*]] = arith.constant 1 : index
+// CHECK:           %[[CONSTANT_0:.*]] = arith.constant true
 // CHECK:           %[[EMPTY_0:.*]] = tensor.empty() : tensor<8x8xi64>
 // CHECK:           %[[VALUES_0:.*]] = sparse_tensor.values %[[ARG0]] : tensor<8x8xi64, #[[$ATTR_0]]> to memref<?xi64>
 // CHECK:           %[[TO_BUFFER_0:.*]] = bufferization.to_buffer %[[EMPTY_0]] : tensor<8x8xi64> to memref<8x8xi64>

@@ -9,8 +9,8 @@ func.func @reallow_lowering_example(%init_size: index, %new_size: index) -> memr
 
 // CHECK-LABEL: func @reallow_lowering_example
 //  CHECK-SAME: ([[INIT_SIZE:%.+]]: index, [[NEW_SIZE:%.+]]: index)
-//  CHECK-NEXT:   [[OLD_ALLOC:%.+]] = memref.alloc([[INIT_SIZE]]) : memref<?xf32>
 //  CHECK-NEXT:   [[C0:%.+]] = arith.constant 0
+//  CHECK-NEXT:   [[OLD_ALLOC:%.+]] = memref.alloc([[INIT_SIZE]]) : memref<?xf32>
 //  CHECK-NEXT:   [[CURR_SIZE:%.+]] = memref.dim [[OLD_ALLOC]], [[C0]]
 //  CHECK-NEXT:   [[COND:%.+]] = arith.cmpi ult, [[CURR_SIZE]], [[NEW_SIZE]]
 //  CHECK-NEXT:   [[REALLOC:%.+]] = scf.if [[COND]]
@@ -35,9 +35,9 @@ func.func @reallow_lowering_example() -> memref<4xf32> {
 }
 
 // CHECK-LABEL: func @reallow_lowering_example
-//  CHECK-NEXT:   [[OLD_ALLOC:%.+]] = memref.alloc() : memref<2xf32>
 //  CHECK-NEXT:   [[CURR_SIZE:%.+]] = arith.constant 2
 //  CHECK-NEXT:   [[NEW_SIZE:%.+]] = arith.constant 4
+//  CHECK-NEXT:   [[OLD_ALLOC:%.+]] = memref.alloc() : memref<2xf32>
 //  CHECK-NEXT:   [[COND:%.+]] = arith.cmpi ult, [[CURR_SIZE]], [[NEW_SIZE]]
 //  CHECK-NEXT:   [[REALLOC:%.+]] = scf.if [[COND]]
 //  CHECK-NEXT:     [[NEW_ALLOC:%.+]] = memref.alloc() {alignment = 8 : i64} : memref<4xf32>
@@ -62,10 +62,10 @@ func.func @reallow_lowering_example(%init_size: index) -> memref<4xf32> {
 
 // CHECK-LABEL: func @reallow_lowering_example
 //  CHECK-SAME: ([[INIT_SIZE:%.+]]: index)
-//  CHECK-NEXT:   [[OLD_ALLOC:%.+]] = memref.alloc([[INIT_SIZE]]) : memref<?xf32>
 //  CHECK-NEXT:   [[C0:%.+]] = arith.constant 0
-//  CHECK-NEXT:   [[CURR_SIZE:%.+]] = memref.dim [[OLD_ALLOC]], [[C0]]
 //  CHECK-NEXT:   [[NEW_SIZE:%.+]] = arith.constant 4
+//  CHECK-NEXT:   [[OLD_ALLOC:%.+]] = memref.alloc([[INIT_SIZE]]) : memref<?xf32>
+//  CHECK-NEXT:   [[CURR_SIZE:%.+]] = memref.dim [[OLD_ALLOC]], [[C0]]
 //  CHECK-NEXT:   [[COND:%.+]] = arith.cmpi ult, [[CURR_SIZE]], [[NEW_SIZE]]
 //  CHECK-NEXT:   [[REALLOC:%.+]] = scf.if [[COND]]
 //  CHECK-NEXT:     [[NEW_ALLOC:%.+]] = memref.alloc() : memref<4xf32>
@@ -90,8 +90,8 @@ func.func @reallow_lowering_example(%new_size: index) -> memref<?xf32> {
 
 // CHECK-LABEL: func @reallow_lowering_example
 //  CHECK-SAME: ([[NEW_SIZE:%.+]]: index)
-//  CHECK-NEXT:   [[OLD_ALLOC:%.+]] = memref.alloc() : memref<2xf32>
 //  CHECK-NEXT:   [[CURR_SIZE:%.+]] = arith.constant 2
+//  CHECK-NEXT:   [[OLD_ALLOC:%.+]] = memref.alloc() : memref<2xf32>
 //  CHECK-NEXT:   [[COND:%.+]] = arith.cmpi ult, [[CURR_SIZE]], [[NEW_SIZE]]
 //  CHECK-NEXT:   [[REALLOC:%.+]] = scf.if [[COND]]
 //  CHECK-NEXT:     [[NEW_ALLOC:%.+]] = memref.alloc([[NEW_SIZE]]) : memref<?xf32>

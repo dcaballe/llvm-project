@@ -90,6 +90,10 @@ func.func @vec1d_3(%A : memref<?x?xf32>, %B : memref<?x?x?xf32>) {
 
 // CHECK-LABEL: func @vector_add_2d
 func.func @vector_add_2d(%M : index, %N : index) -> f32 {
+  // CHECK: %[[C1:.*]] = arith.constant dense<1.000000e+00> : vector<128xf32>
+  // CHECK: %[[C3:.*]] = arith.constant dense<2.000000e+00> : vector<128xf32>
+  // CHECK: %[[SPLAT1:.*]] = arith.constant dense<1.000000e+00> : vector<128xf32>
+  // CHECK: %[[SPLAT2:.*]] = arith.constant dense<2.000000e+00> : vector<128xf32>
   %A = memref.alloc (%M, %N) : memref<?x?xf32, 0>
   %B = memref.alloc (%M, %N) : memref<?x?xf32, 0>
   %C = memref.alloc (%M, %N) : memref<?x?xf32, 0>
@@ -97,7 +101,6 @@ func.func @vector_add_2d(%M : index, %N : index) -> f32 {
   %f2 = arith.constant 2.0 : f32
   affine.for %i0 = 0 to %M {
     affine.for %i1 = 0 to %N {
-      // CHECK: %[[C1:.*]] = arith.constant dense<1.000000e+00> : vector<128xf32>
       // CHECK: vector.transfer_write %[[C1]], {{.*}} : vector<128xf32>, memref<?x?xf32>
       // non-scoped %f1
       affine.store %f1, %A[%i0, %i1] : memref<?x?xf32, 0>
@@ -105,7 +108,6 @@ func.func @vector_add_2d(%M : index, %N : index) -> f32 {
   }
   affine.for %i2 = 0 to %M {
     affine.for %i3 = 0 to %N {
-      // CHECK: %[[C3:.*]] = arith.constant dense<2.000000e+00> : vector<128xf32>
       // CHECK: vector.transfer_write %[[C3]], {{.*}} : vector<128xf32>, memref<?x?xf32>
       // non-scoped %f2
       affine.store %f2, %B[%i2, %i3] : memref<?x?xf32, 0>
@@ -113,8 +115,6 @@ func.func @vector_add_2d(%M : index, %N : index) -> f32 {
   }
   affine.for %i4 = 0 to %M {
     affine.for %i5 = 0 to %N {
-      // CHECK: %[[SPLAT2:.*]] = arith.constant dense<2.000000e+00> : vector<128xf32>
-      // CHECK: %[[SPLAT1:.*]] = arith.constant dense<1.000000e+00> : vector<128xf32>
       // CHECK: %[[A5:.*]] = vector.transfer_read %{{.*}}[{{.*}}], %{{[a-zA-Z0-9_]*}} : memref<?x?xf32>, vector<128xf32>
       // CHECK: %[[B5:.*]] = vector.transfer_read %{{.*}}[{{.*}}], %{{[a-zA-Z0-9_]*}} : memref<?x?xf32>, vector<128xf32>
       // CHECK: %[[S5:.*]] = arith.addf %[[A5]], %[[B5]] : vector<128xf32>
@@ -149,6 +149,7 @@ func.func @vec_constant_with_two_users(%M : index, %N : index) -> (f32, f32) {
   %f1 = arith.constant 1.0 : f32
   affine.for %i0 = 0 to %M { // vectorized
     // CHECK:      %[[C1:.*]] = arith.constant dense<1.000000e+00> : vector<128xf32>
+    // CHECK:      affine.for
     // CHECK-NEXT: affine.for
     // CHECK-NEXT:   vector.transfer_write %[[C1]], {{.*}} : vector<128xf32>, memref<?x?xf32>
     affine.for %i1 = 0 to %N {
@@ -589,8 +590,8 @@ func.func @vec_non_vecdim_reduction(%in: memref<128x256xf32>, %out: memref<256xf
 }
 
 // CHECK-LABEL: @vec_non_vecdim_reduction
+// CHECK:       %[[vzero:.*]] = arith.constant dense<0.000000e+00> : vector<128xf32>
 // CHECK:       affine.for %{{.*}} = 0 to 256 step 128 {
-// CHECK:         %[[vzero:.*]] = arith.constant dense<0.000000e+00> : vector<128xf32>
 // CHECK:         %[[final_red:.*]] = affine.for %{{.*}} = 0 to 128 iter_args(%[[red_iter:.*]] = %[[vzero]]) -> (vector<128xf32>) {
 // CHECK:           %[[ld:.*]] = vector.transfer_read %{{.*}} : memref<128x256xf32>, vector<128xf32>
 // CHECK:           %[[add:.*]] = arith.addf %[[red_iter]], %[[ld]] : vector<128xf32>
@@ -623,9 +624,9 @@ func.func @vec_non_vecdim_reductions(%in0: memref<128x256xf32>, %in1: memref<128
 }
 
 // CHECK-LABEL: @vec_non_vecdim_reductions
+// CHECK:       %[[vzero:.*]] = arith.constant dense<0.000000e+00> : vector<128xf32>
+// CHECK:       %[[vone:.*]] = arith.constant dense<1> : vector<128xi32>
 // CHECK:       affine.for %{{.*}} = 0 to 256 step 128 {
-// CHECK:         %[[vone:.*]] = arith.constant dense<1> : vector<128xi32>
-// CHECK:         %[[vzero:.*]] = arith.constant dense<0.000000e+00> : vector<128xf32>
 // CHECK:         %[[reds:.*]]:2 = affine.for %{{.*}} = 0 to 128
 // CHECK-SAME:      iter_args(%[[red_iter0:.*]] = %[[vzero]], %[[red_iter1:.*]] = %[[vone]]) -> (vector<128xf32>, vector<128xi32>) {
 // CHECK:           %[[ld0:.*]] = vector.transfer_read %{{.*}} : memref<128x256xf32>, vector<128xf32>
@@ -655,8 +656,8 @@ func.func @vec_no_vecdim_last_value(%in: memref<128x256xf32>, %out: memref<256xf
 }
 
 // CHECK-LABEL: @vec_no_vecdim_last_value
+// CHECK:       %[[vzero:.*]] = arith.constant dense<0.000000e+00> : vector<128xf32>
 // CHECK:       affine.for %{{.*}} = 0 to 256 step 128 {
-// CHECK:         %[[vzero:.*]] = arith.constant dense<0.000000e+00> : vector<128xf32>
 // CHECK:         %[[last_val:.*]] = affine.for %{{.*}} = 0 to 128 iter_args(%[[last_iter:.*]] = %[[vzero]]) -> (vector<128xf32>) {
 // CHECK:           %[[ld:.*]] = vector.transfer_read %{{.*}} : memref<128x256xf32>, vector<128xf32>
 // CHECK:           affine.yield %[[ld]] : vector<128xf32>
@@ -709,9 +710,9 @@ func.func @vec_non_scalar_type() {
 // affine-super-vectorize crashes with "operation destroyed but still has uses".
 
 // CHECK-LABEL: @index_const_inside_loop
+// CHECK-DAG:   %[[CST_VEC:.*]] = arith.constant dense<0> : vector<128xi32>
+// CHECK-DAG:   %[[C0:.*]] = arith.constant 0 : index
 // CHECK:       affine.for %[[IV:.*]] = 0 to 8 step 128 {
-// CHECK-DAG:     %[[CST_VEC:.*]] = arith.constant dense<0> : vector<128xi32>
-// CHECK-DAG:     %[[C0:.*]] = arith.constant 0 : index
 // CHECK:         vector.transfer_write %[[CST_VEC]], %{{.*}}[%[[C0]], %[[IV]]] : vector<128xi32>, memref<1x8xi32>
 // CHECK:       }
 func.func @index_const_inside_loop(%mem: memref<1x8xi32>) {

@@ -125,12 +125,12 @@ gpu.module @kernels {
     // CHECK: %[[OFFSET:.+]] = spirv.Constant 4 : i32
     // CHECK: %[[WIDTH:.+]] = spirv.Constant 16 : i32
     // CHECK: %[[VAL:.+]] = spirv.Constant 4.200000e+01 : f32
+    // CHECK: %[[CST0:.+]] = spirv.Constant 0 : i32
     // CHECK: %{{.+}} = spirv.GroupNonUniformShuffleUp <Subgroup> %[[VAL]], %[[OFFSET]] : f32, i32
 
     // CHECK: %[[INVOCATION_ID_ADDR:.+]] = spirv.mlir.addressof @__builtin__SubgroupLocalInvocationId__ : !spirv.ptr<i32, Input>
     // CHECK: %[[LANE_ID:.+]] = spirv.Load "Input" %[[INVOCATION_ID_ADDR]] : i32
     // CHECK: %[[VAL_LANE_ID:.+]] = spirv.ISub %[[LANE_ID]], %[[OFFSET]] : i32
-    // CHECK: %[[CST0:.+]] = spirv.Constant 0 : i32
     // CHECK: %[[VALID:.+]] = spirv.SGreaterThanEqual %[[VAL_LANE_ID]], %[[CST0]] : i32
 
     %result, %valid = gpu.shuffle up %val, %offset, %width : f32

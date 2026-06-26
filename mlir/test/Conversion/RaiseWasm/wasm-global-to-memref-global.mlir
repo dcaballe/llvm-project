@@ -34,10 +34,10 @@ wasmssa.import_global "extern_global_var" from "module" as @global_top_define ne
 // CHECK:         memref.global "private" @global_user0 : memref<1xi32> = uninitialized
 
 // CHECK-LABEL:   func.func @"global_user0::initializer"() attributes {initializer} {
-// CHECK:           %[[VAL_0:.*]] = memref.get_global @"module::extern_global_var" : memref<1xi32>
-// CHECK:           %[[VAL_1:.*]] = memref.get_global @global_user0 : memref<1xi32>
-// CHECK:           %[[VAL_2:.*]] = arith.constant 0 : index
-// CHECK:           %[[VAL_3:.*]] = memref.load %[[VAL_0]]{{\[}}%[[VAL_2]]] : memref<1xi32>
-// CHECK:           memref.store %[[VAL_3]], %[[VAL_1]]{{\[}}%[[VAL_2]]] : memref<1xi32>
+// CHECK:           %[[VAL_0:.*]] = arith.constant 0 : index
+// CHECK:           %[[VAL_1:.*]] = memref.get_global @"module::extern_global_var" : memref<1xi32>
+// CHECK:           %[[VAL_2:.*]] = memref.get_global @global_user0 : memref<1xi32>
+// CHECK:           %[[VAL_3:.*]] = memref.load %[[VAL_1]]{{\[}}%[[VAL_0]]] : memref<1xi32>
+// CHECK:           memref.store %[[VAL_3]], %[[VAL_2]]{{\[}}%[[VAL_0]]] : memref<1xi32>
 // CHECK:           return
 // CHECK:         memref.global "nested" constant @"module::extern_global_var" : memref<1xi32>

@@ -401,9 +401,9 @@ func.func @unit_dim_for_reduction(%arg0: tensor<1x?x1x?xf32>) -> tensor<1x?xf32>
 //  CHECK-DAG: #[[MAP2:.+]] = affine_map<(d0, d1) -> (d0)>
 //      CHECK: func @unit_dim_for_reduction
 // CHECK-SAME:   %[[ARG0:.+]]: tensor<1x?x1x?xf32>
-//      CHECK: %[[C1:.+]] = arith.constant 1 : index
 //      CHECK: %[[CST:.+]] = arith.constant 1.000000e+00 : f32
 //      CHECK: %[[C3:.+]] = arith.constant 3 : index
+//      CHECK: %[[C1:.+]] = arith.constant 1 : index
 //      CHECK: %[[DIM:.+]] = tensor.dim %arg0, %[[C3]] : tensor<1x?x1x?xf32>
 //      CHECK: %[[RESHAPE:.+]] = tensor.collapse_shape %[[ARG0]] {{\[}}[0, 1, 2], [3]]
 //      CHECK: %[[INIT:.+]] = tensor.empty(%{{.+}}) : tensor<?xf32>
@@ -475,9 +475,9 @@ func.func @unit_dim_for_reduction_inner(%arg0: tensor<?x1x?x1xf32>) -> tensor<?x
 //  CHECK-DAG: #[[MAP2:.+]] = affine_map<(d0, d1) -> (d0)>
 //      CHECK: func @unit_dim_for_reduction_inner
 // CHECK-SAME:   %[[ARG0:.+]]: tensor<?x1x?x1xf32>
-//      CHECK: %[[C0:.*]] = arith.constant 0 : index
 //      CHECK: %[[CST:.*]] = arith.constant 1.000000e+00 : f32
 //      CHECK: %[[C2:.*]] = arith.constant 2 : index
+//      CHECK: %[[C0:.*]] = arith.constant 0 : index
 //      CHECK: %[[DIM:.*]] = tensor.dim %arg0, %[[C2]] : tensor<?x1x?x1xf32>
 //      CHECK: %[[RESHAPE:.+]] = tensor.collapse_shape %[[ARG0]] {{\[}}[0, 1], [2, 3]]
 //      CHECK: %[[INIT:.+]] = tensor.empty(%{{.+}}) : tensor<?xf32>
@@ -1006,8 +1006,8 @@ func.func @drop_unit_pad_dynamic_dims(%arg0: tensor<1x?xf32>) -> tensor<1x?xf32>
 
 // CHECK-DAG: #[[$MAP1:.+]] = affine_map<()[s0] -> (s0 + 11)>
 // CHECK-LABEL: func @drop_unit_pad_dynamic_dims
-//       CHECK:   %[[C1:.*]] = arith.constant 1 : index
 //       CHECK:   %[[CST:.*]] = arith.constant 0.000000e+00 : f32
+//       CHECK:   %[[C1:.*]] = arith.constant 1 : index
 //       CHECK:   %[[COLLAPSE:.+]] = tensor.collapse_shape
 //  CHECK-SAME:     {{\[}}[0, 1]{{\]}} : tensor<1x?xf32> into tensor<?xf32>
 //       CHECK:   %[[PADDED:.+]] = tensor.pad %[[COLLAPSE]] low[5] high[6]

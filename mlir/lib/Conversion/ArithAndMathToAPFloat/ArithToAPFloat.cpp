@@ -200,12 +200,11 @@ struct FpToIntConversion final : OpRewritePattern<OpTy> {
           // Call APFloat function.
           Value inSemValue = getAPFloatSemanticsValue(rewriter, loc, inFloatTy);
           auto outIntTy = cast<IntegerType>(resultType);
-          Value outWidthValue = arith::ConstantOp::create(
-              rewriter, loc, i32Type,
+          Value outWidthValue = rewriter.createOrFold<arith::ConstantOp>(
+              loc, i32Type,
               rewriter.getIntegerAttr(i32Type, outIntTy.getWidth()));
-          Value isUnsignedValue = arith::ConstantOp::create(
-              rewriter, loc, i1Type,
-              rewriter.getIntegerAttr(i1Type, isUnsigned));
+          Value isUnsignedValue = rewriter.createOrFold<arith::ConstantOp>(
+              loc, i1Type, rewriter.getIntegerAttr(i1Type, isUnsigned));
           SmallVector<Value> params = {inSemValue, outWidthValue,
                                        isUnsignedValue, operandBits};
           auto resultOp = func::CallOp::create(rewriter, loc,
@@ -269,12 +268,11 @@ struct IntToFpConversion final : OpRewritePattern<OpTy> {
           auto outFloatTy = cast<FloatType>(resultType);
           Value outSemValue =
               getAPFloatSemanticsValue(rewriter, loc, outFloatTy);
-          Value inWidthValue = arith::ConstantOp::create(
-              rewriter, loc, i32Type,
+          Value inWidthValue = rewriter.createOrFold<arith::ConstantOp>(
+              loc, i32Type,
               rewriter.getIntegerAttr(i32Type, inIntTy.getWidth()));
-          Value isUnsignedValue = arith::ConstantOp::create(
-              rewriter, loc, i1Type,
-              rewriter.getIntegerAttr(i1Type, isUnsigned));
+          Value isUnsignedValue = rewriter.createOrFold<arith::ConstantOp>(
+              loc, i1Type, rewriter.getIntegerAttr(i1Type, isUnsigned));
           SmallVector<Value> params = {outSemValue, inWidthValue,
                                        isUnsignedValue, operandBits};
           auto resultOp = func::CallOp::create(rewriter, loc,
@@ -346,10 +344,9 @@ struct CmpFOpToAPFloatConversion final : OpRewritePattern<arith::CmpFOp> {
           auto checkResult = [&](llvm::APFloat::cmpResult val) {
             return arith::CmpIOp::create(
                 rewriter, loc, arith::CmpIPredicate::eq, comparisonResult,
-                arith::ConstantOp::create(
-                    rewriter, loc, i8Type,
-                    rewriter.getIntegerAttr(i8Type, static_cast<int8_t>(val)))
-                    .getResult());
+                rewriter.createOrFold<arith::ConstantOp>(
+                    loc, i8Type,
+                    rewriter.getIntegerAttr(i8Type, static_cast<int8_t>(val))));
           };
           // Generate an i1 SSA value that is "true" if the comparison result
           // matches any of the given `vals`.
@@ -367,10 +364,8 @@ struct CmpFOpToAPFloatConversion final : OpRewritePattern<arith::CmpFOp> {
           Value result;
           switch (op.getPredicate()) {
           case arith::CmpFPredicate::AlwaysFalse:
-            result =
-                arith::ConstantOp::create(rewriter, loc, i1Type,
-                                          rewriter.getIntegerAttr(i1Type, 0))
-                    .getResult();
+            result = rewriter.createOrFold<arith::ConstantOp>(
+                loc, i1Type, rewriter.getIntegerAttr(i1Type, 0));
             break;
           case arith::CmpFPredicate::OEQ:
             result = checkResult(llvm::APFloat::cmpEqual);
@@ -432,10 +427,8 @@ struct CmpFOpToAPFloatConversion final : OpRewritePattern<arith::CmpFOp> {
             result = checkResult(llvm::APFloat::cmpUnordered);
             break;
           case arith::CmpFPredicate::AlwaysTrue:
-            result =
-                arith::ConstantOp::create(rewriter, loc, i1Type,
-                                          rewriter.getIntegerAttr(i1Type, 1))
-                    .getResult();
+            result = rewriter.createOrFold<arith::ConstantOp>(
+                loc, i1Type, rewriter.getIntegerAttr(i1Type, 1));
             break;
           }
           return result;

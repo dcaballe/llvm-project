@@ -383,8 +383,8 @@ gpu.module @test_kernel {
 gpu.module @test_kernel {
   //CHECK-LABEL: gpu.func @convert_layout
   //CHECK-SAME: [[arg0:%.+]]: memref<16x16xf16>, [[arg1:%.+]]: memref<16x16xf16>, [[arg2:%.+]]: memref<16x16xf32>
-  //CHECK: [[c8:%.+]] = arith.constant 8 : index
   //CHECK: [[c0:%.+]] = arith.constant 0 : index
+  //CHECK: [[c8:%.+]] = arith.constant 8 : index
   //CHECK: [[a:%.+]] = xegpu.create_nd_tdesc [[arg0]] : memref<16x16xf16> -> !xegpu.tensor_desc<16x16xf16, #xegpu.layout<lane_layout = [1, 16], lane_data = [16, 1]>>
   //CHECK: [[b:%.+]] = xegpu.create_nd_tdesc [[arg1]] : memref<16x16xf16> -> !xegpu.tensor_desc<16x16xf16, #xegpu.layout<lane_layout = [1, 16], lane_data = [16, 1]>>
   //CHECK: [[load_a:%.+]] = xegpu.load_nd [[a]][[[c0]], [[c0]]] <{layout = #xegpu.layout<lane_layout = [1, 16], lane_data = [16, 1]>}> : !xegpu.tensor_desc<16x16xf16, #xegpu.layout<lane_layout = [1, 16], lane_data = [16, 1]>> -> vector<16x16xf16>
@@ -599,11 +599,11 @@ gpu.module @test_kernel {
 // -----
 gpu.module @test_kernel {
   // CHECK-LABEL: load_with_offsets_chunk
-  // CHECK: [[cst:%.+]] = arith.constant dense<0.000000e+00> : vector<32x4xf32>
-  // CHECK: [[cst0:%.+]] = arith.constant dense<[130, 138, 146, 154, 162, 170, 178, 186, 194, 202, 210, 218, 226, 234, 242, 250]> : vector<16xindex>
-  // CHECK: [[cst1:%.+]] = arith.constant dense<[2, 10, 18, 26, 34, 42, 50, 58, 66, 74, 82, 90, 98, 106, 114, 122]> : vector<16xindex>
-  // CHECK: [[cst2:%.+]] = arith.constant dense<[128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248]> : vector<16xindex>
-  // CHECK: [[cst3:%.+]] = arith.constant dense<[0, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120]> : vector<16xindex>
+  // CHECK-DAG: [[cst:%.+]] = arith.constant dense<0.000000e+00> : vector<32x4xf32>
+  // CHECK-DAG: [[cst0:%.+]] = arith.constant dense<[130, 138, 146, 154, 162, 170, 178, 186, 194, 202, 210, 218, 226, 234, 242, 250]> : vector<16xindex>
+  // CHECK-DAG: [[cst1:%.+]] = arith.constant dense<[2, 10, 18, 26, 34, 42, 50, 58, 66, 74, 82, 90, 98, 106, 114, 122]> : vector<16xindex>
+  // CHECK-DAG: [[cst2:%.+]] = arith.constant dense<[128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248]> : vector<16xindex>
+  // CHECK-DAG: [[cst3:%.+]] = arith.constant dense<[0, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120]> : vector<16xindex>
   // CHECK-COUNT-4: xegpu.load  {{.*}}[{{.*}}], {{.*}} <{chunk_size = 2 : i64, l1_hint = #xegpu.cache_hint<cached>}> : ui64, vector<16xindex>, vector<16xi1> -> vector<16x2xf32>
    gpu.func @load_with_offsets_chunk(%src: ui64) -> vector<32x4xf32> {
     %cst = arith.constant dense<[
@@ -623,11 +623,11 @@ gpu.module @test_kernel {
 // -----
 gpu.module @test_kernel {
   // CHECK-LABEL: store_with_offsets_chunk
-  // CHECK: [[cst:%.+]] = arith.constant dense<1.023000e+03> : vector<16x2xf32
-  // CHECK: [[cst0:%.+]] = arith.constant dense<[130, 138, 146, 154, 162, 170, 178, 186, 194, 202, 210, 218, 226, 234, 242, 250]> : vector<16xindex>
-  // CHECK: [[cst1:%.+]] = arith.constant dense<[2, 10, 18, 26, 34, 42, 50, 58, 66, 74, 82, 90, 98, 106, 114, 122]> : vector<16xindex>
-  // CHECK: [[cst2:%.+]] = arith.constant dense<[128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248]> : vector<16xindex>
-  // CHECK: [[cst3:%.+]] = arith.constant dense<[0, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120]> : vector<16xindex>
+  // CHECK-DAG: [[cst:%.+]] = arith.constant dense<1.023000e+03> : vector<16x2xf32
+  // CHECK-DAG: [[cst0:%.+]] = arith.constant dense<[130, 138, 146, 154, 162, 170, 178, 186, 194, 202, 210, 218, 226, 234, 242, 250]> : vector<16xindex>
+  // CHECK-DAG: [[cst1:%.+]] = arith.constant dense<[2, 10, 18, 26, 34, 42, 50, 58, 66, 74, 82, 90, 98, 106, 114, 122]> : vector<16xindex>
+  // CHECK-DAG: [[cst2:%.+]] = arith.constant dense<[128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248]> : vector<16xindex>
+  // CHECK-DAG: [[cst3:%.+]] = arith.constant dense<[0, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120]> : vector<16xindex>
   // CHECK-COUNT-4: xegpu.store  {{.*}}[{{.*}}], {{.*}} <{chunk_size = 2 : i64, l1_hint = #xegpu.cache_hint<cached>}> : vector<16x2xf32>, ui64, vector<16xindex>, vector<16xi1>
   gpu.func @store_with_offsets_chunk(%src: ui64) {
     %cst = arith.constant dense<[
@@ -650,10 +650,10 @@ gpu.module @test_kernel {
 gpu.module @test_kernel {
   // CHECK-LABEL: preserve_unit_dim_of_load_inst_data
   // CHECK-SAME: [[arg0:%.+]]: ui64
-  // CHECK: [[cst:%.+]] = arith.constant dense<0.000000e+00> : vector<1x1x32xf32>
-  // CHECK: [[cst_0:%.+]] = arith.constant dense<true> : vector<1x1x16xi1>
-  // CHECK: [[cst_1:%.+]] = arith.constant dense<{{.*}}> : vector<1x1x16xindex>
-  // CHECK: [[cst_2:%.+]] = arith.constant dense<{{.*}}> : vector<1x1x16xindex>
+  // CHECK-DAG: [[cst:%.+]] = arith.constant dense<0.000000e+00> : vector<1x1x32xf32>
+  // CHECK-DAG: [[cst_0:%.+]] = arith.constant dense<true> : vector<1x1x16xi1>
+  // CHECK-DAG: [[cst_1:%.+]] = arith.constant dense<[{{\[\[}}0, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120]]]> : vector<1x1x16xindex>
+  // CHECK-DAG: [[cst_2:%.+]] = arith.constant dense<[{{\[\[}}128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248]]]> : vector<1x1x16xindex>
   // CHECK: [[ld_0:%.+]] = xegpu.load [[arg0]][[[cst_1]]], [[cst_0]] <{chunk_size = 1 : i64, l1_hint = #xegpu.cache_hint<cached>}> : ui64, vector<1x1x16xindex>, vector<1x1x16xi1> -> vector<1x1x16xf32>
   // CHECK: [[ld_1:%.+]] = xegpu.load [[arg0]][[[cst_2]]], [[cst_0]] <{chunk_size = 1 : i64, l1_hint = #xegpu.cache_hint<cached>}> : ui64, vector<1x1x16xindex>, vector<1x1x16xi1> -> vector<1x1x16xf32>
   // CHECK: [[ins_0:%.+]] = vector.insert_strided_slice [[ld_0]], [[cst]] {offsets = [0, 0, 0], strides = [1, 1, 1]} : vector<1x1x16xf32> into vector<1x1x32xf32>
@@ -712,9 +712,9 @@ gpu.module @test_kernel {
 gpu.module @test_kernel {
   // CHECK-LABEL: load_add_store_leading_unit_dims
   // CHECK-SAME: [[arg0:%.+]]: ui64, [[arg1:%.+]]: ui64, [[arg2:%.+]]: ui64
-    // CHECK: [[c0:%.+]] = arith.constant dense<true> : vector<1x1x16xi1>
-    // CHECK: [[c1:%.+]] = arith.constant dense<[{{\[\[}}0, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120]]]> : vector<1x1x16xindex>
-    // CHECK: [[c2:%.+]] = arith.constant dense<[{{\[\[}}128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248]]]> : vector<1x1x16xindex>
+    // CHECK-DAG: [[c0:%.+]] = arith.constant dense<true> : vector<1x1x16xi1>
+    // CHECK-DAG: [[c1:%.+]] = arith.constant dense<[{{\[\[}}0, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120]]]> : vector<1x1x16xindex>
+    // CHECK-DAG: [[c2:%.+]] = arith.constant dense<[{{\[\[}}128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248]]]> : vector<1x1x16xindex>
     // CHECK: [[v0:%.+]] = xegpu.load [[arg0]]{{\[}}[[c1]]], [[c0]]
     // CHECK-SAME: ui64, vector<1x1x16xindex>, vector<1x1x16xi1> -> vector<1x1x16xf32>
     // CHECK: [[v1:%.+]] = xegpu.load [[arg0]]{{\[}}[[c2]]], [[c0]]

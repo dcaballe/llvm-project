@@ -141,8 +141,8 @@ class DeallocOpConversion
     // `select(does_alias_with_memref(r), memref_cond, false)` for each retained
     // value r.
     SmallVector<Value> replacements;
-    Value trueVal = arith::ConstantOp::create(rewriter, op->getLoc(),
-                                              rewriter.getBoolAttr(true));
+    Value trueVal = rewriter.createOrFold<arith::ConstantOp>(
+        op->getLoc(), rewriter.getBoolAttr(true));
     for (Value doesNotAlias : doesNotAliasList) {
       Value aliases =
           arith::XOrIOp::create(rewriter, op->getLoc(), doesNotAlias, trueVal);
@@ -245,8 +245,8 @@ class DeallocOpConversion
                         rewriter.getIndexType()));
 
     auto getConstValue = [&](uint64_t value) -> Value {
-      return arith::ConstantOp::create(rewriter, op.getLoc(),
-                                       rewriter.getIndexAttr(value));
+      return rewriter.createOrFold<arith::ConstantOp>(
+          op.getLoc(), rewriter.getIndexAttr(value));
     };
 
     // Extract the base pointers of the memrefs as indices to check for aliasing
@@ -354,8 +354,8 @@ public:
                   ConversionPatternRewriter &rewriter) const override {
     // Lower the trivial case.
     if (adaptor.getMemrefs().empty()) {
-      Value falseVal = arith::ConstantOp::create(rewriter, op.getLoc(),
-                                                 rewriter.getBoolAttr(false));
+      Value falseVal = rewriter.createOrFold<arith::ConstantOp>(
+          op.getLoc(), rewriter.getBoolAttr(false));
       rewriter.replaceOp(
           op, SmallVector<Value>(adaptor.getRetained().size(), falseVal));
       return success();
@@ -454,12 +454,14 @@ func::FuncOp mlir::bufferization::buildDeallocationLibraryFunction(
   Value retainCondsMemref = helperFuncOp.getArguments()[4];
 
   // Insert some prerequisites.
-  Value c0 = arith::ConstantOp::create(builder, loc, builder.getIndexAttr(0));
-  Value c1 = arith::ConstantOp::create(builder, loc, builder.getIndexAttr(1));
+  Value c0 =
+      builder.createOrFold<arith::ConstantOp>(loc, builder.getIndexAttr(0));
+  Value c1 =
+      builder.createOrFold<arith::ConstantOp>(loc, builder.getIndexAttr(1));
   Value trueValue =
-      arith::ConstantOp::create(builder, loc, builder.getBoolAttr(true));
+      builder.createOrFold<arith::ConstantOp>(loc, builder.getBoolAttr(true));
   Value falseValue =
-      arith::ConstantOp::create(builder, loc, builder.getBoolAttr(false));
+      builder.createOrFold<arith::ConstantOp>(loc, builder.getBoolAttr(false));
   Value toDeallocSize =
       memref::DimOp::create(builder, loc, toDeallocMemref, c0);
   Value toRetainSize = memref::DimOp::create(builder, loc, toRetainMemref, c0);

@@ -58,17 +58,17 @@ std::pair<ParallelOp, ParallelOp>
 mlir::scf::tileParallelLoop(ParallelOp op, ArrayRef<int64_t> tileSizes,
                             bool noMinMaxBounds) {
   OpBuilder b(op);
-  auto zero = arith::ConstantIndexOp::create(b, op.getLoc(), 0);
+  auto zero = b.createOrFold<arith::ConstantIndexOp>(op.getLoc(), 0);
   SmallVector<Value, 2> tileSizeConstants;
   tileSizeConstants.reserve(op.getUpperBound().size());
   for (size_t i = 0, end = op.getUpperBound().size(); i != end; ++i) {
     if (i < tileSizes.size())
       tileSizeConstants.push_back(
-          arith::ConstantIndexOp::create(b, op.getLoc(), tileSizes[i]));
+          b.createOrFold<arith::ConstantIndexOp>(op.getLoc(), tileSizes[i]));
     else
       // Just pick 1 for the remaining dimensions.
       tileSizeConstants.push_back(
-          arith::ConstantIndexOp::create(b, op.getLoc(), 1));
+          b.createOrFold<arith::ConstantIndexOp>(op.getLoc(), 1));
   }
 
   // Create the outer loop with adjusted steps.
@@ -139,8 +139,8 @@ mlir::scf::tileParallelLoop(ParallelOp op, ArrayRef<int64_t> tileSizes,
   if (noMinMaxBounds && needInboundCheck) {
     b.setInsertionPointToStart(innerLoop.getBody());
     // Insert in-bound check
-    Value inbound =
-        arith::ConstantIntOp::create(b, op.getLoc(), b.getIntegerType(1), 1);
+    Value inbound = b.createOrFold<arith::ConstantIntOp>(
+        op.getLoc(), b.getIntegerType(1), 1);
     for (auto [outerUpperBound, outerIV, innerIV, innerStep] :
          llvm::zip(outerLoop.getUpperBound(), outerLoop.getInductionVars(),
                    innerLoop.getInductionVars(), innerLoop.getStep())) {

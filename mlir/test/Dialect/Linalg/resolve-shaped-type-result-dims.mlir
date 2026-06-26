@@ -287,7 +287,7 @@ func.func @dim_of_softmax_op(%arg0: tensor<?x16x?xf32>, %arg1: tensor<2x?x?xf32>
 }
 // CHECK-LABEL: @dim_of_softmax_op
 // CHECK-SAME:  (%[[INPUT:.*]]: tensor<?x16x?xf32>
-// CHECK-NEXT:      %[[C2:.*]] = arith.constant 2 : index
-// CHECK-NEXT:      %[[C16:.*]] = arith.constant 16 : index
-// CHECK-NEXT:      %[[IN_DIM2:.*]] = tensor.dim %[[INPUT]], %[[C2]] : tensor<?x16x?xf32>
-// CHECK-NEXT:      return %[[C2]], %[[C16]], %[[IN_DIM2]] : index, index, index
+// CHECK-DAG:       %[[C2:.*]] = arith.constant 2 : index
+// CHECK-DAG:       %[[C16:.*]] = arith.constant 16 : index
+// CHECK:           %[[IN_DIM2:.*]] = tensor.dim %[[INPUT]], %[[C2]] : tensor<?x16x?xf32>
+// CHECK:           return %[[C2]], %[[C16]], %[[IN_DIM2]] : index, index, index

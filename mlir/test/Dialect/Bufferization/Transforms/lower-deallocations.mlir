@@ -72,24 +72,20 @@ func.func @conversion_dealloc_multiple_memrefs_and_retained(%arg0: memref<2xf32>
 // CHECK-SAME: ([[ARG0:%.+]]: memref<2xf32>, [[ARG1:%.+]]: memref<5xf32>,
 // CHECK-SAME: [[ARG2:%.+]]: memref<1xf32>, [[ARG3:%.+]]: i1, [[ARG4:%.+]]: i1,
 // CHECK-SAME: [[ARG5:%.+]]: memref<2xf32>)
+//      CHECK: [[C0:%.+]] = arith.constant 0 : index
+//      CHECK: [[C1:%.+]] = arith.constant 1 : index
 //      CHECK: [[TO_DEALLOC_MR:%.+]] = memref.alloc() : memref<2xindex>
 //      CHECK: [[CONDS:%.+]] = memref.alloc() : memref<2xi1>
 //      CHECK: [[TO_RETAIN_MR:%.+]] = memref.alloc() : memref<2xindex>
 //  CHECK-DAG: [[V0:%.+]] = memref.extract_aligned_pointer_as_index [[ARG0]]
-//  CHECK-DAG: [[C0:%.+]] = arith.constant 0 : index
 //  CHECK-DAG: memref.store [[V0]], [[TO_DEALLOC_MR]][[[C0]]]
 //  CHECK-DAG: [[V1:%.+]] = memref.extract_aligned_pointer_as_index [[ARG1]]
-//  CHECK-DAG: [[C1:%.+]] = arith.constant 1 : index
 //  CHECK-DAG: memref.store [[V1]], [[TO_DEALLOC_MR]][[[C1]]]
-//  CHECK-DAG: [[C0:%.+]] = arith.constant 0 : index
 //  CHECK-DAG: memref.store [[ARG3]], [[CONDS]][[[C0]]]
-//  CHECK-DAG: [[C1:%.+]] = arith.constant 1 : index
 //  CHECK-DAG: memref.store [[ARG4]], [[CONDS]][[[C1]]]
 //  CHECK-DAG: [[V2:%.+]] = memref.extract_aligned_pointer_as_index [[ARG2]]
-//  CHECK-DAG: [[C0:%.+]] = arith.constant 0 : index
 //  CHECK-DAG: memref.store [[V2]], [[TO_RETAIN_MR]][[[C0]]]
 //  CHECK-DAG: [[V3:%.+]] = memref.extract_aligned_pointer_as_index [[ARG5]]
-//  CHECK-DAG: [[C1:%.+]] = arith.constant 1 : index
 //  CHECK-DAG: memref.store [[V3]], [[TO_RETAIN_MR]][[[C1]]]
 //  CHECK-DAG: [[CAST_DEALLOC:%.+]] = memref.cast [[TO_DEALLOC_MR]] : memref<2xindex> to memref<?xindex>
 //  CHECK-DAG: [[CAST_CONDS:%.+]] = memref.cast [[CONDS]] : memref<2xi1> to memref<?xi1>
@@ -99,19 +95,15 @@ func.func @conversion_dealloc_multiple_memrefs_and_retained(%arg0: memref<2xf32>
 //      CHECK: [[CAST_DEALLOC_CONDS:%.+]] = memref.cast [[DEALLOC_CONDS]] : memref<2xi1> to memref<?xi1>
 //      CHECK: [[CAST_RETAIN_CONDS:%.+]] = memref.cast [[RETAIN_CONDS]] : memref<2xi1> to memref<?xi1>
 //      CHECK: call @dealloc_helper([[CAST_DEALLOC]], [[CAST_RETAIN]], [[CAST_CONDS]], [[CAST_DEALLOC_CONDS]], [[CAST_RETAIN_CONDS]])
-//      CHECK: [[C0:%.+]] = arith.constant 0 : index
 //      CHECK: [[SHOULD_DEALLOC_0:%.+]] = memref.load [[DEALLOC_CONDS]][[[C0]]]
 //      CHECK: scf.if [[SHOULD_DEALLOC_0]] {
 //      CHECK:   memref.dealloc %arg0
 //      CHECK: }
-//      CHECK: [[C1:%.+]] = arith.constant 1 : index
 //      CHECK: [[SHOULD_DEALLOC_1:%.+]] = memref.load [[DEALLOC_CONDS]][[[C1]]]
 //      CHECK: scf.if [[SHOULD_DEALLOC_1]]
 //      CHECK:   memref.dealloc [[ARG1]]
 //      CHECK: }
-//      CHECK: [[C0:%.+]] = arith.constant 0 : index
 //      CHECK: [[OWNERSHIP0:%.+]] = memref.load [[RETAIN_CONDS]][[[C0]]]
-//      CHECK: [[C1:%.+]] = arith.constant 1 : index
 //      CHECK: [[OWNERSHIP1:%.+]] = memref.load [[RETAIN_CONDS]][[[C1]]]
 //      CHECK: memref.dealloc [[TO_DEALLOC_MR]]
 //      CHECK: memref.dealloc [[TO_RETAIN_MR]]

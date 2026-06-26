@@ -18,8 +18,7 @@ func.func @transfer_read_write_1d(%A : memref<?xf32>, %base: index) -> vector<17
 //   CHECK-DAG: %[[PASS_THROUGH:.*]] = arith.constant dense<7.000000e+00> : vector<17xf32>
 //
 // 2. Create a vector with linear indices [ 0 .. vector_length - 1 ].
-//   CHECK-DAG: %[[linearIndex:.*]] = arith.constant dense
-//  CHECK-SAME: <[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]> : vector<17x[[$IDX_TYPE]]>
+//   CHECK-DAG: %[[linearIndex:.*]] = arith.constant dense<[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]> : vector<17x[[$IDX_TYPE]]>
 //
 // 3. Let dim be the memref dimension, compute the in-bound index (dim - offset)
 //   CHECK-DAG: %[[C0:.*]] = arith.constant 0 : index
@@ -189,10 +188,10 @@ func.func @transfer_read_2d_to_1d(%A : memref<?x?xf32>, %base0: index, %base1: i
 //  CHECK-SAME: %[[BASE_0:[a-zA-Z0-9]*]]: index, %[[BASE_1:[a-zA-Z0-9]*]]: index) -> vector<17xf32>
 //
 // Create a vector with linear indices [ 0 .. vector_length - 1 ].
+//   CHECK-DAG: %[[c1:.*]] = arith.constant 1 : index
 //   CHECK-DAG: %[[linearIndex:.*]] = arith.constant dense<[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]> :
 //  CHECK-SAME: vector<17x[[$IDX_TYPE]]>
 //
-//   CHECK-DAG: %[[c1:.*]] = arith.constant 1 : index
 //       CHECK: %[[DIM:.*]] = memref.dim %{{.*}}, %[[c1]] : memref<?x?xf32>
 //
 // Compute the in-bound index (dim - offset)

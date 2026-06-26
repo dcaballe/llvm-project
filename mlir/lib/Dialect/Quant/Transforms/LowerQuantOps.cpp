@@ -145,8 +145,9 @@ flattenUnrankedTensorAroundAxis(OpBuilder &builder, Location loc, Value input,
   auto inputShape = shape::ShapeOfOp::create(builder, loc, shapeType, input);
 
   // Get shape and sizes on left and right of axis
-  auto axisValue = arith::ConstantIndexOp::create(builder, loc, axis);
-  auto axisNextValue = arith::ConstantIndexOp::create(builder, loc, axis + 1);
+  auto axisValue = builder.createOrFold<arith::ConstantIndexOp>(loc, axis);
+  auto axisNextValue =
+      builder.createOrFold<arith::ConstantIndexOp>(loc, axis + 1);
   auto shapeLeft =
       shape::SplitAtOp::create(builder, loc, TypeRange{shapeType, shapeType},
                                inputShape, axisValue)
@@ -161,7 +162,8 @@ flattenUnrankedTensorAroundAxis(OpBuilder &builder, Location loc, Value input,
       shape::NumElementsOp::create(builder, loc, indexType, shapeRight);
 
   // Compute flat input shape as a 3-element 1D tensor
-  auto axisSizeValue = arith::ConstantIndexOp::create(builder, loc, axisSize);
+  auto axisSizeValue =
+      builder.createOrFold<arith::ConstantIndexOp>(loc, axisSize);
   auto flatShapeType = shape::getExtentTensorType(context, 3);
   auto flatInputShape = tensor::FromElementsOp::create(
       builder, loc, flatShapeType,
@@ -214,7 +216,7 @@ Value materializePerChannelScales(OpBuilder &builder, Location loc,
   auto tensorType =
       RankedTensorType::get({(int64_t)scales.size()}, expressedType);
   auto scalesAttr = DenseElementsAttr::get(tensorType, scaleAttrs);
-  return arith::ConstantOp::create(builder, loc, tensorType, scalesAttr);
+  return builder.createOrFold<arith::ConstantOp>(loc, tensorType, scalesAttr);
 }
 
 // Create a tensor constant containing all zero points in a per-channel
@@ -238,7 +240,8 @@ Value materializePerChannelZeroPoints(
   auto tensorType =
       RankedTensorType::get({(int64_t)zeroPoints.size()}, storageType);
   auto zeroPointsAttr = DenseElementsAttr::get(tensorType, zeroPointAttrs);
-  return arith::ConstantOp::create(builder, loc, tensorType, zeroPointsAttr);
+  return builder.createOrFold<arith::ConstantOp>(loc, tensorType,
+                                                 zeroPointsAttr);
 }
 
 // Create a tensor constant containing all scales in a sub-channel quantized
@@ -262,7 +265,7 @@ Value materializeSubChannelScales(
   auto tensorType =
       RankedTensorType::get(scales.getType().getShape(), expressedType);
   auto scalesAttr = DenseElementsAttr::get(tensorType, scaleAttrs);
-  return arith::ConstantOp::create(builder, loc, tensorType, scalesAttr);
+  return builder.createOrFold<arith::ConstantOp>(loc, tensorType, scalesAttr);
 }
 
 // Create a tensor constant containing all zero points in a sub-channel
@@ -286,7 +289,8 @@ Value materializeSubChannelZeroPoints(
   auto tensorType =
       RankedTensorType::get(zeroPoints.getType().getShape(), storageType);
   auto zeroPointsAttr = DenseElementsAttr::get(tensorType, zeroPointAttrs);
-  return arith::ConstantOp::create(builder, loc, tensorType, zeroPointsAttr);
+  return builder.createOrFold<arith::ConstantOp>(loc, tensorType,
+                                                 zeroPointsAttr);
 }
 
 // Clamp the given scalar or tensor input using the storage bounds encoded in
@@ -313,10 +317,10 @@ Value clampScalarOrTensor(OpBuilder &builder, Location loc, Value input,
   // Materialize bounds
   auto inputType = input.getType();
   auto storageType = quantizedType.getStorageType();
-  auto storageMinScalar = arith::ConstantIntOp::create(
-      builder, loc, storageType, quantizedType.getStorageTypeMin());
-  auto storageMaxScalar = arith::ConstantIntOp::create(
-      builder, loc, storageType, quantizedType.getStorageTypeMax());
+  auto storageMinScalar = builder.createOrFold<arith::ConstantIntOp>(
+      loc, storageType, quantizedType.getStorageTypeMin());
+  auto storageMaxScalar = builder.createOrFold<arith::ConstantIntOp>(
+      loc, storageType, quantizedType.getStorageTypeMax());
   auto storageMin = getScalarOrTensorConstant(builder, loc, storageMinScalar,
                                               inputType, inputShape);
   auto storageMax = getScalarOrTensorConstant(builder, loc, storageMaxScalar,
@@ -477,11 +481,11 @@ Value convertPerLayerRanked(OpBuilder &builder, Location loc, Operation *op,
   auto scaleAttr =
       builder.getFloatAttr(expressedType, quantizedType.getScale());
   auto scale =
-      arith::ConstantOp::create(builder, loc, expressedType, scaleAttr);
+      builder.createOrFold<arith::ConstantOp>(loc, expressedType, scaleAttr);
   auto zeroPointAttr =
       builder.getIntegerAttr(storageType, quantizedType.getZeroPoint());
   auto zeroPoint =
-      arith::ConstantOp::create(builder, loc, storageType, zeroPointAttr);
+      builder.createOrFold<arith::ConstantOp>(loc, storageType, zeroPointAttr);
 
   auto inputShape = getScalarOrTensorShape(builder, loc, input);
   return convertRanked(builder, loc, op, input, inputShape, scale, zeroPoint,

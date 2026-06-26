@@ -324,11 +324,11 @@ gpu.func @load_high_dim_vector(%source: memref<16x32x64xf32>,
 // LOAD-ND-SAME:     -> vector<8x16x32xf32>
 
 // LOAD-GATHER-LABEL:  @load_high_dim_vector(
+// LOAD-GATHER:        %[[C2048:.+]] = arith.constant 2048 : index
+// LOAD-GATHER:        %[[C64:.+]] = arith.constant 64 : index
 // LOAD-GATHER:        %[[CST:.+]] = arith.constant dense<true> : vector<8x16x32xi1>
 // LOAD-GATHER:        %[[CST_0:.+]] = arith.constant dense<64> : vector<16xindex>
 // LOAD-GATHER:        %[[CST_1:.+]] = arith.constant dense<2048> : vector<8xindex>
-// LOAD-GATHER:        %[[C2048:.+]] = arith.constant 2048 : index
-// LOAD-GATHER:        %[[C64:.+]] = arith.constant 64 : index
 // LOAD-GATHER-COUNT3: vector.step
 // LOAD-GATHER-COUNT3: vector.shape_cast
 // LOAD-GATHER-COUNT3: vector.broadcast {{.*}} : vector<8x16x32xindex>

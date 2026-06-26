@@ -92,7 +92,7 @@ public:
     assert(lhs && rhs && "unexpected affine expr lowering failure");
 
     Value remainder = arith::RemSIOp::create(builder, loc, lhs, rhs);
-    Value zeroCst = arith::ConstantIndexOp::create(builder, loc, 0);
+    Value zeroCst = builder.createOrFold<arith::ConstantIndexOp>(loc, 0);
     Value isRemainderNegative = arith::CmpIOp::create(
         builder, loc, arith::CmpIPredicate::slt, remainder, zeroCst);
     Value correctedRemainder =
@@ -130,8 +130,8 @@ public:
     auto rhs = visit(expr.getRHS());
     assert(lhs && rhs && "unexpected affine expr lowering failure");
 
-    Value zeroCst = arith::ConstantIndexOp::create(builder, loc, 0);
-    Value noneCst = arith::ConstantIndexOp::create(builder, loc, -1);
+    Value zeroCst = builder.createOrFold<arith::ConstantIndexOp>(loc, 0);
+    Value noneCst = builder.createOrFold<arith::ConstantIndexOp>(loc, -1);
     Value negative = arith::CmpIOp::create(
         builder, loc, arith::CmpIPredicate::slt, lhs, zeroCst);
     Value negatedDecremented =
@@ -170,8 +170,8 @@ public:
     auto rhs = visit(expr.getRHS());
     assert(lhs && rhs && "unexpected affine expr lowering failure");
 
-    Value zeroCst = arith::ConstantIndexOp::create(builder, loc, 0);
-    Value oneCst = arith::ConstantIndexOp::create(builder, loc, 1);
+    Value zeroCst = builder.createOrFold<arith::ConstantIndexOp>(loc, 0);
+    Value oneCst = builder.createOrFold<arith::ConstantIndexOp>(loc, 1);
     Value nonPositive = arith::CmpIOp::create(
         builder, loc, arith::CmpIPredicate::sle, lhs, zeroCst);
     Value negated = arith::SubIOp::create(builder, loc, zeroCst, lhs);
@@ -189,8 +189,7 @@ public:
   }
 
   Value visitConstantExpr(AffineConstantExpr expr) {
-    auto op = arith::ConstantIndexOp::create(builder, loc, expr.getValue());
-    return op.getResult();
+    return builder.createOrFold<arith::ConstantIndexOp>(loc, expr.getValue());
   }
 
   Value visitDimExpr(AffineDimExpr expr) {
@@ -1692,7 +1691,7 @@ static void createNewDynamicSizes(MemRefType oldMemRefType,
       // Create ConstantOp for static dimension.
       auto constantAttr = b.getIntegerAttr(b.getIndexType(), oldMemRefShape[d]);
       inAffineApply.emplace_back(
-          arith::ConstantOp::create(b, allocOp.getLoc(), constantAttr));
+          b.createOrFold<arith::ConstantOp>(allocOp.getLoc(), constantAttr));
     }
   }
 
@@ -1814,9 +1813,10 @@ mlir::affine::normalizeMemRef(memref::ReinterpretCastOp reinterpretCastOp) {
     if (memrefType.isDynamicDim(i))
       mapOperands[i] =
           arith::SubIOp::create(b, loc, oldSizes[0].getType(), oldSizes[idx++],
-                                arith::ConstantIndexOp::create(b, loc, 1));
+                                b.createOrFold<arith::ConstantIndexOp>(loc, 1));
     else
-      mapOperands[i] = arith::ConstantIndexOp::create(b, loc, oldShape[i] - 1);
+      mapOperands[i] =
+          b.createOrFold<arith::ConstantIndexOp>(loc, oldShape[i] - 1);
   }
   for (unsigned i = 0, e = oldStrides.size(); i < e; i++)
     mapOperands[memrefType.getRank() + i] = oldStrides[i];
@@ -1833,8 +1833,9 @@ mlir::affine::normalizeMemRef(memref::ReinterpretCastOp reinterpretCastOp) {
         mapOperands));
   }
   for (auto &newSize : newSizes) {
-    newSize = arith::AddIOp::create(b, loc, newSize.getType(), newSize,
-                                    arith::ConstantIndexOp::create(b, loc, 1));
+    newSize =
+        arith::AddIOp::create(b, loc, newSize.getType(), newSize,
+                              b.createOrFold<arith::ConstantIndexOp>(loc, 1));
   }
   // Create the new reinterpret_cast op.
   auto newReinterpretCast = memref::ReinterpretCastOp::create(

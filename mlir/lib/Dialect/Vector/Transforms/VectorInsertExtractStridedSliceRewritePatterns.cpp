@@ -252,8 +252,8 @@ public:
     for (int64_t i = offset, e = offset + size * stride; i < e; i += stride)
       elements.push_back(ExtractOp::create(rewriter, loc, op.getSource(), i));
 
-    Value result = arith::ConstantOp::create(
-        rewriter, loc, rewriter.getZeroAttr(op.getType()));
+    Value result = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getZeroAttr(op.getType()));
     for (int64_t i = 0; i < size; ++i)
       result = InsertOp::create(rewriter, loc, elements[i], result, i);
 
@@ -301,7 +301,7 @@ public:
       return failure();
 
     // Extract/insert on a lower ranked extract strided slice op.
-    Value zero = arith::ConstantOp::create(rewriter, loc, elemType,
+    Value zero = rewriter.createOrFold<arith::ConstantOp>(loc, elemType,
                                            rewriter.getZeroAttr(elemType));
     Value res = BroadcastOp::create(rewriter, loc, dstType, zero);
     for (int64_t off = offset, e = offset + size * stride, idx = 0; off < e;

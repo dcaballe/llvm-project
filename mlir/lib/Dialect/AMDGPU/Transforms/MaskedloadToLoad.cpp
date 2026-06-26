@@ -122,7 +122,7 @@ struct MaskedLoadLowering final : OpRewritePattern<vector::MaskedLoadOp> {
 
     // delta = bufferSize - linearizedOffset
     Value vectorSizeOffset =
-        arith::ConstantIndexOp::create(rewriter, loc, vectorSize);
+        rewriter.createOrFold<arith::ConstantIndexOp>(loc, vectorSize);
     Value linearIndex =
         getValueOrCreateConstantIndexOp(rewriter, loc, linearizedIndices);
     Value totalSize = getValueOrCreateConstantIndexOp(
@@ -134,12 +134,12 @@ struct MaskedLoadLowering final : OpRewritePattern<vector::MaskedLoadOp> {
         rewriter, loc, arith::CmpIPredicate::ult, delta, vectorSizeOffset);
 
     // 2) check if (detla % elements_per_word != 0)
-    Value elementsPerWord = arith::ConstantIndexOp::create(
-        rewriter, loc, llvm::divideCeil(32, elementBitWidth));
+    Value elementsPerWord = rewriter.createOrFold<arith::ConstantIndexOp>(
+        loc, llvm::divideCeil(32, elementBitWidth));
     Value isNotWordAligned = arith::CmpIOp::create(
         rewriter, loc, arith::CmpIPredicate::ne,
         arith::RemUIOp::create(rewriter, loc, delta, elementsPerWord),
-        arith::ConstantIndexOp::create(rewriter, loc, 0));
+        rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0));
 
     // We take the fallback of maskedload default lowering only it is both
     // out-of-bounds and not word aligned. The fallback ensures correct results

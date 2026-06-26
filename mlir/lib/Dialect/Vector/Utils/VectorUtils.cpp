@@ -494,7 +494,7 @@ Value vector::createReadOrMaskedRead(OpBuilder &builder, Location loc,
   SmallVector<Value> indices;
   customIndices.empty()
       ? indices.assign(sourceShape.size(),
-                       arith::ConstantIndexOp::create(builder, loc, 0))
+                       builder.createOrFold<arith::ConstantIndexOp>(loc, 0))
       : indices.assign(customIndices.begin(), customIndices.end());
 
   // A null permutation map means the builder defaults to a minor identity map.
@@ -563,7 +563,7 @@ Operation *vector::createWriteOrMaskedWrite(OpBuilder &builder, Location loc,
           writeIndices.size() == static_cast<size_t>(destRank)) &&
          "Invalid number of write indices!");
   if (useDefaultWriteIdxs) {
-    auto zero = arith::ConstantIndexOp::create(builder, loc, 0);
+    auto zero = builder.createOrFold<arith::ConstantIndexOp>(loc, 0);
     writeIndices.assign(destRank, zero);
   }
 

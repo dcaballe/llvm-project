@@ -1362,8 +1362,8 @@ void GetExtentOp::build(OpBuilder &builder, OperationState &result, Value shape,
     Value dim = ConstSizeOp::create(builder, loc, dimAttr);
     build(builder, result, builder.getType<SizeType>(), shape, dim);
   } else {
-    Value dim = arith::ConstantOp::create(builder, loc, builder.getIndexType(),
-                                          dimAttr);
+    Value dim = builder.createOrFold<arith::ConstantOp>(
+        loc, builder.getIndexType(), dimAttr);
     build(builder, result, builder.getIndexType(), shape, dim);
   }
 }

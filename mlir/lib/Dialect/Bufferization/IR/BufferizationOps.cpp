@@ -1065,8 +1065,8 @@ struct EraseEmptyDealloc : public OpRewritePattern<DeallocOp> {
   LogicalResult matchAndRewrite(DeallocOp deallocOp,
                                 PatternRewriter &rewriter) const override {
     if (deallocOp.getMemrefs().empty()) {
-      Value constFalse = arith::ConstantOp::create(rewriter, deallocOp.getLoc(),
-                                                   rewriter.getBoolAttr(false));
+      Value constFalse = rewriter.createOrFold<arith::ConstantOp>(
+          deallocOp.getLoc(), rewriter.getBoolAttr(false));
       rewriter.replaceOp(
           deallocOp, SmallVector<Value>(deallocOp.getUpdatedConditions().size(),
                                         constFalse));

@@ -122,7 +122,7 @@ inline auto makeVscaleConstantBuilder(PatternRewriter &rewriter, Location loc) {
       vscale = vector::VectorScaleOp::create(rewriter, loc);
     return arith::MulIOp::create(
         rewriter, loc, vscale,
-        arith::ConstantIndexOp::create(rewriter, loc, multiplier));
+        rewriter.createOrFold<arith::ConstantIndexOp>(loc, multiplier));
   };
 }
 

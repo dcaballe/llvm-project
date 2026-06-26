@@ -71,8 +71,8 @@ func.func @pow_caller(%z: complex<f32>, %w: complex<f32>) -> complex<f32> {
 //CHECK-LABEL: @powi_caller
 //CHECK:          (%[[Z:.*]]: complex<f32>, %[[N:.*]]: i32)
 func.func @powi_caller(%z: complex<f32>, %n: i32) -> complex<f32> {
-  // CHECK: %[[N_FP:.*]] = arith.sitofp %[[N]] : i32 to f32
   // CHECK: %[[ZERO:.*]] = arith.constant 0.000000e+00 : f32
+  // CHECK: %[[N_FP:.*]] = arith.sitofp %[[N]] : i32 to f32
   // CHECK: %[[N_COMPLEX:.*]] = complex.create %[[N_FP]], %[[ZERO]] : complex<f32>
   // CHECK: %[[LOG:.*]] = call @__ocml_clog_f32(%[[Z]]) : (complex<f32>) -> complex<f32>
   // CHECK: %[[MUL:.*]] = complex.mul %[[N_COMPLEX]], %[[LOG]] : complex<f32>

@@ -280,7 +280,9 @@ bool arith::ConstantOp::isBuildableWith(Attribute value, Type type) {
 ConstantOp arith::ConstantOp::materialize(OpBuilder &builder, Attribute value,
                                           Type type, Location loc) {
   if (isBuildableWith(value, type))
-    return arith::ConstantOp::create(builder, loc, cast<TypedAttr>(value));
+    return cast<arith::ConstantOp>(
+        builder.createOrFold<arith::ConstantOp>(loc, cast<TypedAttr>(value))
+            .getDefiningOp());
   return nullptr;
 }
 
@@ -422,7 +424,7 @@ Value mlir::arith::getZeroConstant(OpBuilder &builder, Location loc,
          "type doesn't have a zero representation");
   TypedAttr zeroAttr = builder.getZeroAttr(type);
   assert(zeroAttr && "unsupported type for zero attribute");
-  return arith::ConstantOp::create(builder, loc, zeroAttr);
+  return builder.createOrFold<arith::ConstantOp>(loc, zeroAttr);
 }
 
 //===----------------------------------------------------------------------===//
@@ -2821,8 +2823,8 @@ struct SelectToExtUI : public OpRewritePattern<arith::SelectOp> {
           op, op.getType(),
           arith::XOrIOp::create(
               rewriter, op.getLoc(), op.getCondition(),
-              arith::ConstantIntOp::create(rewriter, op.getLoc(),
-                                           op.getCondition().getType(), 1)));
+              rewriter.createOrFold<arith::ConstantIntOp>(
+                  op.getLoc(), op.getCondition().getType(), 1)));
       return success();
     }
 
@@ -3187,7 +3189,7 @@ Value mlir::arith::getIdentityValue(AtomicRMWKind op, Type resultType,
                                     bool useOnlyFiniteValue) {
   if (auto attr = getIdentityValueAttr(op, resultType, builder, loc,
                                        useOnlyFiniteValue))
-    return arith::ConstantOp::create(builder, loc, attr);
+    return builder.createOrFold<arith::ConstantOp>(loc, attr);
   return {};
 }
 

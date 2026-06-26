@@ -624,7 +624,7 @@ struct BubbleDownVectorBitCastForExtract
     Value packedValue = vector::ExtractOp::create(
         rewriter, loc, castOp.getSource(), index / expandRatio);
     Type packedVecType = VectorType::get(/*shape=*/{1}, packedValue.getType());
-    Value zero = arith::ConstantOp::create(rewriter, loc, packedVecType,
+    Value zero = rewriter.createOrFold<arith::ConstantOp>(loc, packedVecType,
                                            rewriter.getZeroAttr(packedVecType));
     packedValue = vector::InsertOp::create(rewriter, loc, packedValue, zero,
                                            /*position=*/0);
@@ -951,7 +951,7 @@ public:
     Type elemType = castDstType.getElementType();
     assert(elemType.isSignlessIntOrIndexOrFloat());
 
-    Value zero = arith::ConstantOp::create(rewriter, loc, elemType,
+    Value zero = rewriter.createOrFold<arith::ConstantOp>(loc, elemType,
                                            rewriter.getZeroAttr(elemType));
     Value res = BroadcastOp::create(rewriter, loc, castDstType, zero);
 
@@ -1370,7 +1370,7 @@ static Value buildVectorComparison(PatternRewriter &rewriter, Operation *op,
     indicesAttr = rewriter.getI64VectorAttr(
         llvm::to_vector<4>(llvm::seq<int64_t>(0, dim)));
   }
-  Value indices = arith::ConstantOp::create(rewriter, loc, indicesAttr);
+  Value indices = rewriter.createOrFold<arith::ConstantOp>(loc, indicesAttr);
   // Add in an offset if requested.
   if (off) {
     Value o = getValueOrCreateCastToIndexLike(rewriter, loc, idxType, *off);
@@ -1385,7 +1385,7 @@ static Value buildVectorComparison(PatternRewriter &rewriter, Operation *op,
   // scalable-vector path.
   if (force32BitVectorIndices) {
     Value maxBound =
-        arith::ConstantIndexOp::create(rewriter, loc, (1LL << 31) - 1);
+        rewriter.createOrFold<arith::ConstantIndexOp>(loc, (1LL << 31) - 1);
     b = arith::MinSIOp::create(rewriter, loc, b, maxBound);
   }
   Value bound = getValueOrCreateCastToIndexLike(rewriter, loc, idxType, b);

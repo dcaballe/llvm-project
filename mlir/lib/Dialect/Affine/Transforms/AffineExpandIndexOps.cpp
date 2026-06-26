@@ -120,8 +120,8 @@ affine::lowerAffineDelinearizeIndexOp(RewriterBase &rewriter,
   for (Value &stride : strides)
     stride = broadcastToMatchType(rewriter, loc, stride, indexType);
 
-  Value zero =
-      arith::ConstantOp::create(rewriter, loc, rewriter.getZeroAttr(indexType));
+  Value zero = rewriter.createOrFold<arith::ConstantOp>(
+      loc, rewriter.getZeroAttr(indexType));
 
   Value initialPart =
       arith::FloorDivSIOp::create(rewriter, loc, linearIdx, strides.front());

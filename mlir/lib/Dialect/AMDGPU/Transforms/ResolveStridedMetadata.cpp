@@ -54,7 +54,7 @@ struct ExtractStridedMetadataOnFatRawBufferCastFolder final
       }
     }
     if (castOp.getResetOffset())
-      results.push_back(arith::ConstantIndexOp::create(rewriter, loc, 0));
+      results.push_back(rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0));
     else
       results.push_back(sourceMetadata.getOffset());
     llvm::append_range(results, sourceMetadata.getSizes());

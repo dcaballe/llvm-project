@@ -101,7 +101,8 @@ struct AllSliceOpLowering
     ImplicitLocOpBuilder builder(op->getLoc(), rewriter);
     builder.setInsertionPointAfter(op.getOperation());
 
-    Value zero = arith::ConstantOp::create(builder, builder.getIndexAttr(0));
+    Value zero =
+        builder.createOrFold<arith::ConstantOp>(builder.getIndexAttr(0));
 
     Operation::result_range processInGroupMultiIndex =
         ProcessMultiIndexOp::create(builder, grid.getSymName(),
@@ -218,8 +219,7 @@ createProcessLinearIndex(ImplicitLocOpBuilder &builder, StringRef grid,
       llvm::to_vector_of<OpFoldResult>(processGroupShape), builder);
   auto res = dyn_cast<Value>(processInGroupLinearIndex);
   if (!res)
-    res = arith::ConstantIndexOp::create(
-        builder,
+    res = builder.createOrFold<arith::ConstantIndexOp>(
         cast<IntegerAttr>(cast<Attribute>(processInGroupLinearIndex)).getInt());
   return cast<TypedValue<IndexType>>(res);
 }

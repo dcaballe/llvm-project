@@ -84,8 +84,8 @@ static Operation::operand_range getUpperBoundOperands(AffineForOp forOp) {
 // Get a Value that corresponds to the loop step.  If the step is an attribute,
 // materialize a corresponding constant using builder.
 static Value getOrCreateStep(AffineForOp forOp, OpBuilder &builder) {
-  return arith::ConstantIndexOp::create(builder, forOp.getLoc(),
-                                        forOp.getStepAsInt());
+  return builder.createOrFold<arith::ConstantIndexOp>(forOp.getLoc(),
+                                                      forOp.getStepAsInt());
 }
 
 // Get a Value for the loop lower bound.  If the value requires computation,
@@ -227,7 +227,7 @@ void AffineLoopToGpuConverter::createLaunch(AffineForOp rootForOp,
   // no loop mapped to a specific dimension, use constant "1" as its size.
   Value constOne =
       (numBlockDims < 3 || numThreadDims < 3)
-          ? arith::ConstantIndexOp::create(builder, rootForOp.getLoc(), 1)
+          ? builder.createOrFold<arith::ConstantIndexOp>(rootForOp.getLoc(), 1)
           : nullptr;
   Value gridSizeX = numBlockDims > 0 ? dims[0] : constOne;
   Value gridSizeY = numBlockDims > 1 ? dims[1] : constOne;
@@ -325,8 +325,8 @@ static Value deriveStaticUpperBound(Value upperBound,
   if (auto minOp = upperBound.getDefiningOp<AffineMinOp>()) {
     for (const AffineExpr &result : minOp.getMap().getResults()) {
       if (auto constExpr = dyn_cast<AffineConstantExpr>(result)) {
-        return arith::ConstantIndexOp::create(rewriter, minOp.getLoc(),
-                                              constExpr.getValue());
+        return rewriter.createOrFold<arith::ConstantIndexOp>(
+            minOp.getLoc(), constExpr.getValue());
       }
     }
   }
@@ -348,8 +348,8 @@ static Value deriveStaticUpperBound(Value upperBound,
         if ((lhs.value() < 0) != (rhs.value() < 0))
           return {};
 
-        return arith::ConstantIndexOp::create(rewriter, multiplyOp.getLoc(),
-                                              lhs.value() * rhs.value());
+        return rewriter.createOrFold<arith::ConstantIndexOp>(
+            multiplyOp.getLoc(), lhs.value() * rhs.value());
       }
   }
 
@@ -426,8 +426,8 @@ static LogicalResult processParallelLoop(
     if (launchIndependent(val))
       return val;
     if (std::optional<int64_t> constOp = getConstantIntValue(val))
-      return arith::ConstantIndexOp::create(rewriter, val.getLoc(),
-                                            constOp.value());
+      return rewriter.createOrFold<arith::ConstantIndexOp>(val.getLoc(),
+                                                           constOp.value());
     return {};
   };
 
@@ -623,7 +623,7 @@ ParallelToGpuLaunchLowering::matchAndRewrite(ParallelOp parallelOp,
   // Create a launch operation. We start with bound one for all grid/block
   // sizes. Those will be refined later as we discover them from mappings.
   Location loc = parallelOp.getLoc();
-  Value constantOne = arith::ConstantIndexOp::create(rewriter, loc, 1);
+  Value constantOne = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
   gpu::LaunchOp launchOp =
       gpu::LaunchOp::create(rewriter, loc, constantOne, constantOne,
                             constantOne, constantOne, constantOne, constantOne);

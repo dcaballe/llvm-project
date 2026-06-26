@@ -180,8 +180,8 @@ module {
 // CHECK-LABEL:   func.func @scalable_tile(
 // CHECK-SAME:      %[[ARG_0:.*]]: tensor<?xf32>, %[[ARG_1:.*]]: tensor<?xf32>, %[[ARG_2:.*]]: tensor<?xf32>,
 // CHECK:           %[[C0:.*]] = arith.constant 0 : index
-// CHECK:           %[[DIM:.*]] = tensor.dim %[[ARG_0]], %[[C0]] : tensor<?xf32>
 // CHECK:           %[[VEC_SIZE:.*]] = arith.constant 4 : index
+// CHECK:           %[[DIM:.*]] = tensor.dim %[[ARG_0]], %[[C0]] : tensor<?xf32>
 // CHECK:           %[[VS:.*]] = vector.vscale
 // CHECK:           %[[STEP:.*]] = arith.muli %[[VEC_SIZE]], %[[VS]] : index
 // CHECK:           scf.for %[[IV:.*]] = %[[C0]] to %[[DIM]] step %[[STEP]] iter_args(%[[VAL:.*]] = %[[ARG_2]]) -> (tensor<?xf32>) {

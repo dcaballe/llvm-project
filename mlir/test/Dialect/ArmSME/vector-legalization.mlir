@@ -626,10 +626,10 @@ func.func @vector_mask_without_maskable_op(%mask: vector<16x2xi1>, %vec: vector<
 // CHECK-SAME:      %[[PAD:.*]]: f32,
 // CHECK-SAME:      %[[SRC:.*]]: memref<?x?xf32>) -> vector<[4]x1xf32> {
 func.func @xfer_read_scalable_column(%a: index, %b: index, %pad: f32, %src: memref<?x?xf32>) -> (vector<[4]x1xf32>) {
-  // CHECK:           %[[INIT:.*]] = arith.constant dense<0.000000e+00> : vector<[4]xf32>
-  // CHECK:           %[[STEP:.*]] = arith.constant 1 : index
-  // CHECK:           %[[C4:.*]] = arith.constant 4 : index
   // CHECK:           %[[LB:.*]] = arith.constant 0 : index
+  // CHECK:           %[[C4:.*]] = arith.constant 4 : index
+  // CHECK:           %[[STEP:.*]] = arith.constant 1 : index
+  // CHECK:           %[[INIT:.*]] = arith.constant dense<0.000000e+00> : vector<[4]xf32>
   // CHECK:           %[[VSCALE:.*]] = vector.vscale
   // CHECK:           %[[C4_VSCALE:.*]] = arith.muli %[[VSCALE]], %[[C4]] : index
 
@@ -656,10 +656,10 @@ func.func @xfer_read_scalable_column(%a: index, %b: index, %pad: f32, %src: memr
 // CHECK-SAME:      %[[PAD:.*]]: f64,
 // CHECK-SAME:      %[[SRC:.*]]: memref<?x?xf64>) -> vector<[4]x1xf64> {
 func.func @xfer_read_scalable_column_f64(%a: index, %b: index, %pad: f64, %src: memref<?x?xf64>) -> (vector<[4]x1xf64>) {
-  // CHECK:           %[[INIT:.*]] = arith.constant dense<0.000000e+00> : vector<[4]xf64>
-  // CHECK:           %[[STEP:.*]] = arith.constant 1 : index
-  // CHECK:           %[[C4:.*]] = arith.constant 4 : index
   // CHECK:           %[[LB:.*]] = arith.constant 0 : index
+  // CHECK:           %[[C4:.*]] = arith.constant 4 : index
+  // CHECK:           %[[STEP:.*]] = arith.constant 1 : index
+  // CHECK:           %[[INIT:.*]] = arith.constant dense<0.000000e+00> : vector<[4]xf64>
   // CHECK:           %[[VSCALE:.*]] = vector.vscale
   // CHECK:           %[[C4_VSCALE:.*]] = arith.muli %[[VSCALE]], %[[C4]] : index
 

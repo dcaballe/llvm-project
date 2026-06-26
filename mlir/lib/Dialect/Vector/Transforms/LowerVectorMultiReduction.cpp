@@ -418,8 +418,8 @@ struct TwoDimMultiReductionToReduction
     Value acc = multiReductionOp.getAcc();
     int outerDim = multiReductionOp.getSourceVectorType().getShape()[0];
 
-    Value result = arith::ConstantOp::create(
-        rewriter, loc, multiReductionOp.getDestType(),
+    Value result = rewriter.createOrFold<arith::ConstantOp>(
+        loc, multiReductionOp.getDestType(),
         rewriter.getZeroAttr(multiReductionOp.getDestType()));
 
     SmallVector<Value> vectors(outerDim);

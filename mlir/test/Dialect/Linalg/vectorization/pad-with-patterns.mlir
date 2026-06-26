@@ -131,10 +131,10 @@ func.func private @make_vector() -> tensor<12x13xf32>
 
 // CHECK-LABEL:   func.func @pad_and_insert_slice_dest(
 // CHECK-SAME:      %[[ARG_0:.*]]: tensor<1x5x6xf32>) -> tensor<1x12x13xf32> {
-// CHECK:           %[[C0:.*]] = arith.constant 0.000000e+00 : f32
-// CHECK:           %[[CST:.*]] = arith.constant dense<5.000000e+00> : vector<1x12x13xf32>
-// CHECK:           %[[C0_IDX:.*]] = arith.constant 0 : index
 // CHECK:           %[[PAD_VAL:.*]] = arith.constant 5.000000e+00 : f32
+// CHECK:           %[[C0:.*]] = arith.constant 0.000000e+00 : f32
+// CHECK:           %[[C0_IDX:.*]] = arith.constant 0 : index
+// CHECK:           %[[CST:.*]] = arith.constant dense<5.000000e+00> : vector<1x12x13xf32>
 // CHECK:           %[[EMPTY:.*]] = tensor.empty() : tensor<1x12x13xf32>
 // CHECK:           %[[WRITE_1:.*]] = vector.transfer_write %[[CST]], %[[EMPTY]]{{\[}}%[[C0_IDX]], %[[C0_IDX]], %[[C0_IDX]]] {in_bounds = [true, true, true]} : vector<1x12x13xf32>, tensor<1x12x13xf32>
 // CHECK:           %[[READ_1:.*]] = vector.transfer_read %[[ARG_0]]{{\[}}%[[C0_IDX]], %[[C0_IDX]], %[[C0_IDX]]], %[[PAD_VAL]] {in_bounds = [true, true, true]} : tensor<1x5x6xf32>, vector<1x5x6xf32>

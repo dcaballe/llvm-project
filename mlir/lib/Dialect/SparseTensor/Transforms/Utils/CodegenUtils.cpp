@@ -482,7 +482,7 @@ void sparse_tensor::foreachInSparseConstant(
     cvs.clear();
     for (Dimension d = 0; d < dimRank; d++) {
       auto crd = elems[i].first[d].getInt();
-      cvs.push_back(arith::ConstantIndexOp::create(builder, loc, crd));
+      cvs.push_back(builder.createOrFold<arith::ConstantIndexOp>(loc, crd));
     }
     // Remap value.
     Value val;
@@ -492,7 +492,7 @@ void sparse_tensor::foreachInSparseConstant(
                                         valAttr);
     } else {
       auto valAttr = cast<TypedAttr>(elems[i].second);
-      val = arith::ConstantOp::create(builder, loc, valAttr);
+      val = builder.createOrFold<arith::ConstantOp>(loc, valAttr);
     }
     assert(val);
     callback(cvs, val);

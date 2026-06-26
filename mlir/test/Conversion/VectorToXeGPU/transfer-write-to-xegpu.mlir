@@ -195,11 +195,11 @@ gpu.func @store_high_dim_vector(%vec: vector<8x16x32xf32>,
 // STORE-SCATTER-LABEL:  @store_high_dim_vector(
 // STORE-SCATTER-SAME:   %[[VEC:.+]]: vector<8x16x32xf32>,
 // STORE-SCATTER-SAME:   %[[SRC:.+]]: memref<16x32x64xf32>
+// STORE-SCATTER:        %[[C2048:.+]] = arith.constant 2048 : index
+// STORE-SCATTER:        %[[C64:.+]] = arith.constant 64 : index
 // STORE-SCATTER:        %[[CST:.+]] = arith.constant dense<true> : vector<8x16x32xi1>
 // STORE-SCATTER:        %[[CST_0:.+]] = arith.constant dense<64> : vector<16xindex>
 // STORE-SCATTER:        %[[CST_1:.+]] = arith.constant dense<2048> : vector<8xindex>
-// STORE-SCATTER:        %[[C2048:.+]] = arith.constant 2048 : index
-// STORE-SCATTER:        %[[C64:.+]] = arith.constant 64 : index
 // STORE-SCATTER-COUNT3: vector.step
 // STORE-SCATTER-COUNT3: vector.shape_cast
 // STORE-SCATTER-COUNT3: vector.broadcast {{.*}} : vector<8x16x32xindex>

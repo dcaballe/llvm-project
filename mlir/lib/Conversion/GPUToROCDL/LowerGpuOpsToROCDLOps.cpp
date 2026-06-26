@@ -81,8 +81,8 @@ static bool canBeCalledWithBarePointers(gpu::GPUFuncOp func) {
 
 static Value getLaneId(RewriterBase &rewriter, Location loc) {
   auto int32Type = IntegerType::get(rewriter.getContext(), 32);
-  Value zero = arith::ConstantIntOp::create(rewriter, loc, 0, 32);
-  Value minus1 = arith::ConstantIntOp::create(rewriter, loc, -1, 32);
+  Value zero = rewriter.createOrFold<arith::ConstantIntOp>(loc, 0, 32);
+  Value minus1 = rewriter.createOrFold<arith::ConstantIntOp>(loc, -1, 32);
   NamedAttribute noundef = rewriter.getNamedAttr(
       LLVM::LLVMDialect::getNoUndefAttrName(), rewriter.getUnitAttr());
   NamedAttribute lowRange = rewriter.getNamedAttr(

@@ -256,8 +256,8 @@ func.func @strided_gather(%base : memref<100x3xf32>,
 // CHECK-SAME:                         %[[IDXS:.*]]: vector<4xindex>,
 // CHECK-SAME:                         %[[VAL_4:.*]]: index,
 // CHECK-SAME:                         %[[VAL_5:.*]]: index) -> vector<4xf32> {
-// CHECK:           %[[TRUE:.*]] = arith.constant true
-// CHECK:           %[[CST_3:.*]] = arith.constant dense<3> : vector<4xindex>
+// CHECK-DAG:       %[[TRUE:.*]] = arith.constant true
+// CHECK-DAG:       %[[CST_3:.*]] = arith.constant dense<3> : vector<4xindex>
 
 // CHECK:           %[[COLLAPSED:.*]] = memref.collapse_shape %[[base]] {{\[\[}}0, 1]] : memref<100x3xf32> into memref<300xf32>
 // CHECK:           %[[NEW_IDXS:.*]] = arith.muli %[[IDXS]], %[[CST_3]] : vector<4xindex>

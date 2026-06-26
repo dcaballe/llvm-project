@@ -400,16 +400,16 @@ struct SgToLaneArithConstant : public OpConversionPattern<arith::ConstantOp> {
     if (denseAttr.isSplat()) {
       auto scalarValue = denseAttr.getSplatValue<Attribute>();
       auto newDenseAttr = DenseElementsAttr::get(newResultType, scalarValue);
-      auto newOp =
-          arith::ConstantOp::create(rewriter, loc, newResultType, newDenseAttr);
-      rewriter.replaceOp(op, newOp.getResult());
+      auto newOp = rewriter.createOrFold<arith::ConstantOp>(loc, newResultType,
+                                                            newDenseAttr);
+      rewriter.replaceOp(op, newOp);
       return success();
     }
 
     // Non-splat constants: each lane extracts the elements it owns from the
     // full constant using the distributed coordinates from the layout.
     auto fullConst =
-        arith::ConstantOp::create(rewriter, loc, resultType, denseAttr);
+        rewriter.createOrFold<arith::ConstantOp>(loc, resultType, denseAttr);
 
     Value laneId = gpu::LaneIdOp::create(rewriter, loc, rewriter.getIndexType(),
                                          /*upperBound=*/mlir::IntegerAttr());
@@ -436,8 +436,8 @@ struct SgToLaneArithConstant : public OpConversionPattern<arith::ConstantOp> {
     SmallVector<int64_t> unitTile(rank, 1);
     SmallVector<int64_t> strides(rank, 1);
 
-    Value result = arith::ConstantOp::create(
-        rewriter, loc, newResultType, rewriter.getZeroAttr(newResultType));
+    Value result = rewriter.createOrFold<arith::ConstantOp>(
+        loc, newResultType, rewriter.getZeroAttr(newResultType));
 
     for (auto [blockIdx, blockStart] : llvm::enumerate(coordsVec)) {
       // Gather the block's elements from the full constant. The block start is
@@ -450,9 +450,9 @@ struct SgToLaneArithConstant : public OpConversionPattern<arith::ConstantOp> {
         for (int64_t d = 0; d < rank; d++)
           pos[d] = getAsOpFoldResult(arith::AddIOp::create(
               rewriter, loc, blockStart[d],
-              arith::ConstantIndexOp::create(rewriter, loc, off[d])));
-        blockElems.push_back(vector::ExtractOp::create(
-            rewriter, loc, fullConst.getResult(), pos));
+              rewriter.createOrFold<arith::ConstantIndexOp>(loc, off[d])));
+        blockElems.push_back(
+            vector::ExtractOp::create(rewriter, loc, fullConst, pos));
       }
 
       // Rebuild the block keeping its lane_data shape, then place it with
@@ -917,7 +917,7 @@ struct SgToLaneCreateMask : public OpConversionPattern<OpType> {
       auto dimSizes = op.getMaskDimSizesAttr().asArrayRef();
       for (auto dimSize : dimSizes)
         origBounds.push_back(
-            arith::ConstantIndexOp::create(rewriter, loc, dimSize).getResult());
+            rewriter.createOrFold<arith::ConstantIndexOp>(loc, dimSize));
     }
 
     ArrayRef<int64_t> origShape = origType.getShape();
@@ -938,8 +938,8 @@ struct SgToLaneCreateMask : public OpConversionPattern<OpType> {
            "elements");
 
     // For each element, compare all coordinates against bounds.
-    Value trueVal =
-        arith::ConstantIntOp::create(rewriter, loc, /*value=*/1, /*width=*/1);
+    Value trueVal = rewriter.createOrFold<arith::ConstantIntOp>(
+        loc, /*value=*/1, /*width=*/1);
     SmallVector<Value> maskBits;
     for (auto &coords : coordsVec) {
       Value inBounds = trueVal;
@@ -1170,7 +1170,7 @@ struct SgToLaneVectorStep : public OpConversionPattern<vector::StepOp> {
       auto laneDataBlockStartCoord = laneDataBlockCoords[0];
       stepVals.push_back(laneDataBlockStartCoord);
       for (int i = 1; i < laneDataBlockLength; ++i) {
-        auto offset = arith::ConstantIndexOp::create(rewriter, loc, i);
+        auto offset = rewriter.createOrFold<arith::ConstantIndexOp>(loc, i);
         stepVals.push_back(arith::AddIOp::create(
             rewriter, loc, laneDataBlockStartCoord, offset));
       }
@@ -1638,10 +1638,9 @@ shuffleDataAsLaneLayoutChange(ConversionPatternRewriter &rewriter, Location loc,
   int64_t numShuffles = vectorBitWidth / 32;
   VectorType shuffleBundleTy = VectorType::get({numShuffles}, shuffleElemTy);
   // Initialize temp to zero.
-  Value temp = arith::ConstantOp::create(
-      rewriter, loc,
-      DenseElementsAttr::get(shuffleBundleTy,
-                             IntegerAttr::get(shuffleElemTy, 0)));
+  Value temp = rewriter.createOrFold<arith::ConstantOp>(
+      loc, DenseElementsAttr::get(shuffleBundleTy,
+                                  IntegerAttr::get(shuffleElemTy, 0)));
   VectorType flatSrcTy =
       VectorType::get({srcTy.getNumElements()}, srcTy.getElementType());
   Value flatSrc = vector::ShapeCastOp::create(rewriter, loc, flatSrcTy, src);

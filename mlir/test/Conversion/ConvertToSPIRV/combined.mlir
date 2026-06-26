@@ -7,8 +7,8 @@
 // CHECK: %[[C4_I32:.*]] = spirv.Constant 4 : i32
 // CHECK: %[[C0_I32_0:.*]] = spirv.Constant 0 : i32
 // CHECK: %[[C4_I32_0:.*]] = spirv.Constant 4 : i32
-// CHECK: %[[C1_I32:.*]] = spirv.Constant 1 : i32
 // CHECK: %[[VEC:.*]] = spirv.Constant dense<1.000000e+00> : vector<4xf32>
+// CHECK: %[[C1_I32:.*]] = spirv.Constant 1 : i32
 // CHECK: %[[VARIABLE:.*]] = spirv.Variable : !spirv.ptr<f32, Function>
 // CHECK: spirv.mlir.loop {
 // CHECK:    spirv.Branch ^[[HEADER:.*]](%[[C0_I32_0]], %[[C0_F32]] : i32, f32)

@@ -40,12 +40,12 @@ module {
   }
 }
 // CHECK-LABEL:   func.func @func_0() -> i32 {
-// CHECK:           %[[VAL_0:.*]] = memref.alloca() : memref<i32>
-// CHECK:           %[[VAL_1:.*]] = arith.constant 0 : i32
-// CHECK:           memref.store %[[VAL_1]], %[[VAL_0]][] : memref<i32>
+// CHECK:           %[[VAL_0:.*]] = arith.constant 0 : i32
+// CHECK:           %[[VAL_1:.*]] = memref.alloca() : memref<i32>
+// CHECK:           memref.store %[[VAL_0]], %[[VAL_1]][] : memref<i32>
 // CHECK:           cf.br ^bb1
 // CHECK:         ^bb1:
-// CHECK:           %[[VAL_2:.*]] = memref.load %[[VAL_0]][] : memref<i32>
+// CHECK:           %[[VAL_2:.*]] = memref.load %[[VAL_1]][] : memref<i32>
 // CHECK:           %[[VAL_3:.*]] = arith.constant 10 : i32
 // CHECK:           %[[VAL_4:.*]] = arith.cmpi slt, %[[VAL_2]], %[[VAL_3]] : i32
 // CHECK:           %[[VAL_5:.*]] = arith.extui %[[VAL_4]] : i1 to i32
@@ -83,18 +83,17 @@ module {
 }
 
 // CHECK-LABEL:   func.func @func_0() {
-// CHECK:           %[[VAL_0:.*]] = memref.alloca() : memref<i32>
-// CHECK:           %[[VAL_1:.*]] = arith.constant 0 : i32
-// CHECK:           memref.store %[[VAL_1]], %[[VAL_0]][] : memref<i32>
+// CHECK:           %[[VAL_0:.*]] = arith.constant 0 : i32
+// CHECK:           %[[VAL_1:.*]] = memref.alloca() : memref<i32>
+// CHECK:           memref.store %[[VAL_0]], %[[VAL_1]][] : memref<i32>
 // CHECK:           cf.br ^bb1
 // CHECK:         ^bb1:
-// CHECK:           %[[VAL_2:.*]] = memref.load %[[VAL_0]][] : memref<i32>
+// CHECK:           %[[VAL_2:.*]] = memref.load %[[VAL_1]][] : memref<i32>
 // CHECK:           %[[VAL_3:.*]] = arith.constant 10 : i32
 // CHECK:           %[[VAL_4:.*]] = arith.cmpi slt, %[[VAL_2]], %[[VAL_3]] : i32
 // CHECK:           %[[VAL_5:.*]] = arith.extui %[[VAL_4]] : i1 to i32
-// CHECK:           %[[VAL_6:.*]] = arith.constant 0 : i32
-// CHECK:           %[[VAL_7:.*]] = arith.cmpi ne, %[[VAL_5]], %[[VAL_6]] : i32
-// CHECK:           cf.cond_br %[[VAL_7]], ^bb1, ^bb2
+// CHECK:           %[[VAL_6:.*]] = arith.cmpi ne, %[[VAL_5]], %[[VAL_0]] : i32
+// CHECK:           cf.cond_br %[[VAL_6]], ^bb1, ^bb2
 // CHECK:         ^bb2:
 // CHECK:           cf.br ^bb3
 // CHECK:         ^bb3:
@@ -146,36 +145,33 @@ module {
 }
 
 // CHECK-LABEL:   func.func @func_0() {
-// CHECK:           %[[VAL_0:.*]] = memref.alloca() : memref<i32>
-// CHECK:           %[[VAL_1:.*]] = arith.constant 0 : i32
-// CHECK:           memref.store %[[VAL_1]], %[[VAL_0]][] : memref<i32>
+// CHECK:           %[[VAL_0:.*]] = arith.constant 0 : i32
+// CHECK:           %[[VAL_1:.*]] = memref.alloca() : memref<i32>
+// CHECK:           memref.store %[[VAL_0]], %[[VAL_1]][] : memref<i32>
 // CHECK:           %[[VAL_2:.*]] = memref.alloca() : memref<i32>
-// CHECK:           %[[VAL_3:.*]] = arith.constant 0 : i32
-// CHECK:           memref.store %[[VAL_3]], %[[VAL_2]][] : memref<i32>
+// CHECK:           memref.store %[[VAL_0]], %[[VAL_2]][] : memref<i32>
 // CHECK:           cf.br ^bb1
 // CHECK:         ^bb1:
-// CHECK:           %[[VAL_4:.*]] = memref.load %[[VAL_0]][] : memref<i32>
-// CHECK:           %[[VAL_5:.*]] = arith.constant 1 : i32
-// CHECK:           %[[VAL_6:.*]] = arith.addi %[[VAL_4]], %[[VAL_5]] : i32
-// CHECK:           memref.store %[[VAL_6]], %[[VAL_0]][] : memref<i32>
+// CHECK:           %[[VAL_3:.*]] = memref.load %[[VAL_1]][] : memref<i32>
+// CHECK:           %[[VAL_4:.*]] = arith.constant 1 : i32
+// CHECK:           %[[VAL_5:.*]] = arith.addi %[[VAL_3]], %[[VAL_4]] : i32
+// CHECK:           memref.store %[[VAL_5]], %[[VAL_1]][] : memref<i32>
 // CHECK:           cf.br ^bb2
 // CHECK:         ^bb2:
-// CHECK:           %[[VAL_7:.*]] = arith.constant 12 : i32
-// CHECK:           %[[VAL_8:.*]] = memref.load %[[VAL_0]][] : memref<i32>
-// CHECK:           %[[VAL_9:.*]] = arith.cmpi sgt, %[[VAL_7]], %[[VAL_8]] : i32
-// CHECK:           %[[VAL_10:.*]] = arith.extui %[[VAL_9]] : i1 to i32
-// CHECK:           %[[VAL_11:.*]] = arith.constant 0 : i32
-// CHECK:           %[[VAL_12:.*]] = arith.cmpi ne, %[[VAL_10]], %[[VAL_11]] : i32
-// CHECK:           cf.cond_br %[[VAL_12]], ^bb2, ^bb3
+// CHECK:           %[[VAL_6:.*]] = arith.constant 12 : i32
+// CHECK:           %[[VAL_7:.*]] = memref.load %[[VAL_1]][] : memref<i32>
+// CHECK:           %[[VAL_8:.*]] = arith.cmpi sgt, %[[VAL_6]], %[[VAL_7]] : i32
+// CHECK:           %[[VAL_9:.*]] = arith.extui %[[VAL_8]] : i1 to i32
+// CHECK:           %[[VAL_10:.*]] = arith.cmpi ne, %[[VAL_9]], %[[VAL_0]] : i32
+// CHECK:           cf.cond_br %[[VAL_10]], ^bb2, ^bb3
 // CHECK:         ^bb3:
-// CHECK:           cf.br ^bb4(%[[VAL_7]] : i32)
-// CHECK:         ^bb4(%[[VAL_13:.*]]: i32):
-// CHECK:           %[[VAL_14:.*]] = arith.constant 10 : i32
-// CHECK:           %[[VAL_15:.*]] = arith.cmpi slt, %[[VAL_13]], %[[VAL_14]] : i32
-// CHECK:           %[[VAL_16:.*]] = arith.extui %[[VAL_15]] : i1 to i32
-// CHECK:           %[[VAL_17:.*]] = arith.constant 0 : i32
-// CHECK:           %[[VAL_18:.*]] = arith.cmpi ne, %[[VAL_16]], %[[VAL_17]] : i32
-// CHECK:           cf.cond_br %[[VAL_18]], ^bb1, ^bb5
+// CHECK:           cf.br ^bb4(%[[VAL_6]] : i32)
+// CHECK:         ^bb4(%[[VAL_11:.*]]: i32):
+// CHECK:           %[[VAL_12:.*]] = arith.constant 10 : i32
+// CHECK:           %[[VAL_13:.*]] = arith.cmpi slt, %[[VAL_11]], %[[VAL_12]] : i32
+// CHECK:           %[[VAL_14:.*]] = arith.extui %[[VAL_13]] : i1 to i32
+// CHECK:           %[[VAL_15:.*]] = arith.cmpi ne, %[[VAL_14]], %[[VAL_0]] : i32
+// CHECK:           cf.cond_br %[[VAL_15]], ^bb1, ^bb5
 // CHECK:         ^bb5:
 // CHECK:           cf.br ^bb6
 // CHECK:         ^bb6:

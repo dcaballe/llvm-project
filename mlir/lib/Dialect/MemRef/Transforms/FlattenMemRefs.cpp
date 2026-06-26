@@ -42,8 +42,8 @@ using namespace mlir;
 static Value getValueFromOpFoldResult(OpBuilder &rewriter, Location loc,
                                       OpFoldResult in) {
   if (Attribute offsetAttr = dyn_cast<Attribute>(in)) {
-    return arith::ConstantIndexOp::create(
-        rewriter, loc, cast<IntegerAttr>(offsetAttr).getInt());
+    return rewriter.createOrFold<arith::ConstantIndexOp>(
+        loc, cast<IntegerAttr>(offsetAttr).getInt());
   }
   return cast<Value>(in);
 }

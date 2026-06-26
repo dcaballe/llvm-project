@@ -74,7 +74,7 @@ static Value permuteVectorOffset(OpBuilder &b, Location loc,
   int64_t mask = (1LL << (m - n)) - 1;
   if (permuteEveryN > 1)
     mask = mask << llvm::Log2_64(permuteEveryN);
-  Value srcBits = arith::ConstantIndexOp::create(b, loc, mask);
+  Value srcBits = b.createOrFold<arith::ConstantIndexOp>(loc, mask);
   srcBits = arith::AndIOp::create(b, loc, src, srcBits);
 
   // Use the src bits to permute the target bits b[N:M] containing the
@@ -82,15 +82,16 @@ static Value permuteVectorOffset(OpBuilder &b, Location loc,
   if (permuteEveryN > 1) {
     int64_t shlBits = n - llvm::Log2_64(permuteEveryN);
     if (shlBits > 0) {
-      Value finalShiftVal = arith::ConstantIndexOp::create(b, loc, shlBits);
+      Value finalShiftVal =
+          b.createOrFold<arith::ConstantIndexOp>(loc, shlBits);
       srcBits = b.createOrFold<arith::ShLIOp>(loc, srcBits, finalShiftVal);
     } else if (shlBits < 0) {
       Value finalShiftVal =
-          arith::ConstantIndexOp::create(b, loc, -1 * shlBits);
+          b.createOrFold<arith::ConstantIndexOp>(loc, -1 * shlBits);
       srcBits = b.createOrFold<arith::ShRUIOp>(loc, srcBits, finalShiftVal);
     }
   } else {
-    Value finalShiftVal = arith::ConstantIndexOp::create(b, loc, n);
+    Value finalShiftVal = b.createOrFold<arith::ConstantIndexOp>(loc, n);
     srcBits = b.createOrFold<arith::ShLIOp>(loc, srcBits, finalShiftVal);
   }
 

@@ -223,8 +223,8 @@ class CreateNdDescToXeVMPattern
     // 4xi64 view is used for inserting the base pointer.
     VectorType payloadI64Ty = VectorType::get(4, i64Ty);
     // Initialize payload to zero.
-    Value payload = arith::ConstantOp::create(
-        rewriter, loc,
+    Value payload = rewriter.createOrFold<arith::ConstantOp>(
+        loc,
         DenseElementsAttr::get(payloadTy, IntegerAttr::get(payloadElemTy, 0)));
 
     Value baseAddr;
@@ -372,8 +372,8 @@ class LoadStorePrefetchNdToXeVMPattern : public OpConversionPattern<OpType> {
         ctxt, getNumericXeVMAddrSpace(tdescTy.getMemorySpace()));
     if (tileRank >= 2) {
       // Compute element byte size.
-      Value elemByteSize = arith::ConstantIntOp::create(
-          rewriter, loc, rewriter.getI32Type(), elemBitSize / 8);
+      Value elemByteSize = rewriter.createOrFold<arith::ConstantIntOp>(
+          loc, rewriter.getI32Type(), elemBitSize / 8);
       VectorType payloadI64Ty = VectorType::get(4, rewriter.getI64Type());
       Value payLoadAsI64 =
           vector::BitCastOp::create(rewriter, loc, payloadI64Ty, tdesc);
@@ -413,8 +413,8 @@ class LoadStorePrefetchNdToXeVMPattern : public OpConversionPattern<OpType> {
       if (wScaleFactor > 1) {
         // Scale offsetW, baseShapeWInBytes for sub byte emulation.
         // Note: tileW is already scaled above.
-        Value wScaleFactorValLog2 = arith::ConstantIntOp::create(
-            rewriter, loc, rewriter.getI32Type(), llvm::Log2_64(wScaleFactor));
+        Value wScaleFactorValLog2 = rewriter.createOrFold<arith::ConstantIntOp>(
+            loc, rewriter.getI32Type(), llvm::Log2_64(wScaleFactor));
         baseShapeWInBytes = arith::ShRSIOp::create(
             rewriter, loc, baseShapeWInBytes, wScaleFactorValLog2);
         basePitchBytes = arith::ShRSIOp::create(rewriter, loc, basePitchBytes,
@@ -479,8 +479,8 @@ class LoadStorePrefetchNdToXeVMPattern : public OpConversionPattern<OpType> {
           // change.
           if (transpose && elemBitSize < 32) {
             int32_t scale = 32 / elemBitSize;
-            Value scaleLog2 = arith::ConstantIntOp::create(
-                rewriter, loc, rewriter.getI32Type(), llvm::Log2_64(scale));
+            Value scaleLog2 = rewriter.createOrFold<arith::ConstantIntOp>(
+                loc, rewriter.getI32Type(), llvm::Log2_64(scale));
             offsetW = arith::ShRSIOp::create(rewriter, loc, offsetW, scaleLog2);
             tileW = tileW * elemBitSize / 32;
             elemBitSize = 32;
@@ -512,8 +512,8 @@ class LoadStorePrefetchNdToXeVMPattern : public OpConversionPattern<OpType> {
       offset = getValueOrCreateCastToIndexLike(rewriter, loc,
                                                rewriter.getI64Type(), offset);
       // Compute element byte size.
-      Value elemByteSize = arith::ConstantIntOp::create(
-          rewriter, loc, rewriter.getI64Type(), elemBitSize / 8);
+      Value elemByteSize = rewriter.createOrFold<arith::ConstantIntOp>(
+          loc, rewriter.getI64Type(), elemBitSize / 8);
       Value byteOffset =
           rewriter.createOrFold<arith::MulIOp>(loc, offset, elemByteSize);
       // Final address = basePtr + byteOffset
@@ -572,8 +572,8 @@ class LoadStorePrefetchNdToXeVMPattern : public OpConversionPattern<OpType> {
 static Value addOffsetToBaseAddr(ConversionPatternRewriter &rewriter,
                                  Location loc, Value baseAddr, Value offset,
                                  int64_t elemByteSize) {
-  Value byteSize = arith::ConstantIntOp::create(
-      rewriter, loc, baseAddr.getType(), elemByteSize);
+  Value byteSize = rewriter.createOrFold<arith::ConstantIntOp>(
+      loc, baseAddr.getType(), elemByteSize);
   Value byteOffset = arith::MulIOp::create(rewriter, loc, offset, byteSize);
   Value newAddr = arith::AddIOp::create(rewriter, loc, baseAddr, byteOffset);
   return newAddr;
@@ -692,10 +692,10 @@ class LoadStoreToXeVMPattern : public OpConversionPattern<OpType> {
       else
         eVal = IntegerAttr::get(eTy, 0);
       if (hasScalarVal)
-        loaded = arith::ConstantOp::create(rewriter, loc, eVal);
+        loaded = rewriter.createOrFold<arith::ConstantOp>(loc, eVal);
       else
-        loaded = arith::ConstantOp::create(
-            rewriter, loc, DenseElementsAttr::get(valOrResVecTy, eVal));
+        loaded = rewriter.createOrFold<arith::ConstantOp>(
+            loc, DenseElementsAttr::get(valOrResVecTy, eVal));
       scf::YieldOp::create(rewriter, loc, ValueRange{loaded});
       rewriter.replaceOp(op, ifOp.getResult(0));
     } else {
@@ -1042,8 +1042,8 @@ class DpasToXeVMPattern : public OpConversionPattern<xegpu::DpasOp> {
         initValueAttr = FloatAttr::get(elementTy, 0.0);
       else
         initValueAttr = IntegerAttr::get(elementTy, 0);
-      c = arith::ConstantOp::create(
-          rewriter, loc, DenseElementsAttr::get(resultType, initValueAttr));
+      c = rewriter.createOrFold<arith::ConstantOp>(
+          loc, DenseElementsAttr::get(resultType, initValueAttr));
     }
 
     Value aVec = op.getLhs();
@@ -1169,8 +1169,8 @@ class DpasMxToXeVMPattern : public OpConversionPattern<xegpu::DpasMxOp> {
         initValueAttr = FloatAttr::get(elementTy, 0.0);
       else
         initValueAttr = IntegerAttr::get(elementTy, 0);
-      c = arith::ConstantOp::create(
-          rewriter, loc, DenseElementsAttr::get(resVecTy, initValueAttr));
+      c = rewriter.createOrFold<arith::ConstantOp>(
+          loc, DenseElementsAttr::get(resVecTy, initValueAttr));
     }
 
     Value aVec = adaptor.getA();
@@ -1419,8 +1419,8 @@ struct ConvertXeGPUToXeVMPass
             ShapedType::isStatic(intOffsets)) {
           addr = memref::ExtractAlignedPointerAsIndexOp::create(builder, loc,
                                                                 input);
-          offset = arith::ConstantOp::create(builder, loc,
-                                             builder.getIndexAttr(intOffsets));
+          offset = builder.createOrFold<arith::ConstantOp>(
+              loc, builder.getIndexAttr(intOffsets));
         } else {
 
           // Result types: [base_memref, offset, stride0, stride1, ...,
@@ -1447,8 +1447,8 @@ struct ConvertXeGPUToXeVMPass
             arith::IndexCastUIOp::create(builder, loc, type, offset);
 
         // Compute the final address: base address + byte offset
-        auto byteSize = arith::ConstantOp::create(
-            builder, loc, type,
+        auto byteSize = builder.createOrFold<arith::ConstantOp>(
+            loc, type,
             builder.getIntegerAttr(type,
                                    memrefTy.getElementTypeBitWidth() / 8));
         auto byteOffset =

@@ -92,9 +92,8 @@ PowFStrengthReduction::matchAndRewrite(math::PowFOp op,
 
   // Replace `pow(x, -1.0)` with `1.0 / x`.
   if (isExponentValue(-1.0)) {
-    Value one = arith::ConstantOp::create(
-        rewriter, loc,
-        rewriter.getFloatAttr(getElementTypeOrSelf(op.getType()), 1.0));
+    Value one = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getFloatAttr(getElementTypeOrSelf(op.getType()), 1.0));
     rewriter.replaceOpWithNewOp<arith::DivFOp>(op, bcast(one), x, fmf);
     return success();
   }
@@ -188,8 +187,8 @@ PowIStrengthReduction<PowIOpTy, DivOpTy, MulOpTy>::matchAndRewrite(
   Value one;
   Type opType = getElementTypeOrSelf(op.getType());
   if constexpr (std::is_same_v<PowIOpTy, math::FPowIOp>) {
-    one = arith::ConstantOp::create(rewriter, loc,
-                                    rewriter.getFloatAttr(opType, 1.0));
+    one = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getFloatAttr(opType, 1.0));
   } else if constexpr (std::is_same_v<PowIOpTy, complex::PowiOp>) {
     auto complexTy = cast<ComplexType>(opType);
     Type elementType = complexTy.getElementType();
@@ -198,8 +197,8 @@ PowIStrengthReduction<PowIOpTy, DivOpTy, MulOpTy>::matchAndRewrite(
     one = complex::ConstantOp::create(
         rewriter, loc, complexTy, rewriter.getArrayAttr({realPart, imagPart}));
   } else {
-    one = arith::ConstantOp::create(rewriter, loc,
-                                    rewriter.getIntegerAttr(opType, 1));
+    one = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getIntegerAttr(opType, 1));
   }
 
   // Replace `[fi]powi(x, 0)` with `1`.

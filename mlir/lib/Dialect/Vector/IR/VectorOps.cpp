@@ -378,9 +378,8 @@ SmallVector<Value> vector::getAsValues(OpBuilder &builder, Location loc,
   llvm::transform(foldResults, std::back_inserter(values),
                   [&](OpFoldResult foldResult) {
                     if (auto attr = dyn_cast<Attribute>(foldResult))
-                      return arith::ConstantIndexOp::create(
-                                 builder, loc, cast<IntegerAttr>(attr).getInt())
-                          .getResult();
+                      return builder.createOrFold<arith::ConstantIndexOp>(
+                          loc, cast<IntegerAttr>(attr).getInt());
 
                     return cast<Value>(foldResult);
                   });
@@ -4803,7 +4802,7 @@ public:
       // greater than the vector dim size.
       IntegerAttr offsetAttr =
           rewriter.getIntegerAttr(maskDimSize.getType(), sliceOffset);
-      Value offset = arith::ConstantOp::create(rewriter, loc, offsetAttr);
+      Value offset = rewriter.createOrFold<arith::ConstantOp>(loc, offsetAttr);
       Value sliceMaskDimSize =
           arith::SubIOp::create(rewriter, loc, maskDimSize, offset);
       sliceMaskDimSizes.push_back(sliceMaskDimSize);
@@ -8391,8 +8390,8 @@ struct StepCompareFolder : public OpRewritePattern<StepOp> {
         continue;
 
       auto boolAttr = DenseElementsAttr::get(type, maybeSplat.value());
-      Value splat = mlir::arith::ConstantOp::create(rewriter, cmpiOp.getLoc(),
-                                                    type, boolAttr);
+      Value splat = rewriter.createOrFold<arith::ConstantOp>(cmpiOp.getLoc(),
+                                                             type, boolAttr);
 
       rewriter.replaceOp(cmpiOp, splat);
       return success();

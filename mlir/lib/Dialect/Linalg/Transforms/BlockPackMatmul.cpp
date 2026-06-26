@@ -182,8 +182,8 @@ linalg::blockPackMatmul(RewriterBase &rewriter, linalg::LinalgOp linalgOp,
       mnkTiles.push_back(rewriter.getIndexAttr(factor));
       continue;
     }
-    Value cst =
-        arith::ConstantIndexOp::create(rewriter, linalgOp.getLoc(), factor);
+    Value cst = rewriter.createOrFold<arith::ConstantIndexOp>(linalgOp.getLoc(),
+                                                              factor);
     Value vscale = vector::VectorScaleOp::create(rewriter, linalgOp.getLoc(),
                                                  rewriter.getIndexType());
     mnkTiles.push_back(

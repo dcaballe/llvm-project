@@ -195,9 +195,9 @@ func.func @vector_arm_neon_unroll_incompatible_shape(%lhs: vector<4x12xi8>, %rhs
 // CHECK-SAME:  %[[VAL_0:.*]]: vector<8xi8>,
 // CHECK-SAME:  %[[VAL_1:.*]]: vector<8x8xi8>,
 // CHECK-SAME:  %[[VAL_2:.*]]: vector<8xi32>) -> vector<8xi32> {
-// CHECK:  %[[VAL_3:.*]] = arith.constant dense<0> : vector<2x2xi32>
-// CHECK:  %[[VAL_4:.*]] = arith.constant dense<0> : vector<2x8xi8>
 // CHECK:  %[[VAL_5:.*]] = arith.constant dense<0> : vector<8xi32>
+// CHECK:  %[[VAL_4:.*]] = arith.constant dense<0> : vector<2x8xi8>
+// CHECK:  %[[VAL_3:.*]] = arith.constant dense<0> : vector<2x2xi32>
 // CHECK:  %[[VAL_6:.*]] = vector.extract_strided_slice %[[VAL_1]] {offsets = [0, 0], sizes = [2, 8], strides = [1, 1]} : vector<8x8xi8> to vector<2x8xi8>
 // CHECK:  %[[VAL_7:.*]] = vector.extract_strided_slice %[[VAL_2]] {offsets = [0], sizes = [2], strides = [1]} : vector<8xi32> to vector<2xi32>
 // CHECK:  %[[VAL_8:.*]] = vector.insert_strided_slice %[[VAL_0]], %[[VAL_4]] {offsets = [0, 0], strides = [1]} : vector<8xi8> into vector<2x8xi8>
@@ -257,9 +257,9 @@ func.func @vector_arm_neon_vecmat_unroll(%lhs: vector<8xi8>, %rhs: vector<8x8xi8
 // CHECK-SAME:  %[[VAL_0:.*]]: vector<1x8xi8>,
 // CHECK-SAME:  %[[VAL_1:.*]]: vector<8x8xi8>,
 // CHECK-SAME:  %[[VAL_2:.*]]: vector<1x8xi32>) -> vector<1x8xi32> {
-// CHECK:  %[[VAL_3:.*]] = arith.constant dense<0> : vector<2x2xi32>
-// CHECK:  %[[VAL_4:.*]] = arith.constant dense<0> : vector<2x8xi8>
 // CHECK:  %[[VAL_5:.*]] = arith.constant dense<0> : vector<1x8xi32>
+// CHECK:  %[[VAL_4:.*]] = arith.constant dense<0> : vector<2x8xi8>
+// CHECK:  %[[VAL_3:.*]] = arith.constant dense<0> : vector<2x2xi32>
 // CHECK:  %[[VAL_6:.*]] = vector.extract_strided_slice %[[VAL_1]] {offsets = [0, 0], sizes = [2, 8], strides = [1, 1]} : vector<8x8xi8> to vector<2x8xi8>
 // CHECK:  %[[VAL_7:.*]] = vector.extract_strided_slice %[[VAL_2]] {offsets = [0, 0], sizes = [1, 2], strides = [1, 1]} : vector<1x8xi32> to vector<1x2xi32>
 // CHECK:  %[[VAL_8:.*]] = vector.insert_strided_slice %[[VAL_0]], %[[VAL_4]] {offsets = [0, 0], strides = [1, 1]} : vector<1x8xi8> into vector<2x8xi8>
@@ -359,9 +359,9 @@ func.func @vector_arm_neon_k_unroll(%lhs: vector<2x16xi8>, %rhs: vector<2x16xi4>
 // CHECK-SAME:                                               %[[VAL_0:.*]]: vector<1x32xi8>,
 // CHECK-SAME:                                               %[[VAL_1:.*]]: vector<2x32xi4>,
 // CHECK-SAME:                                               %[[VAL_2:.*]]: vector<1x2xi32>) -> vector<1x2xi32> {
-// CHECK:  %[[VAL_3:.*]] = arith.constant dense<0> : vector<2x2xi32>
-// CHECK:  %[[VAL_4:.*]] = arith.constant dense<0> : vector<2x8xi8>
 // CHECK:  %[[VAL_5:.*]] = arith.constant dense<0> : vector<1x2xi32>
+// CHECK:  %[[VAL_4:.*]] = arith.constant dense<0> : vector<2x8xi8>
+// CHECK:  %[[VAL_3:.*]] = arith.constant dense<0> : vector<2x2xi32>
 // CHECK:  %[[VAL_6:.*]] = arith.extsi %[[VAL_1]] : vector<2x32xi4> to vector<2x32xi8>
 // CHECK:  %[[VAL_7:.*]] = vector.extract_strided_slice %[[VAL_0]] {offsets = [0, 0], sizes = [1, 8], strides = [1, 1]} : vector<1x32xi8> to vector<1x8xi8>
 // CHECK:  %[[VAL_8:.*]] = vector.extract_strided_slice %[[VAL_6]] {offsets = [0, 0], sizes = [2, 8], strides = [1, 1]} : vector<2x32xi8> to vector<2x8xi8>

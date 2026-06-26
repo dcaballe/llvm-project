@@ -154,7 +154,7 @@ public:
     Value lowerBound = lowerAffineLowerBound(op, rewriter);
     Value upperBound = lowerAffineUpperBound(op, rewriter);
     Value step =
-        arith::ConstantIndexOp::create(rewriter, loc, op.getStepAsInt());
+        rewriter.createOrFold<arith::ConstantIndexOp>(loc, op.getStepAsInt());
     auto scfForOp = scf::ForOp::create(rewriter, loc, lowerBound, upperBound,
                                        step, op.getInits());
     rewriter.eraseBlock(scfForOp.getBody());
@@ -197,7 +197,7 @@ public:
     }
     steps.reserve(op.getSteps().size());
     for (int64_t step : op.getSteps())
-      steps.push_back(arith::ConstantIndexOp::create(rewriter, loc, step));
+      steps.push_back(rewriter.createOrFold<arith::ConstantIndexOp>(loc, step));
 
     // Get the terminator op.
     auto affineParOpTerminator =
@@ -282,7 +282,7 @@ public:
 
     // Now we just have to handle the condition logic.
     auto integerSet = op.getIntegerSet();
-    Value zeroConstant = arith::ConstantIndexOp::create(rewriter, loc, 0);
+    Value zeroConstant = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
     SmallVector<Value, 8> operands(op.getOperands());
     auto operandsRef = llvm::ArrayRef(operands);
 
@@ -308,8 +308,8 @@ public:
                : cmpVal;
     }
     cond = cond ? cond
-                : arith::ConstantIntOp::create(rewriter, loc, /*value=*/1,
-                                               /*width=*/1);
+                : rewriter.createOrFold<arith::ConstantIntOp>(loc, /*value=*/1,
+                                                              /*width=*/1);
 
     bool hasElseRegion = !op.getElseRegion().empty();
     auto ifOp = scf::IfOp::create(rewriter, loc, op.getResultTypes(), cond,

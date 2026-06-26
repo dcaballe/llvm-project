@@ -84,19 +84,20 @@ module attributes {spirv.target_env = #spirv.target_env<#spirv.vce<v1.3, [Shader
 
 // CHECK-LABEL: func.func @atomic_ori_i8_storage_buffer
 func.func @atomic_ori_i8_storage_buffer(%value: i8, %memref: memref<16xi8, #spirv.storage_class<StorageBuffer>>, %i0: index) -> i8 {
+  // Constants are hoisted to the top of the block.
+  //  CHECK-DAG:     %[[C4:.+]] = spirv.Constant 4 : i32
+  //  CHECK-DAG:     %[[C8:.+]] = spirv.Constant 8 : i32
+  //  CHECK-DAG:     %[[C255:.+]] = spirv.Constant 255 : i32
   //      CHECK:     %[[IDX:.+]] = builtin.unrealized_conversion_cast %{{.*}} : index to i32
   //      CHECK:     %[[MEM:.+]] = builtin.unrealized_conversion_cast %{{.*}} : memref{{.*}} to !spirv.ptr
   //      CHECK:     %[[VAL:.+]] = builtin.unrealized_conversion_cast %{{.*}} : i8 to i32
   // Compute bit offset: (idx % 4) * 8
-  //  CHECK-DAG:     %[[C4:.+]] = spirv.Constant 4 : i32
-  //  CHECK-DAG:     %[[C8:.+]] = spirv.Constant 8 : i32
   //      CHECK:     %[[MOD:.+]] = spirv.UMod %[[IDX]], %[[C4]]
   //      CHECK:     %[[OFFSET:.+]] = spirv.IMul %[[MOD]], %[[C8]]
   // Adjust the access chain index: idx / 4
   //      CHECK:     %[[DIV:.+]] = spirv.SDiv %[[IDX]], %{{.*}}
   //      CHECK:     %[[AC:.+]] = spirv.AccessChain %[[MEM]][%{{.*}}, %[[DIV]]]
   // Mask and shift the value
-  //      CHECK:     %[[C255:.+]] = spirv.Constant 255 : i32
   //      CHECK:     %[[MASKED:.+]] = spirv.BitwiseAnd %[[VAL]], %[[C255]]
   //      CHECK:     %[[SHIFTED:.+]] = spirv.ShiftLeftLogical %[[MASKED]], %[[OFFSET]]
   // Atomic OR
@@ -119,17 +120,18 @@ module attributes {spirv.target_env = #spirv.target_env<#spirv.vce<v1.3, [Shader
 
 // CHECK-LABEL: func.func @atomic_andi_i8_storage_buffer
 func.func @atomic_andi_i8_storage_buffer(%value: i8, %memref: memref<16xi8, #spirv.storage_class<StorageBuffer>>, %i0: index) -> i8 {
+  // Constants are hoisted to the top of the block.
+  //  CHECK-DAG:     %[[C4:.+]] = spirv.Constant 4 : i32
+  //  CHECK-DAG:     %[[C8:.+]] = spirv.Constant 8 : i32
+  //  CHECK-DAG:     %[[C255:.+]] = spirv.Constant 255 : i32
   //      CHECK:     %[[IDX:.+]] = builtin.unrealized_conversion_cast %{{.*}} : index to i32
   //      CHECK:     %[[MEM:.+]] = builtin.unrealized_conversion_cast %{{.*}} : memref{{.*}} to !spirv.ptr
   //      CHECK:     %[[VAL:.+]] = builtin.unrealized_conversion_cast %{{.*}} : i8 to i32
-  //  CHECK-DAG:     %[[C4:.+]] = spirv.Constant 4 : i32
-  //  CHECK-DAG:     %[[C8:.+]] = spirv.Constant 8 : i32
   //      CHECK:     %[[MOD:.+]] = spirv.UMod %[[IDX]], %[[C4]]
   //      CHECK:     %[[OFFSET:.+]] = spirv.IMul %[[MOD]], %[[C8]]
   //      CHECK:     %[[DIV:.+]] = spirv.SDiv %[[IDX]], %{{.*}}
   //      CHECK:     %[[AC:.+]] = spirv.AccessChain %[[MEM]][%{{.*}}, %[[DIV]]]
   // Build the AND mask: (val << offset) | ~(0xFF << offset)
-  //      CHECK:     %[[C255:.+]] = spirv.Constant 255 : i32
   //      CHECK:     %[[MASKED:.+]] = spirv.BitwiseAnd %[[VAL]], %[[C255]]
   //      CHECK:     %[[SHIFTED:.+]] = spirv.ShiftLeftLogical %[[MASKED]], %[[OFFSET]]
   //      CHECK:     %[[ELEM_SHIFTED:.+]] = spirv.ShiftLeftLogical %[[C255]], %[[OFFSET]]

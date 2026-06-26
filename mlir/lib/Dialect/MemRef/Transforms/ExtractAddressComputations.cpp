@@ -139,7 +139,7 @@ static SmallVector<Value> getZeroIndices(RewriterBase &rewriter, Location loc,
                                          int64_t rank) {
   if (rank == 0)
     return {};
-  Value zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
+  Value zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
   return SmallVector<Value>(rank, zero);
 }
 

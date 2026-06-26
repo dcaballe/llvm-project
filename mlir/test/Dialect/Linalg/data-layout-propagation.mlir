@@ -1307,8 +1307,8 @@ func.func @push_down_unpack_through_expand(%5: tensor<?x32x8x8xf32>, %dim: index
 // CHECK-LABEL: func.func @push_down_unpack_through_expand
 // CHECK-SAME:      %[[ARG0:[a-zA-Z0-9]+]]
 // CHECK-SAME:      %[[ARG1:[a-zA-Z0-9]+]]
-// CHECK:         %[[C32:.+]] = arith.constant 32 : index
 // CHECK:         %[[C0:.+]] = arith.constant 0 : index
+// CHECK:         %[[C32:.+]] = arith.constant 32 : index
 // CHECK:         %[[DIM0:.+]] = tensor.dim %[[ARG0]], %[[C0]] : tensor<?x32x8x8xf32>
 // CHECK:         %[[SZ0:.+]] = arith.divsi %[[DIM0]], %[[C32]] : index
 // CHECK:         %[[EXPANDED:.+]] = tensor.expand_shape %[[ARG0]] {{\[}}[0, 1], [2], [3], [4]] output_shape [%[[SZ0]], 32, 32, 8, 8] : tensor<?x32x8x8xf32> into tensor<?x32x32x8x8xf32>
@@ -1328,8 +1328,8 @@ func.func @push_down_unpack_through_expand_empty_outer_dims_perm(%5: tensor<?x32
 // CHECK-LABEL: func.func @push_down_unpack_through_expand_empty_outer_dims_perm
 // CHECK-SAME:      %[[ARG0:[a-zA-Z0-9]+]]
 // CHECK-SAME:      %[[ARG1:[a-zA-Z0-9]+]]
-// CHECK:         %[[C32:.+]] = arith.constant 32 : index
 // CHECK:         %[[C0:.+]] = arith.constant 0 : index
+// CHECK:         %[[C32:.+]] = arith.constant 32 : index
 // CHECK:         %[[DIM0:.+]] = tensor.dim %[[ARG0]], %[[C0]] : tensor<?x32x8x8xf32>
 // CHECK:         %[[SZ0:.+]] = arith.divsi %[[DIM0]], %[[C32]] : index
 // CHECK:         %[[EXPANDED:.+]] = tensor.expand_shape %[[ARG0]] {{\[}}[0, 1], [2], [3], [4]] output_shape [%[[SZ0]], 32, 32, 8, 8] : tensor<?x32x8x8xf32> into tensor<?x32x32x8x8xf32>
@@ -1379,8 +1379,8 @@ func.func @push_down_unpack_through_expand_on_outer_dims(%5: tensor<?x32x8xf32>,
 // CHECK-LABEL: func.func @push_down_unpack_through_expand_on_outer_dims
 // CHECK-SAME:      %[[ARG0:[a-zA-Z0-9]+]]
 // CHECK-SAME:      %[[ARG1:[a-zA-Z0-9]+]]
-// CHECK:         %[[C256:.+]] = arith.constant 256 : index
 // CHECK:         %[[C0:.+]] = arith.constant 0 : index
+// CHECK:         %[[C256:.+]] = arith.constant 256 : index
 // CHECK:         %[[DIM0:.+]] = tensor.dim %[[ARG0]], %[[C0]] : tensor<?x32x8xf32>
 // CHECK:         %[[SZ0:.+]] = arith.divsi %[[DIM0]], %[[C256]] : index
 // CHECK:         %[[EXPANDED:.+]] = tensor.expand_shape %[[ARG0]] {{\[}}[0, 1], [2], [3]] output_shape [%[[SZ0]], 256, 32, 8] : tensor<?x32x8xf32> into tensor<?x256x32x8xf32>

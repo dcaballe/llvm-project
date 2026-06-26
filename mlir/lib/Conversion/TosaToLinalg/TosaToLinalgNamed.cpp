@@ -53,7 +53,7 @@ static mlir::Value applyPad(Location loc, Value input, ArrayRef<int64_t> pad,
     highIndices.push_back(rewriter.getIndexAttr(highPad));
   }
 
-  Value padValue = arith::ConstantOp::create(rewriter, loc, padAttr);
+  Value padValue = rewriter.createOrFold<arith::ConstantOp>(loc, padAttr);
 
   return tensor::PadOp::create(rewriter, loc,
                                RankedTensorType::get(paddedShape, inputETy),
@@ -148,7 +148,7 @@ static mlir::Value linalgBroadcastAndMaybeExt(PatternRewriter &rewriter,
 
 static mlir::Value reifyConstantDim(int64_t attr,
                                     ImplicitLocOpBuilder &builder) {
-  return arith::ConstantIndexOp::create(builder, attr);
+  return builder.createOrFold<arith::ConstantIndexOp>(attr);
 }
 
 // Calculating the output width/height using the formula:
@@ -162,8 +162,8 @@ static mlir::Value getConvOrPoolOutputDim(Location loc, Value inputDim,
                                           int64_t dilationAttr,
                                           OpBuilder &rewriter) {
   ImplicitLocOpBuilder builder(loc, rewriter);
-  auto one = arith::ConstantOp::create(rewriter, loc,
-                                       IntegerAttr::get(inputDim.getType(), 1));
+  auto one = rewriter.createOrFold<arith::ConstantOp>(
+      loc, IntegerAttr::get(inputDim.getType(), 1));
   Value padBefore = reifyConstantDim(padBeforeAttr, builder);
   Value paddedBefore = arith::AddIOp::create(builder, inputDim, padBefore);
   Value padAfter = reifyConstantDim(padAfterAttr, builder);
@@ -396,8 +396,8 @@ public:
       auto iZp = rewriter.getI32IntegerAttr(inputZpVal);
       auto kZp = rewriter.getI32IntegerAttr(weightZpVal);
 
-      auto iZpVal = arith::ConstantOp::create(rewriter, loc, iZp);
-      auto kZpVal = arith::ConstantOp::create(rewriter, loc, kZp);
+      auto iZpVal = rewriter.createOrFold<arith::ConstantOp>(loc, iZp);
+      auto kZpVal = rewriter.createOrFold<arith::ConstantOp>(loc, kZp);
 
       Value conv = LinalgConvQOp::create(
                        rewriter, loc, resultTy,
@@ -528,7 +528,7 @@ public:
     auto resultZeroAttr = rewriter.getZeroAttr(accETy);
     Value emptyTensor = tensor::EmptyOp::create(
         rewriter, loc, linalgConvTy.getShape(), accETy, filteredDims);
-    Value zero = arith::ConstantOp::create(rewriter, loc, resultZeroAttr);
+    Value zero = rewriter.createOrFold<arith::ConstantOp>(loc, resultZeroAttr);
     Value zeroTensor = linalg::FillOp::create(rewriter, loc, ValueRange{zero},
                                               ValueRange{emptyTensor})
                            .result();
@@ -582,8 +582,8 @@ public:
     } else {
       IntegerAttr iZp = rewriter.getI32IntegerAttr(inputZpVal);
       IntegerAttr wZp = rewriter.getI32IntegerAttr(weightZpVal);
-      auto iZpVal = arith::ConstantOp::create(rewriter, loc, iZp);
-      auto kZpVal = arith::ConstantOp::create(rewriter, loc, wZp);
+      auto iZpVal = rewriter.createOrFold<arith::ConstantOp>(loc, iZp);
+      auto kZpVal = rewriter.createOrFold<arith::ConstantOp>(loc, wZp);
       Value conv = linalg::DepthwiseConv2DNhwcHwcmQOp::create(
                        rewriter, loc, linalgConvTy,
                        ValueRange{input, weight, iZpVal, kZpVal},
@@ -630,7 +630,7 @@ public:
     SmallVector<Value> filteredDims = condenseValues(dynDims);
 
     auto zeroAttr = rewriter.getZeroAttr(outputElementTy);
-    Value zero = arith::ConstantOp::create(rewriter, loc, zeroAttr);
+    Value zero = rewriter.createOrFold<arith::ConstantOp>(loc, zeroAttr);
     auto emptyTensor =
         tensor::EmptyOp::create(rewriter, loc, outputTy.getShape(),
                                 outputTy.getElementType(), filteredDims);
@@ -665,10 +665,10 @@ public:
       return success();
     }
 
-    auto aZp = arith::ConstantOp::create(rewriter, loc,
-                                         rewriter.getI32IntegerAttr(aZpVal));
-    auto bZp = arith::ConstantOp::create(rewriter, loc,
-                                         rewriter.getI32IntegerAttr(bZpVal));
+    auto aZp = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getI32IntegerAttr(aZpVal));
+    auto bZp = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getI32IntegerAttr(bZpVal));
     rewriter.replaceOpWithNewOp<linalg::QuantizedBatchMatmulOp>(
         op, TypeRange{op.getType()},
         ValueRange{adaptor.getA(), adaptor.getB(), aZp, bZp}, zeroTensor);
@@ -711,7 +711,8 @@ public:
       Value ihw = tensor::DimOp::create(rewriter, loc, input, dim);
 
       // Kernel height/width
-      Value khw = arith::ConstantIndexOp::create(rewriter, loc, kernel[index]);
+      Value khw =
+          rewriter.createOrFold<arith::ConstantIndexOp>(loc, kernel[index]);
 
       // Output height/width
       Value ohw = getConvOrPoolOutputDim(loc, ihw, pad[index * 2],
@@ -771,7 +772,8 @@ public:
 
     Value paddedInput = applyPad(loc, input, pad, initialAttr, rewriter);
 
-    Value initialValue = arith::ConstantOp::create(rewriter, loc, initialAttr);
+    Value initialValue =
+        rewriter.createOrFold<arith::ConstantOp>(loc, initialAttr);
 
     ArrayRef<int64_t> kernel = op.getKernel();
     ArrayRef<int64_t> stride = op.getStride();
@@ -890,7 +892,8 @@ public:
     Value paddedInput = applyPad(loc, input, pad, padAttr, rewriter);
 
     auto initialAttr = rewriter.getZeroAttr(accETy);
-    Value initialValue = arith::ConstantOp::create(rewriter, loc, initialAttr);
+    Value initialValue =
+        rewriter.createOrFold<arith::ConstantOp>(loc, initialAttr);
 
     ArrayRef<int64_t> kernel = op.getKernel();
     ArrayRef<int64_t> stride = op.getStride();
@@ -922,7 +925,7 @@ public:
     Value iH = tensor::DimOp::create(rewriter, loc, poolingOp, 1);
     Value iW = tensor::DimOp::create(rewriter, loc, poolingOp, 2);
 
-    auto one = arith::ConstantIndexOp::create(rewriter, loc, 1);
+    auto one = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
     iH = arith::SubIOp::create(rewriter, loc, iH, one);
     iW = arith::SubIOp::create(rewriter, loc, iW, one);
 
@@ -936,7 +939,7 @@ public:
         ArrayRef<AffineMap>({affineMap, affineMap}),
         getNParallelLoopsAttrs(resultTy.getRank()),
         [&](OpBuilder &b, Location loc, ValueRange args) {
-          auto zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
+          auto zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
 
           // Determines what the portion of valid input is covered by the
           // kernel.
@@ -944,7 +947,8 @@ public:
             if (pad == 0)
               return valid;
 
-            auto padVal = arith::ConstantIndexOp::create(rewriter, loc, pad);
+            auto padVal =
+                rewriter.createOrFold<arith::ConstantIndexOp>(loc, pad);
             Value dpos = arith::SubIOp::create(rewriter, loc, pos, padVal);
 
             Value offset = arith::MinSIOp::create(rewriter, loc, dpos, zero);
@@ -953,10 +957,10 @@ public:
           };
 
           auto coverageFn = [&](int64_t i, Value isize) -> Value {
-            Value strideVal =
-                arith::ConstantIndexOp::create(rewriter, loc, stride[i - 1]);
-            Value val =
-                arith::ConstantIndexOp::create(rewriter, loc, kernel[i - 1]);
+            Value strideVal = rewriter.createOrFold<arith::ConstantIndexOp>(
+                loc, stride[i - 1]);
+            Value val = rewriter.createOrFold<arith::ConstantIndexOp>(
+                loc, kernel[i - 1]);
 
             // Find the position relative to the input tensor's ends.
             Value left = linalg::IndexOp::create(rewriter, loc, i);
@@ -996,8 +1000,8 @@ public:
             // If we have quantization information we need to apply an offset
             // for the input zp value.
             if (inputZpVal != 0) {
-              auto inputZp = arith::ConstantOp::create(
-                  rewriter, loc, b.getIntegerAttr(accETy, inputZpVal));
+              auto inputZp = rewriter.createOrFold<arith::ConstantOp>(
+                  loc, b.getIntegerAttr(accETy, inputZpVal));
               Value offset =
                   arith::MulIOp::create(rewriter, loc, accETy, count, inputZp);
               poolVal =
@@ -1005,10 +1009,10 @@ public:
             }
 
             // Compute: k = 32 - count_leading_zeros(value - 1)
-            Value one32 = arith::ConstantOp::create(
-                rewriter, loc, rewriter.getI32IntegerAttr(1));
-            Value thirtyTwo32 = arith::ConstantOp::create(
-                rewriter, loc, rewriter.getI32IntegerAttr(32));
+            Value one32 = rewriter.createOrFold<arith::ConstantOp>(
+                loc, rewriter.getI32IntegerAttr(1));
+            Value thirtyTwo32 = rewriter.createOrFold<arith::ConstantOp>(
+                loc, rewriter.getI32IntegerAttr(32));
 
             Value countSubOne =
                 arith::SubIOp::create(rewriter, loc, count, one32);
@@ -1020,8 +1024,8 @@ public:
             // Compute: numerator = ((1 << 30) + 1) << k
             Value k64 =
                 arith::ExtUIOp::create(rewriter, loc, rewriter.getI64Type(), k);
-            Value thirtyShiftPlusOne = arith::ConstantOp::create(
-                rewriter, loc, rewriter.getI64IntegerAttr((1 << 30) + 1));
+            Value thirtyShiftPlusOne = rewriter.createOrFold<arith::ConstantOp>(
+                loc, rewriter.getI64IntegerAttr((1 << 30) + 1));
             Value numerator =
                 arith::ShLIOp::create(rewriter, loc, thirtyShiftPlusOne, k64);
 
@@ -1036,8 +1040,8 @@ public:
             // Compute: scale.shift = 30 + k
             Value k8 =
                 arith::TruncIOp::create(rewriter, loc, rewriter.getI8Type(), k);
-            Value thirty8 = arith::ConstantOp::create(
-                rewriter, loc, rewriter.getI8IntegerAttr(30));
+            Value thirty8 = rewriter.createOrFold<arith::ConstantOp>(
+                loc, rewriter.getI8IntegerAttr(30));
             Value shift = arith::AddIOp::create(rewriter, loc, k8, thirty8);
 
             auto roundingAttr = RoundingModeAttr::get(
@@ -1051,9 +1055,8 @@ public:
             // If we have quantization information we need to apply output
             // zeropoint.
             if (outputZpVal != 0) {
-              auto outputZp = arith::ConstantOp::create(
-                  rewriter, loc,
-                  b.getIntegerAttr(scaled.getType(), outputZpVal));
+              auto outputZp = rewriter.createOrFold<arith::ConstantOp>(
+                  loc, b.getIntegerAttr(scaled.getType(), outputZpVal));
               scaled = arith::AddIOp::create(rewriter, loc, scaled, outputZp)
                            .getResult();
             }
@@ -1061,11 +1064,11 @@ public:
             // Apply Clip.
             int64_t outBitwidth = resultETy.getIntOrFloatBitWidth();
 
-            auto min = arith::ConstantIntOp::create(
-                rewriter, loc, accETy,
+            auto min = rewriter.createOrFold<arith::ConstantIntOp>(
+                loc, accETy,
                 APInt::getSignedMinValue(outBitwidth).getSExtValue());
-            auto max = arith::ConstantIntOp::create(
-                rewriter, loc, accETy,
+            auto max = rewriter.createOrFold<arith::ConstantIntOp>(
+                loc, accETy,
                 APInt::getSignedMaxValue(outBitwidth).getSExtValue());
             auto clamp = clampIntHelper(loc, scaled, min, max, rewriter,
                                         /*isUnsigned=*/false);

@@ -81,7 +81,7 @@ struct BroadcastOpConverter : public OpConversionPattern<BroadcastOp> {
 // number of extent tensors and shifted offsets into them.
 Value getBroadcastedDim(ImplicitLocOpBuilder lb, ValueRange extentTensors,
                         ValueRange rankDiffs, Value outputDimension) {
-  Value one = arith::ConstantIndexOp::create(lb, 1);
+  Value one = lb.createOrFold<arith::ConstantIndexOp>(1);
   Value broadcastedDim = one;
   for (auto tup : llvm::zip(extentTensors, rankDiffs)) {
     Value shape = std::get<0>(tup);
@@ -132,7 +132,7 @@ LogicalResult BroadcastOpConverter::matchAndRewrite(
   auto loc = op.getLoc();
   ImplicitLocOpBuilder lb(loc, rewriter);
 
-  Value zero = arith::ConstantIndexOp::create(lb, 0);
+  Value zero = lb.createOrFold<arith::ConstantIndexOp>(0);
   Type indexTy = lb.getIndexType();
 
   // Save all the ranks for bounds checking. Because this is a tensor
@@ -192,8 +192,8 @@ LogicalResult ConstShapeOpConverter::matchAndRewrite(
   auto loc = op.getLoc();
   SmallVector<Value, 4> extentOperands;
   for (auto extent : op.getShape()) {
-    extentOperands.push_back(arith::ConstantIndexOp::create(
-        rewriter, loc, extent.getLimitedValue()));
+    extentOperands.push_back(rewriter.createOrFold<arith::ConstantIndexOp>(
+        loc, extent.getLimitedValue()));
   }
   Type resultTy =
       RankedTensorType::get({op.getShape().size()}, rewriter.getIndexType());
@@ -244,8 +244,8 @@ LogicalResult IsBroadcastableOpConverter::matchAndRewrite(
 
   auto loc = op.getLoc();
   ImplicitLocOpBuilder lb(loc, rewriter);
-  Value zero = arith::ConstantIndexOp::create(lb, 0);
-  Value one = arith::ConstantIndexOp::create(lb, 1);
+  Value zero = lb.createOrFold<arith::ConstantIndexOp>(0);
+  Value one = lb.createOrFold<arith::ConstantIndexOp>(1);
   Type indexTy = lb.getIndexType();
 
   // Save all the ranks for bounds checking. Because this is a tensor
@@ -268,8 +268,8 @@ LogicalResult IsBroadcastableOpConverter::matchAndRewrite(
                      }));
 
   Type i1Ty = rewriter.getI1Type();
-  Value trueVal = arith::ConstantOp::create(rewriter, loc, i1Ty,
-                                            rewriter.getBoolAttr(true));
+  Value trueVal = rewriter.createOrFold<arith::ConstantOp>(
+      loc, i1Ty, rewriter.getBoolAttr(true));
 
   auto reduceResult = ForOp::create(
       lb, loc, zero, maxRank, one, ValueRange{trueVal},
@@ -420,8 +420,8 @@ ReduceOpConverter::matchAndRewrite(shape::ReduceOp op, OpAdaptor adaptor,
 
   auto loc = op.getLoc();
 
-  Value zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
-  Value one = arith::ConstantIndexOp::create(rewriter, loc, 1);
+  Value zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
+  Value one = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
   Type indexTy = rewriter.getIndexType();
   Value rank =
       tensor::DimOp::create(rewriter, loc, indexTy, adaptor.getShape(), zero);
@@ -507,7 +507,7 @@ ShapeEqOpConverter::matchAndRewrite(ShapeEqOp op, OpAdaptor adaptor,
 
   auto loc = op.getLoc();
   Type indexTy = rewriter.getIndexType();
-  Value zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
+  Value zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
   Value firstShape = adaptor.getShapes().front();
   Value firstRank =
       tensor::DimOp::create(rewriter, loc, indexTy, firstShape, zero);
@@ -520,9 +520,9 @@ ShapeEqOpConverter::matchAndRewrite(ShapeEqOp op, OpAdaptor adaptor,
     auto same = IfOp::create(
         rewriter, loc, eqRank,
         [&](OpBuilder &b, Location loc) {
-          Value one = arith::ConstantIndexOp::create(b, loc, 1);
+          Value one = b.createOrFold<arith::ConstantIndexOp>(loc, 1);
           Value init =
-              arith::ConstantOp::create(b, loc, i1Ty, b.getBoolAttr(true));
+              b.createOrFold<arith::ConstantOp>(loc, i1Ty, b.getBoolAttr(true));
           auto loop = scf::ForOp::create(
               b, loc, zero, firstRank, one, ValueRange{init},
               [&](OpBuilder &b, Location nestedLoc, Value iv, ValueRange args) {
@@ -538,8 +538,8 @@ ShapeEqOpConverter::matchAndRewrite(ShapeEqOp op, OpAdaptor adaptor,
           scf::YieldOp::create(b, loc, loop.getResults());
         },
         [&](OpBuilder &b, Location loc) {
-          Value result =
-              arith::ConstantOp::create(b, loc, i1Ty, b.getBoolAttr(false));
+          Value result = b.createOrFold<arith::ConstantOp>(
+              loc, i1Ty, b.getBoolAttr(false));
           scf::YieldOp::create(b, loc, result);
         });
     result = !result ? same.getResult(0)
@@ -584,8 +584,8 @@ LogicalResult ShapeOfOpConversion::matchAndRewrite(
         Value extent = tensor::DimOp::create(rewriter, loc, tensor, i);
         extentValues.push_back(extent);
       } else {
-        Value extent = arith::ConstantIndexOp::create(
-            rewriter, loc, rankedTensorTy.getDimSize(i));
+        Value extent = rewriter.createOrFold<arith::ConstantIndexOp>(
+            loc, rankedTensorTy.getDimSize(i));
         extentValues.push_back(extent);
       }
     }
@@ -634,7 +634,7 @@ LogicalResult SplitAtOpConversion::matchAndRewrite(
     return failure();
 
   ImplicitLocOpBuilder b(op.getLoc(), rewriter);
-  Value zero = arith::ConstantIndexOp::create(b, 0);
+  Value zero = b.createOrFold<arith::ConstantIndexOp>(0);
   Value rank = tensor::DimOp::create(b, adaptor.getOperand(), zero);
 
   // index < 0 ? index + rank : index
@@ -644,7 +644,7 @@ LogicalResult SplitAtOpConversion::matchAndRewrite(
       arith::CmpIOp::create(b, arith::CmpIPredicate::slt, originalIndex, zero);
   Value index = arith::SelectOp::create(b, indexIsNegative, add, originalIndex);
 
-  Value one = arith::ConstantIndexOp::create(b, 1);
+  Value one = b.createOrFold<arith::ConstantIndexOp>(1);
   Value head =
       tensor::ExtractSliceOp::create(b, adaptor.getOperand(), zero, index, one);
   Value tailSize = arith::SubIOp::create(b, rank, index);

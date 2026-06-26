@@ -170,7 +170,7 @@ static Value convertToValue(ConversionPatternRewriter &rewriter, Location loc,
                             OpFoldResult ofr) {
   std::optional<int64_t> mayBeInt = getConstantIntValue(ofr);
   if (mayBeInt)
-    return arith::ConstantIndexOp::create(rewriter, loc, *mayBeInt).getResult();
+    return rewriter.createOrFold<arith::ConstantIndexOp>(loc, *mayBeInt);
   return llvm::cast<Value>(ofr);
 }
 
@@ -182,12 +182,11 @@ static Value divideByConstant(ConversionPatternRewriter &rewriter, Location loc,
     int64_t shiftAmount = llvm::Log2_64(constant);
     return arith::ShRUIOp::create(
                rewriter, loc, val,
-               arith::ConstantIndexOp::create(rewriter, loc, shiftAmount)
-                   .getResult())
+               rewriter.createOrFold<arith::ConstantIndexOp>(loc, shiftAmount))
         .getResult();
   }
   auto constantOp =
-      arith::ConstantIndexOp::create(rewriter, loc, constant).getResult();
+      rewriter.createOrFold<arith::ConstantIndexOp>(loc, constant);
   return arith::DivUIOp::create(rewriter, loc, val, constantOp).getResult();
 }
 
@@ -215,12 +214,10 @@ static Value generateLoads(ConversionPatternRewriter &rewriter,
       int64_t localOffsetDim1 = w * supportedShape[1];
       Value loadOffsetX = arith::AddIOp::create(
           rewriter, loc, offsetDim0,
-          arith::ConstantIndexOp::create(rewriter, loc, localOffsetDim0)
-              .getResult());
+          rewriter.createOrFold<arith::ConstantIndexOp>(loc, localOffsetDim0));
       Value loadOffsetY = arith::AddIOp::create(
           rewriter, loc, offsetDim1,
-          arith::ConstantIndexOp::create(rewriter, loc, localOffsetDim1)
-              .getResult());
+          rewriter.createOrFold<arith::ConstantIndexOp>(loc, localOffsetDim1));
       auto loadOp = xegpu::LoadNdOp::create(
           rewriter, loc,
           VectorType::get(supportedShape, data.getType().getElementType()),
@@ -358,18 +355,16 @@ public:
     if (origTensorDescType.getArrayLength() > 1) {
       SmallVector<Value> arraySlices;
       for (int64_t i = 0; i < origTensorDescType.getArrayLength(); ++i) {
-        Value slice = arith::ConstantOp::create(
-            rewriter, loadNdOp->getLoc(), origVectorType,
+        Value slice = rewriter.createOrFold<arith::ConstantOp>(
+            loadNdOp->getLoc(), origVectorType,
             rewriter.getZeroAttr(origVectorType));
         // Increase the Y offset for each array slice.
         Value offsetY = convertToValue(rewriter, loadNdOp->getLoc(),
                                        modifiedOffsets.back());
         modifiedOffsets.back() =
-            arith::AddIOp::create(
-                rewriter, loadNdOp->getLoc(), offsetY,
-                arith::ConstantIndexOp::create(rewriter, loadNdOp->getLoc(),
-                                               i * origDataShape[1])
-                    .getResult())
+            arith::AddIOp::create(rewriter, loadNdOp->getLoc(), offsetY,
+                                  rewriter.createOrFold<arith::ConstantIndexOp>(
+                                      loadNdOp->getLoc(), i * origDataShape[1]))
                 .getResult();
         slice = generateLoads(
             rewriter, cast<TypedValue<VectorType>>(slice), modifiedOffsets,
@@ -388,8 +383,8 @@ public:
       rewriter.replaceOpWithMultiple(loadNdOp, {arraySlices});
       return success();
     }
-    data = arith::ConstantOp::create(
-        rewriter, loadNdOp->getLoc(),
+    data = rewriter.createOrFold<arith::ConstantOp>(
+        loadNdOp->getLoc(),
         VectorType::get(origDataShape, adaptorType.getElementType()),
         rewriter.getZeroAttr(origVectorType));
     data = generateLoads(

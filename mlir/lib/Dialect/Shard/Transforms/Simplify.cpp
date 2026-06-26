@@ -106,8 +106,8 @@ struct GridShapeFolder
         newShapeOpGridAxes.push_back(opGridAxes[i]);
       } else {
         // Fold static grid axes.
-        newResults[i] = arith::ConstantOp::create(
-            builder, builder.getIndexAttr(gridAxisSize));
+        newResults[i] = builder.createOrFold<arith::ConstantOp>(
+            builder.getIndexAttr(gridAxisSize));
       }
     }
 

@@ -251,8 +251,8 @@ struct RemoveRetainedMemrefsGuaranteedToNotAlias
         continue;
       }
 
-      replacements.push_back(arith::ConstantOp::create(
-          rewriter, deallocOp.getLoc(), rewriter.getBoolAttr(false)));
+      replacements.push_back(rewriter.createOrFold<arith::ConstantOp>(
+          deallocOp.getLoc(), rewriter.getBoolAttr(false)));
     }
 
     if (newRetainedMemrefs.size() == deallocOp.getRetained().size())

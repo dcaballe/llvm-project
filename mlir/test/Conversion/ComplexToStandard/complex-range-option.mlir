@@ -10,6 +10,10 @@ func.func @complex_div(%lhs: complex<f32>, %rhs: complex<f32>) -> complex<f32> {
 // DIV-SMITH-LABEL: func @complex_div
 // DIV-SMITH-SAME:    %[[LHS:.*]]: complex<f32>, %[[RHS:.*]]: complex<f32>
 
+// DIV-SMITH: %[[ZERO:.*]] = arith.constant 0.000000e+00 : f32
+// DIV-SMITH: %[[INF:.*]] = arith.constant 0x7F800000 : f32
+// DIV-SMITH: %[[ONE:.*]] = arith.constant 1.000000e+00 : f32
+
 // DIV-SMITH: %[[LHS_REAL:.*]] = complex.re %[[LHS]] : complex<f32>
 // DIV-SMITH: %[[LHS_IMAG:.*]] = complex.im %[[LHS]] : complex<f32>
 // DIV-SMITH: %[[RHS_REAL:.*]] = complex.re %[[RHS]] : complex<f32>
@@ -36,7 +40,6 @@ func.func @complex_div(%lhs: complex<f32>, %rhs: complex<f32>) -> complex<f32> {
 // DIV-SMITH: %[[RESULT_IMAG_2:.*]] = arith.divf %[[IMAG_NUMERATOR_2]], %[[RHS_IMAG_REAL_DENOM]] : f32
 
 // Case 1. Zero denominator, numerator contains at most one NaN value.
-// DIV-SMITH: %[[ZERO:.*]] = arith.constant 0.000000e+00 : f32
 // DIV-SMITH: %[[RHS_REAL_ABS:.*]] = math.absf %[[RHS_REAL]] : f32
 // DIV-SMITH: %[[RHS_REAL_ABS_IS_ZERO:.*]] = arith.cmpf oeq, %[[RHS_REAL_ABS]], %[[ZERO]] : f32
 // DIV-SMITH: %[[RHS_IMAG_ABS:.*]] = math.absf %[[RHS_IMAG]] : f32
@@ -46,7 +49,6 @@ func.func @complex_div(%lhs: complex<f32>, %rhs: complex<f32>) -> complex<f32> {
 // DIV-SMITH: %[[LHS_CONTAINS_NOT_NAN_VALUE:.*]] = arith.ori %[[LHS_REAL_IS_NOT_NAN]], %[[LHS_IMAG_IS_NOT_NAN]] : i1
 // DIV-SMITH: %[[RHS_IS_ZERO:.*]] = arith.andi %[[RHS_REAL_ABS_IS_ZERO]], %[[RHS_IMAG_ABS_IS_ZERO]] : i1
 // DIV-SMITH: %[[RESULT_IS_INFINITY:.*]] = arith.andi %[[LHS_CONTAINS_NOT_NAN_VALUE]], %[[RHS_IS_ZERO]] : i1
-// DIV-SMITH: %[[INF:.*]] = arith.constant 0x7F800000 : f32
 // DIV-SMITH: %[[INF_WITH_SIGN_OF_RHS_REAL:.*]] = math.copysign %[[INF]], %[[RHS_REAL]] : f32
 // DIV-SMITH: %[[INFINITY_RESULT_REAL:.*]] = arith.mulf %[[INF_WITH_SIGN_OF_RHS_REAL]], %[[LHS_REAL]] : f32
 // DIV-SMITH: %[[INFINITY_RESULT_IMAG:.*]] = arith.mulf %[[INF_WITH_SIGN_OF_RHS_REAL]], %[[LHS_IMAG]] : f32
@@ -61,7 +63,6 @@ func.func @complex_div(%lhs: complex<f32>, %rhs: complex<f32>) -> complex<f32> {
 // DIV-SMITH: %[[LHS_IMAG_INFINITE:.*]] = arith.cmpf oeq, %[[LHS_IMAG_ABS]], %[[INF]] : f32
 // DIV-SMITH: %[[LHS_IS_INFINITE:.*]] = arith.ori %[[LHS_REAL_INFINITE]], %[[LHS_IMAG_INFINITE]] : i1
 // DIV-SMITH: %[[INF_NUM_FINITE_DENOM:.*]] = arith.andi %[[LHS_IS_INFINITE]], %[[RHS_IS_FINITE]] : i1
-// DIV-SMITH: %[[ONE:.*]] = arith.constant 1.000000e+00 : f32
 // DIV-SMITH: %[[LHS_REAL_IS_INF:.*]] = arith.select %[[LHS_REAL_INFINITE]], %[[ONE]], %[[ZERO]] : f32
 // DIV-SMITH: %[[LHS_REAL_IS_INF_WITH_SIGN:.*]] = math.copysign %[[LHS_REAL_IS_INF]], %[[LHS_REAL]] : f32
 // DIV-SMITH: %[[LHS_IMAG_IS_INF:.*]] = arith.select %[[LHS_IMAG_INFINITE]], %[[ONE]], %[[ZERO]] : f32
@@ -147,6 +148,10 @@ func.func @complex_div_with_fmf(%lhs: complex<f32>, %rhs: complex<f32>) -> compl
 // DIV-SMITH-LABEL: func @complex_div_with_fmf
 // DIV-SMITH-SAME:    %[[LHS:.*]]: complex<f32>, %[[RHS:.*]]: complex<f32>
 
+// DIV-SMITH: %[[ZERO:.*]] = arith.constant 0.000000e+00 : f32
+// DIV-SMITH: %[[INF:.*]] = arith.constant 0x7F800000 : f32
+// DIV-SMITH: %[[ONE:.*]] = arith.constant 1.000000e+00 : f32
+
 // DIV-SMITH: %[[LHS_REAL:.*]] = complex.re %[[LHS]] : complex<f32>
 // DIV-SMITH: %[[LHS_IMAG:.*]] = complex.im %[[LHS]] : complex<f32>
 // DIV-SMITH: %[[RHS_REAL:.*]] = complex.re %[[RHS]] : complex<f32>
@@ -173,7 +178,6 @@ func.func @complex_div_with_fmf(%lhs: complex<f32>, %rhs: complex<f32>) -> compl
 // DIV-SMITH: %[[RESULT_IMAG_2:.*]] = arith.divf %[[IMAG_NUMERATOR_2]], %[[RHS_IMAG_REAL_DENOM]] fastmath<nsz,arcp> : f32
 
 // Case 1. Zero denominator, numerator contains at most one NaN value.
-// DIV-SMITH: %[[ZERO:.*]] = arith.constant 0.000000e+00 : f32
 // DIV-SMITH: %[[RHS_REAL_ABS:.*]] = math.absf %[[RHS_REAL]] fastmath<nsz,arcp> : f32
 // DIV-SMITH: %[[RHS_REAL_ABS_IS_ZERO:.*]] = arith.cmpf oeq, %[[RHS_REAL_ABS]], %[[ZERO]] : f32
 // DIV-SMITH: %[[RHS_IMAG_ABS:.*]] = math.absf %[[RHS_IMAG]] fastmath<nsz,arcp> : f32
@@ -183,7 +187,6 @@ func.func @complex_div_with_fmf(%lhs: complex<f32>, %rhs: complex<f32>) -> compl
 // DIV-SMITH: %[[LHS_CONTAINS_NOT_NAN_VALUE:.*]] = arith.ori %[[LHS_REAL_IS_NOT_NAN]], %[[LHS_IMAG_IS_NOT_NAN]] : i1
 // DIV-SMITH: %[[RHS_IS_ZERO:.*]] = arith.andi %[[RHS_REAL_ABS_IS_ZERO]], %[[RHS_IMAG_ABS_IS_ZERO]] : i1
 // DIV-SMITH: %[[RESULT_IS_INFINITY:.*]] = arith.andi %[[LHS_CONTAINS_NOT_NAN_VALUE]], %[[RHS_IS_ZERO]] : i1
-// DIV-SMITH: %[[INF:.*]] = arith.constant 0x7F800000 : f32
 // DIV-SMITH: %[[INF_WITH_SIGN_OF_RHS_REAL:.*]] = math.copysign %[[INF]], %[[RHS_REAL]] : f32
 // DIV-SMITH: %[[INFINITY_RESULT_REAL:.*]] = arith.mulf %[[INF_WITH_SIGN_OF_RHS_REAL]], %[[LHS_REAL]] fastmath<nsz,arcp> : f32
 // DIV-SMITH: %[[INFINITY_RESULT_IMAG:.*]] = arith.mulf %[[INF_WITH_SIGN_OF_RHS_REAL]], %[[LHS_IMAG]] fastmath<nsz,arcp> : f32
@@ -198,7 +201,6 @@ func.func @complex_div_with_fmf(%lhs: complex<f32>, %rhs: complex<f32>) -> compl
 // DIV-SMITH: %[[LHS_IMAG_INFINITE:.*]] = arith.cmpf oeq, %[[LHS_IMAG_ABS]], %[[INF]] : f32
 // DIV-SMITH: %[[LHS_IS_INFINITE:.*]] = arith.ori %[[LHS_REAL_INFINITE]], %[[LHS_IMAG_INFINITE]] : i1
 // DIV-SMITH: %[[INF_NUM_FINITE_DENOM:.*]] = arith.andi %[[LHS_IS_INFINITE]], %[[RHS_IS_FINITE]] : i1
-// DIV-SMITH: %[[ONE:.*]] = arith.constant 1.000000e+00 : f32
 // DIV-SMITH: %[[LHS_REAL_IS_INF:.*]] = arith.select %[[LHS_REAL_INFINITE]], %[[ONE]], %[[ZERO]] : f32
 // DIV-SMITH: %[[LHS_REAL_IS_INF_WITH_SIGN:.*]] = math.copysign %[[LHS_REAL_IS_INF]], %[[LHS_REAL]] : f32
 // DIV-SMITH: %[[LHS_IMAG_IS_INF:.*]] = arith.select %[[LHS_IMAG_INFINITE]], %[[ONE]], %[[ZERO]] : f32

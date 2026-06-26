@@ -74,7 +74,8 @@ struct ConstantOpToArmSMELowering : public OpRewritePattern<arith::ConstantOp> {
     VectorType tileSliceType = VectorType::Builder(tileType).dropDim(0);
     auto denseAttr1D = DenseElementsAttr::get(
         tileSliceType, denseAttr.getSplatValue<Attribute>());
-    auto constantOp1D = arith::ConstantOp::create(rewriter, loc, denseAttr1D);
+    auto constantOp1D =
+        rewriter.createOrFold<arith::ConstantOp>(loc, denseAttr1D);
 
     auto initTile = arm_sme::GetTileOp::create(rewriter, loc, tileType);
     auto makeLoopBody = [&](OpBuilder &b, Location loc, Value tileSliceIndex,

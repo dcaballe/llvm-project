@@ -210,10 +210,10 @@ unrollByTile(SmallVector<OpFoldResult> mixedOffsets,
   auto addi = [&](OpFoldResult a, int64_t b) -> Value {
     std::optional<int64_t> maybeInt = getConstantIntValue(a);
     if (maybeInt) {
-      return arith::ConstantIndexOp::create(rewriter, loc, *maybeInt + b);
+      return rewriter.createOrFold<arith::ConstantIndexOp>(loc, *maybeInt + b);
     } else {
       auto aV = llvm::cast<Value>(a);
-      auto bV = arith::ConstantIndexOp::create(rewriter, loc, b);
+      auto bV = rewriter.createOrFold<arith::ConstantIndexOp>(loc, b);
       return rewriter.createOrFold<arith::AddIOp>(loc, aV, bV);
     }
   };
@@ -737,8 +737,8 @@ struct UnrollLoadGatherOp : public UnrollPattern<xegpu::LoadGatherOp> {
       for (auto [baseOffset, offsetType] :
            llvm::zip(convertedOffsetsBase, convertedOffsetTypes)) {
         for (int64_t i = 0; i < numNewChunks; ++i) {
-          Value inc = arith::ConstantIndexOp::create(rewriter, loc,
-                                                     i * blockedChunkSize);
+          Value inc = rewriter.createOrFold<arith::ConstantIndexOp>(
+              loc, i * blockedChunkSize);
           Value incVec =
               vector::BroadcastOp::create(rewriter, loc, offsetType, inc);
           Value offsetVal =
@@ -828,8 +828,8 @@ struct UnrollStoreScatterOp : public UnrollPattern<xegpu::StoreScatterOp> {
       for (auto [baseOffset, offsetType] :
            llvm::zip(convertedOffsetsBase, convertedOffsetTypes)) {
         for (int64_t i = 0; i < numNewChunks; ++i) {
-          Value inc = arith::ConstantIndexOp::create(rewriter, loc,
-                                                     i * blockedChunkSize);
+          Value inc = rewriter.createOrFold<arith::ConstantIndexOp>(
+              loc, i * blockedChunkSize);
           Value incVec =
               vector::BroadcastOp::create(rewriter, loc, offsetType, inc);
           Value offsetVal =
@@ -988,9 +988,8 @@ struct UnrollConvertLayoutOp : public UnrollPattern<xegpu::ConvertLayoutOp> {
 
     Value source = op.getSource();
     auto zeroOf = [&](VectorType ty) -> Value {
-      return arith::ConstantOp::create(
-          rewriter, loc, ty,
-          DenseElementsAttr::get(ty, rewriter.getZeroAttr(elemTy)));
+      return rewriter.createOrFold<arith::ConstantOp>(
+          loc, ty, DenseElementsAttr::get(ty, rewriter.getZeroAttr(elemTy)));
     };
     auto addOffsets = [](ArrayRef<int64_t> a,
                          ArrayRef<int64_t> b) -> SmallVector<int64_t> {
@@ -1179,8 +1178,8 @@ struct UnrollMultiReductionOp
     }
 
     // Initialize the result vector for assembly.
-    Value result = arith::ConstantOp::create(rewriter, loc, resultType,
-                                             rewriter.getZeroAttr(resultType));
+    Value result = rewriter.createOrFold<arith::ConstantOp>(
+        loc, resultType, rewriter.getZeroAttr(resultType));
 
     // Iterate over all tile positions in the kept dimensions.
     // Ex: [off0, off1, _ _ off4]

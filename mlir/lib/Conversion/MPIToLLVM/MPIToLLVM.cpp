@@ -73,7 +73,7 @@ std::pair<Value, Value> getRawPtrAndSize(const Location loc,
           LLVM::MulOp::create(rewriter, loc, rewriter.getI32Type(), dim, size);
     }
   } else {
-    size = arith::ConstantIntOp::create(rewriter, loc, 1, 32);
+    size = rewriter.createOrFold<arith::ConstantIntOp>(loc, 1, 32);
   }
   return {resPtr, size};
 }

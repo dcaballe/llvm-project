@@ -43,7 +43,8 @@ using namespace mlir::bufferization;
 //===----------------------------------------------------------------------===//
 
 static Value buildBoolValue(OpBuilder &builder, Location loc, bool value) {
-  return arith::ConstantOp::create(builder, loc, builder.getBoolAttr(value));
+  return builder.createOrFold<arith::ConstantOp>(loc,
+                                                 builder.getBoolAttr(value));
 }
 
 static bool isMemref(Value v) { return isa<BaseMemRefType>(v.getType()); }

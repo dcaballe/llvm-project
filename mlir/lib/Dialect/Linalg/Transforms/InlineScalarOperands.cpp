@@ -77,7 +77,7 @@ struct InlineScalarOperands : public OpRewritePattern<GenericOp> {
       SmallVector<Value> indicesValues;
       for (auto idx : indices)
         indicesValues.emplace_back(
-            arith::ConstantIndexOp::create(rewriter, loc, idx));
+            rewriter.createOrFold<arith::ConstantIndexOp>(loc, idx));
       Value scalarValue = opOperand->get();
       if (isa<RankedTensorType>(scalarValue.getType())) {
         scalarValue = tensor::ExtractOp::create(rewriter, loc, scalarValue,

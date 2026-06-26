@@ -37,6 +37,7 @@ module attributes {
     // CHECK-SAME: %[[ARG6:.*]]: i32 {spirv.interface_var_abi = #spirv.interface_var_abi<(0, 6), StorageBuffer>}
     gpu.func @load_store_kernel(%arg0: memref<12x4xf32, #spirv.storage_class<StorageBuffer>>, %arg1: memref<12x4xf32, #spirv.storage_class<StorageBuffer>>, %arg2: memref<12x4xf32, #spirv.storage_class<StorageBuffer>>, %arg3: index, %arg4: index, %arg5: index, %arg6: index) kernel
       attributes {spirv.entry_point_abi = #spirv.entry_point_abi<workgroup_size = [16, 1, 1]>} {
+      // CHECK: %[[STRIDE1_1:.*]] = spirv.Constant 4 : i32
       // CHECK: %[[ADDRESSWORKGROUPID:.*]] = spirv.mlir.addressof @[[$WORKGROUPIDVAR]]
       // CHECK: %[[WORKGROUPID:.*]] = spirv.Load "Input" %[[ADDRESSWORKGROUPID]]
       // CHECK: %[[WORKGROUPIDX:.*]] = spirv.CompositeExtract %[[WORKGROUPID]]{{\[}}0 : i32{{\]}}
@@ -60,7 +61,6 @@ module attributes {
       // CHECK: %[[INDEX2:.*]] = spirv.IAdd %[[ARG4]], %[[LOCALINVOCATIONIDX]]
       %13 = arith.addi %arg4, %3 : index
       // CHECK: %[[ZERO:.*]] = spirv.Constant 0 : i32
-      // CHECK: %[[STRIDE1_1:.*]] = spirv.Constant 4 : i32
       // CHECK: %[[UPDATE1_1:.*]] = spirv.IMul %[[INDEX1]], %[[STRIDE1_1]] : i32
       // CHECK: %[[OFFSET1_2:.*]] = spirv.IAdd %[[INDEX2]], %[[UPDATE1_1]] : i32
       // CHECK: %[[PTR1:.*]] = spirv.AccessChain %[[ARG0]]{{\[}}%[[ZERO]], %[[OFFSET1_2]]{{\]}}

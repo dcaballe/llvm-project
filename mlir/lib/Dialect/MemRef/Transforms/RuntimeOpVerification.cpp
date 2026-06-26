@@ -45,12 +45,13 @@ struct AssumeAlignmentOpInterface
     auto assumeOp = cast<AssumeAlignmentOp>(op);
     Value ptr = ExtractAlignedPointerAsIndexOp::create(builder, loc,
                                                        assumeOp.getMemref());
-    Value rest = arith::RemUIOp::create(
-        builder, loc, ptr,
-        arith::ConstantIndexOp::create(builder, loc, assumeOp.getAlignment()));
-    Value isAligned =
-        arith::CmpIOp::create(builder, loc, arith::CmpIPredicate::eq, rest,
-                              arith::ConstantIndexOp::create(builder, loc, 0));
+    Value rest =
+        arith::RemUIOp::create(builder, loc, ptr,
+                               builder.createOrFold<arith::ConstantIndexOp>(
+                                   loc, assumeOp.getAlignment()));
+    Value isAligned = arith::CmpIOp::create(
+        builder, loc, arith::CmpIPredicate::eq, rest,
+        builder.createOrFold<arith::ConstantIndexOp>(loc, 0));
     cf::AssertOp::create(
         builder, loc, isAligned,
         generateErrorMessage(op, "memref is not aligned to " +
@@ -76,8 +77,8 @@ struct CastOpInterface
     if (isa<UnrankedMemRefType>(srcType)) {
       // Check rank.
       Value srcRank = RankOp::create(builder, loc, castOp.getSource());
-      Value resultRank =
-          arith::ConstantIndexOp::create(builder, loc, resultType.getRank());
+      Value resultRank = builder.createOrFold<arith::ConstantIndexOp>(
+          loc, resultType.getRank());
       Value isSameRank = arith::CmpIOp::create(
           builder, loc, arith::CmpIPredicate::eq, srcRank, resultRank);
       cf::AssertOp::create(builder, loc, isSameRank,
@@ -115,7 +116,7 @@ struct CastOpInterface
       Value srcDimSz =
           DimOp::create(builder, loc, castOp.getSource(), it.index());
       Value resultDimSz =
-          arith::ConstantIndexOp::create(builder, loc, it.value());
+          builder.createOrFold<arith::ConstantIndexOp>(loc, it.value());
       Value isSameSz = arith::CmpIOp::create(
           builder, loc, arith::CmpIPredicate::eq, srcDimSz, resultDimSz);
       cf::AssertOp::create(
@@ -135,7 +136,7 @@ struct CastOpInterface
       // Static/dynamic offset -> dynamic offset does not need verification.
       Value srcOffset = metadataOp.getResult(1);
       Value resultOffsetVal =
-          arith::ConstantIndexOp::create(builder, loc, resultOffset);
+          builder.createOrFold<arith::ConstantIndexOp>(loc, resultOffset);
       Value isSameOffset = arith::CmpIOp::create(
           builder, loc, arith::CmpIPredicate::eq, srcOffset, resultOffsetVal);
       cf::AssertOp::create(builder, loc, isSameOffset,
@@ -151,7 +152,7 @@ struct CastOpInterface
       Value srcStride =
           metadataOp.getResult(2 + resultType.getRank() + it.index());
       Value resultStrideVal =
-          arith::ConstantIndexOp::create(builder, loc, it.value());
+          builder.createOrFold<arith::ConstantIndexOp>(loc, it.value());
       Value isSameStride = arith::CmpIOp::create(
           builder, loc, arith::CmpIPredicate::eq, srcStride, resultStrideVal);
       cf::AssertOp::create(
@@ -190,9 +191,8 @@ struct CopyOpInterface
                             int64_t dim) -> Value {
         return type.isDynamicDim(dim)
                    ? DimOp::create(builder, loc, memRef, dim).getResult()
-                   : arith::ConstantIndexOp::create(builder, loc,
-                                                    type.getDimSize(dim))
-                         .getResult();
+                   : builder.createOrFold<arith::ConstantIndexOp>(
+                         loc, type.getDimSize(dim));
       };
       Value sourceDim = getDimSize(copyOp.getSource(), rankedSourceType, i);
       Value targetDim = getDimSize(copyOp.getTarget(), rankedTargetType, i);
@@ -215,7 +215,7 @@ struct DimOpInterface
                                   generateErrorMessage) const {
     auto dimOp = cast<DimOp>(op);
     Value rank = RankOp::create(builder, loc, dimOp.getSource());
-    Value zero = arith::ConstantIndexOp::create(builder, loc, 0);
+    Value zero = builder.createOrFold<arith::ConstantIndexOp>(loc, 0);
     cf::AssertOp::create(
         builder, loc,
         generateInBoundsCheck(builder, loc, dimOp.getIndex(), zero, rank),
@@ -242,7 +242,7 @@ struct LoadStoreOpInterface
     }
     auto indices = loadStoreOp.getIndices();
 
-    auto zero = arith::ConstantIndexOp::create(builder, loc, 0);
+    auto zero = builder.createOrFold<arith::ConstantIndexOp>(loc, 0);
     Value assertCond;
     for (auto i : llvm::seq<int64_t>(0, rank)) {
       Value dimOp = builder.createOrFold<memref::DimOp>(loc, memref, i);
@@ -272,8 +272,8 @@ struct SubViewOpInterface
     // For non-empty slices (size > 0): 0 <= offset < dim_size
     //                                  0 <= offset + (size - 1) * stride
     //                                  dim_size
-    Value zero = arith::ConstantIndexOp::create(builder, loc, 0);
-    Value one = arith::ConstantIndexOp::create(builder, loc, 1);
+    Value zero = builder.createOrFold<arith::ConstantIndexOp>(loc, 0);
+    Value one = builder.createOrFold<arith::ConstantIndexOp>(loc, 1);
 
     auto metadataOp =
         ExtractStridedMetadataOp::create(builder, loc, subView.getSource());
@@ -339,7 +339,7 @@ struct SubViewOpInterface
           },
           [&](OpBuilder &b, Location loc) {
             Value trueVal =
-                arith::ConstantOp::create(b, loc, b.getBoolAttr(true));
+                b.createOrFold<arith::ConstantOp>(loc, b.getBoolAttr(true));
             scf::YieldOp::create(b, loc, trueVal);
           });
 

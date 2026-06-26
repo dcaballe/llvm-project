@@ -154,12 +154,12 @@ func.func @unroll_inner_nested_parallel_loop(%src: memref<5x16x12x4x4xf32>, %dst
 // CHECK-UNROLL-INNER-SAME:     ([[ARG0:%.*]]: memref<5x16x12x4x4xf32>, [[ARG1:%.*]]: memref<5x16x12x4x4xf32>)
 // CHECK-UNROLL-INNER-DAG:      [[C0:%.*]] = arith.constant 0 : index
 // CHECK-UNROLL-INNER-DAG:      [[C1:%.*]] = arith.constant 1 : index
+// CHECK-UNROLL-INNER-DAG:      [[C2:%.*]] = arith.constant 2 : index
 // CHECK-UNROLL-INNER-DAG:      [[C4:%.*]] = arith.constant 4 : index
 // CHECK-UNROLL-INNER-DAG:      [[C5:%.*]] = arith.constant 5 : index
 // CHECK-UNROLL-INNER-DAG:      [[C12:%.*]] = arith.constant 12 : index
 // CHECK-UNROLL-INNER-DAG:      [[C16:%.*]] = arith.constant 16 : index
 // CHECK-UNROLL-INNER:          scf.parallel ([[OUTV0:%.*]], [[OUTV1:%.*]], [[OUTV2:%.*]]) = ([[C0]], [[C0]], [[C0]]) to ([[C5]], [[C16]], [[C12]]) step ([[C1]], [[C1]], [[C1]])
-// CHECK-UNROLL-INNER-DAG:        [[C2:%.*]] = arith.constant 2 : index
 // CHECK-UNROLL-INNER:            scf.parallel ([[INV0:%.*]], [[INV1:%.*]]) = ([[C0]], [[C0]]) to ([[C4]], [[C4]]) step ([[C1]], [[C2]])
 // CHECK-UNROLL-INNER:              affine.apply {{.*}}([[OUTV1]], [[INV0]])
 // CHECK-UNROLL-INNER:              affine.apply {{.*}}([[OUTV2]], [[INV1]])

@@ -115,8 +115,8 @@ func.func @conversion_broadcast(%in: vector<8x8xf32>, %scale: vector<8x2xf8E8M0F
 // -----
 
 // CHECK-LABEL: @conversion_broadcast_odd
-// CHECK-NEXT:    %[[CST4:.+]] = arith.constant dense<0.000000e+00> : vector<4xf8E5M2>
-// CHECK-NEXT:    %[[CST6:.+]] = arith.constant dense<0.000000e+00> : vector<6xf8E5M2>
+// CHECK-DAG:     %[[CST4:.+]] = arith.constant dense<0.000000e+00> : vector<4xf8E5M2>
+// CHECK-DAG:     %[[CST6:.+]] = arith.constant dense<0.000000e+00> : vector<6xf8E5M2>
 // CHECK-NEXT:    %[[SCALE_BCAST:.+]] = vector.broadcast %arg1 : vector<2xf8E8M0FNU> to vector<3x2xf8E8M0FNU>
 // CHECK-NEXT:    %[[SCALE_FLAT:.+]] = vector.shape_cast %[[SCALE_BCAST]] : vector<3x2xf8E8M0FNU> to vector<6xf8E8M0FNU>
 // CHECK-NEXT:    %[[SCALE_EXTF:.+]] = arith.extf %[[SCALE_FLAT]] : vector<6xf8E8M0FNU> to vector<6xf32>

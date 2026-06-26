@@ -18,8 +18,8 @@
 // CHECK-SAME:      %[[VAL_1:.*1]]: memref<?xi64>,
 // CHECK-SAME:      %[[VAL_2:.*2]]: memref<?xf32>,
 // CHECK-SAME:      %[[VAL_3:.*3]]: !sparse_tensor.storage_specifier
-// CHECK:           %[[VAL_4:.*]] = arith.constant 1 : index
 // CHECK:           %[[VAL_5:.*]] = arith.constant 0 : index
+// CHECK:           %[[VAL_4:.*]] = arith.constant 1 : index
 // CHECK:           %[[VAL_6:.*]] = memref.dim %[[VAL_0]], %[[VAL_5]] : memref<?xi64>
 // CHECK:           %[[VAL_7:.*]] = memref.alloc(%[[VAL_6]]) : memref<?xi32>
 // CHECK:           scf.for %[[VAL_8:.*]] = %[[VAL_5]] to %[[VAL_6]] step %[[VAL_4]] {

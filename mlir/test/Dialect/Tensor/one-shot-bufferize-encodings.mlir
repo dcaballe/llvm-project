@@ -8,10 +8,10 @@ func.func @from_elements(%fill: f32, %f: f32, %idx: index) -> tensor<3xf32, 1> {
 
 // CHECK-LABEL: @from_elements
 //  CHECK-SAME: (%[[arg0:.+]]: f32, %[[arg1:.+]]: f32, %[[arg2:.+]]: index) -> tensor<3xf32, 1 : i64>
-//       CHECK:     %[[alloc:.+]] = memref.alloc() {{.*}} : memref<3xf32, 1>
 //       CHECK-DAG:     %[[c0:.+]] = arith.constant 0 : index
 //       CHECK-DAG:     %[[c1:.+]] = arith.constant 1 : index
 //       CHECK-DAG:     %[[c2:.+]] = arith.constant 2 : index
+//       CHECK:     %[[alloc:.+]] = memref.alloc() {{.*}} : memref<3xf32, 1>
 //       CHECK:     memref.store %[[arg0]], %[[alloc]][%[[c0]]] : memref<3xf32, 1>
 //       CHECK:     memref.store %[[arg0]], %[[alloc]][%[[c1]]] : memref<3xf32, 1>
 //       CHECK:     memref.store %[[arg0]], %[[alloc]][%[[c2]]] : memref<3xf32, 1>

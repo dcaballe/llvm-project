@@ -3,9 +3,9 @@
 gpu.module @load_store_check {
     // CHECK-LABEL: gpu.func @load_store(
     gpu.func @load_store(%src: memref<8x16xf32, 1>, %dst: memref<8x16xf32, 1>) kernel {
-        // CHECK: %[[W_P_BYTES:.*]] = arith.constant 64 : i32
-        // CHECK: %[[ZERO:.*]] = arith.constant 0 : i32
-        // CHECK: %[[H:.*]] = arith.constant 8 : i32
+        // CHECK-DAG: %[[W_P_BYTES:.*]] = arith.constant 64 : i32
+        // CHECK-DAG: %[[ZERO:.*]] = arith.constant 0 : i32
+        // CHECK-DAG: %[[H:.*]] = arith.constant 8 : i32
         %srcce = memref.memory_space_cast %src : memref<8x16xf32, 1> to memref<8x16xf32>
         %dstte = memref.memory_space_cast %dst : memref<8x16xf32, 1> to memref<8x16xf32>
 
@@ -35,9 +35,9 @@ gpu.module @load_store_check {
 
     // CHECK-LABEL: gpu.func @load_store_with_partial_cache_hints(
     gpu.func @load_store_with_partial_cache_hints(%src: memref<8x16xf32, 1>, %dst: memref<8x16xf32, 1>) kernel {
-        // CHECK: %[[W_P_BYTES:.*]] = arith.constant 64 : i32
-        // CHECK: %[[ZERO:.*]] = arith.constant 0 : i32
-        // CHECK: %[[H:.*]] = arith.constant 8 : i32
+        // CHECK-DAG: %[[W_P_BYTES:.*]] = arith.constant 64 : i32
+        // CHECK-DAG: %[[ZERO:.*]] = arith.constant 0 : i32
+        // CHECK-DAG: %[[H:.*]] = arith.constant 8 : i32
         %srcce = memref.memory_space_cast %src : memref<8x16xf32, 1> to memref<8x16xf32>
         %dstte = memref.memory_space_cast %dst : memref<8x16xf32, 1> to memref<8x16xf32>
 
@@ -71,9 +71,9 @@ gpu.module @load_store_check {
     // the payload is loaded as i32 and bitcast back to the requested 8-bit type.
     // CHECK-LABEL: gpu.func @load_nd_8bit(
     gpu.func @load_nd_8bit(%src: memref<32x16xi8, 1>, %dst: memref<32x16xi8, 1>) kernel {
-        // CHECK: %[[ZERO:.*]] = arith.constant 0 : i32
-        // CHECK: %[[H:.*]] = arith.constant 32 : i32
-        // CHECK: %[[W:.*]] = arith.constant 16 : i32
+        // CHECK-DAG: %[[ZERO:.*]] = arith.constant 0 : i32
+        // CHECK-DAG: %[[H:.*]] = arith.constant 32 : i32
+        // CHECK-DAG: %[[W:.*]] = arith.constant 16 : i32
         %srcce = memref.memory_space_cast %src : memref<32x16xi8, 1> to memref<32x16xi8>
         %dstte = memref.memory_space_cast %dst : memref<32x16xi8, 1> to memref<32x16xi8>
 

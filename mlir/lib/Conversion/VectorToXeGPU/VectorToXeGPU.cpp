@@ -163,7 +163,7 @@ static xegpu::CreateNdDescOp createNdDescriptor(PatternRewriter &rewriter,
     auto elemByteSize = srcTy.getElementTypeBitWidth() / 8;
     auto offsetInBytes = arith::MulIOp::create(
         rewriter, loc, offset,
-        arith::ConstantIndexOp::create(rewriter, loc, elemByteSize));
+        rewriter.createOrFold<arith::ConstantIndexOp>(loc, elemByteSize));
     auto adjustedBaseAddr = arith::AddIOp::create(
         rewriter, loc, baseAddrIndex.getResult(), offsetInBytes);
     auto adjustedAddrI64 = arith::IndexCastOp::create(
@@ -230,10 +230,10 @@ computeMemrefMeta(OpType xferOp, PatternRewriter &rewriter) {
 
     if (!hasDynamicStrides)
       for (int64_t s : intStrides)
-        strides.push_back(arith::ConstantIndexOp::create(rewriter, loc, s));
+        strides.push_back(rewriter.createOrFold<arith::ConstantIndexOp>(loc, s));
 
     if (!ShapedType::isDynamic(offset))
-      offsetVal = arith::ConstantIndexOp::create(rewriter, loc, offset);
+      offsetVal = rewriter.createOrFold<arith::ConstantIndexOp>(loc, offset);
   }
 
   if (strides.empty() || !offsetVal) {

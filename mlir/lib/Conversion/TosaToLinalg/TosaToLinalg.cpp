@@ -92,8 +92,8 @@ static Value createLinalgBodyCalculationForElementwiseOp(
     return math::AbsFOp::create(rewriter, loc, resultTypes, args);
 
   if (isa<tosa::AbsOp>(op) && isa<IntegerType>(elementTy)) {
-    auto zero = arith::ConstantOp::create(rewriter, loc,
-                                          rewriter.getZeroAttr(elementTy));
+    auto zero = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getZeroAttr(elementTy));
     auto neg = arith::SubIOp::create(rewriter, loc, zero, args[0]);
     return arith::MaxSIOp::create(rewriter, loc, args[0], neg);
   }
@@ -118,8 +118,8 @@ static Value createLinalgBodyCalculationForElementwiseOp(
 
   // tosa::ReciprocalOp
   if (isa<tosa::ReciprocalOp>(op) && isa<FloatType>(elementTy)) {
-    auto one =
-        arith::ConstantOp::create(rewriter, loc, FloatAttr::get(elementTy, 1));
+    auto one = rewriter.createOrFold<arith::ConstantOp>(
+        loc, FloatAttr::get(elementTy, 1));
     return arith::DivFOp::create(rewriter, loc, one, args[0]);
   }
 
@@ -150,8 +150,9 @@ static Value createLinalgBodyCalculationForElementwiseOp(
       if (shift > 0 || !shiftIsConstant) {
         Value shiftConst;
         if (shiftIsConstant)
-          shiftConst = arith::ConstantIntOp::create(rewriter, loc, shift,
-                                                    /*bitwidth=*/8);
+          shiftConst =
+              rewriter.createOrFold<arith::ConstantIntOp>(loc, shift,
+                                                          /*bitwidth=*/8);
 
         if (!a.getType().isInteger(32))
           a = arith::ExtSIOp::create(rewriter, loc, rewriter.getI32Type(), a);
@@ -222,8 +223,8 @@ static Value createLinalgBodyCalculationForElementwiseOp(
         }
 
         intermediateType = rewriter.getIntegerType(intermediateBitWidth);
-        zpAddValue = arith::ConstantOp::create(
-            rewriter, loc, rewriter.getIntegerAttr(intermediateType, zpAdd));
+        zpAddValue = rewriter.createOrFold<arith::ConstantOp>(
+            loc, rewriter.getIntegerAttr(intermediateType, zpAdd));
       } else {
         intermediateType = rewriter.getIntegerType(intermediateBitWidth);
         Value arg1 = args[1];
@@ -245,11 +246,11 @@ static Value createLinalgBodyCalculationForElementwiseOp(
       auto sub = arith::SubIOp::create(rewriter, loc, zpAddValue, ext);
 
       // Clamp to the negation range.
-      Value min = arith::ConstantIntOp::create(
-          rewriter, loc, intermediateType,
+      Value min = rewriter.createOrFold<arith::ConstantIntOp>(
+          loc, intermediateType,
           APInt::getSignedMinValue(inputBitWidth).getSExtValue());
-      Value max = arith::ConstantIntOp::create(
-          rewriter, loc, intermediateType,
+      Value max = rewriter.createOrFold<arith::ConstantIntOp>(
+          loc, intermediateType,
           APInt::getSignedMaxValue(inputBitWidth).getSExtValue());
       auto clamp = clampIntHelper(loc, sub, min, max, rewriter, false);
 
@@ -272,7 +273,7 @@ static Value createLinalgBodyCalculationForElementwiseOp(
   if (isa<tosa::BitwiseNotOp>(op) && isa<IntegerType>(elementTy)) {
     auto allOnesAttr = rewriter.getIntegerAttr(
         elementTy, APInt::getAllOnes(elementTy.getIntOrFloatBitWidth()));
-    auto allOnes = arith::ConstantOp::create(rewriter, loc, allOnesAttr);
+    auto allOnes = rewriter.createOrFold<arith::ConstantOp>(loc, allOnesAttr);
     return arith::XOrIOp::create(rewriter, loc, resultTypes, args[0], allOnes);
   }
 
@@ -297,14 +298,14 @@ static Value createLinalgBodyCalculationForElementwiseOp(
     }
 
     Type i1Ty = IntegerType::get(rewriter.getContext(), /*width=*/1);
-    auto one = arith::ConstantOp::create(rewriter, loc,
-                                         IntegerAttr::get(elementTy, 1));
-    auto zero = arith::ConstantOp::create(rewriter, loc,
-                                          IntegerAttr::get(elementTy, 0));
-    auto i1zero =
-        arith::ConstantOp::create(rewriter, loc, IntegerAttr::get(i1Ty, 0));
-    auto i1one =
-        arith::ConstantOp::create(rewriter, loc, IntegerAttr::get(i1Ty, 1));
+    auto one = rewriter.createOrFold<arith::ConstantOp>(
+        loc, IntegerAttr::get(elementTy, 1));
+    auto zero = rewriter.createOrFold<arith::ConstantOp>(
+        loc, IntegerAttr::get(elementTy, 0));
+    auto i1zero = rewriter.createOrFold<arith::ConstantOp>(
+        loc, IntegerAttr::get(i1Ty, 0));
+    auto i1one = rewriter.createOrFold<arith::ConstantOp>(
+        loc, IntegerAttr::get(i1Ty, 1));
 
     // Checking that input2 != 0
     auto shiftValueGreaterThanZero = arith::CmpIOp::create(
@@ -339,8 +340,8 @@ static Value createLinalgBodyCalculationForElementwiseOp(
 
   // tosa::LogicalNot
   if (isa<tosa::LogicalNotOp>(op) && elementTy.isInteger(1)) {
-    auto one = arith::ConstantOp::create(rewriter, loc,
-                                         rewriter.getIntegerAttr(elementTy, 1));
+    auto one = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getIntegerAttr(elementTy, 1));
     return arith::XOrIOp::create(rewriter, loc, resultTypes, args[0], one);
   }
 
@@ -457,10 +458,10 @@ static Value createLinalgBodyCalculationForElementwiseOp(
                    APFloat::rmNearestTiesToEven, &losesInfo);
     maxApf.convert(cast<FloatType>(elementTy).getFloatSemantics(),
                    APFloat::rmNearestTiesToEven, &losesInfo);
-    auto min = arith::ConstantOp::create(
-        rewriter, loc, elementTy, rewriter.getFloatAttr(elementTy, minApf));
-    auto max = arith::ConstantOp::create(
-        rewriter, loc, elementTy, rewriter.getFloatAttr(elementTy, maxApf));
+    auto min = rewriter.createOrFold<arith::ConstantOp>(
+        loc, elementTy, rewriter.getFloatAttr(elementTy, minApf));
+    auto max = rewriter.createOrFold<arith::ConstantOp>(
+        loc, elementTy, rewriter.getFloatAttr(elementTy, maxApf));
     auto result = clampFloatHelper(loc, args[0], min, max, rewriter);
 
     auto clampOp = llvm::cast<tosa::ClampOp>(op);
@@ -523,18 +524,18 @@ static Value createLinalgBodyCalculationForElementwiseOp(
     min = std::min(min, maxRepresentable);
     max = std::min(max, maxRepresentable);
 
-    auto minVal = arith::ConstantIntOp::create(rewriter, loc, min,
-                                               intTy.getIntOrFloatBitWidth());
-    auto maxVal = arith::ConstantIntOp::create(rewriter, loc, max,
-                                               intTy.getIntOrFloatBitWidth());
+    auto minVal = rewriter.createOrFold<arith::ConstantIntOp>(
+        loc, min, intTy.getIntOrFloatBitWidth());
+    auto maxVal = rewriter.createOrFold<arith::ConstantIntOp>(
+        loc, max, intTy.getIntOrFloatBitWidth());
     return clampIntHelper(loc, args[0], minVal, maxVal, rewriter,
                           intTy.isUnsignedInteger());
   }
 
   // tosa::SigmoidOp
   if (isa<tosa::SigmoidOp>(op) && isa<FloatType>(elementTy)) {
-    auto one =
-        arith::ConstantOp::create(rewriter, loc, FloatAttr::get(elementTy, 1));
+    auto one = rewriter.createOrFold<arith::ConstantOp>(
+        loc, FloatAttr::get(elementTy, 1));
     auto negate = arith::NegFOp::create(rewriter, loc, resultTypes, args[0]);
     auto exp = mlir::math::ExpOp::create(rewriter, loc, resultTypes, negate);
     auto added = arith::AddFOp::create(rewriter, loc, exp, one);
@@ -592,8 +593,8 @@ static Value createLinalgBodyCalculationForElementwiseOp(
 
     // Casting to boolean, floats need to only be checked as not-equal to zero.
     if (isa<FloatType>(srcTy) && dstTy.isInteger(1)) {
-      Value zero = arith::ConstantOp::create(rewriter, loc,
-                                             rewriter.getFloatAttr(srcTy, 0.0));
+      Value zero = rewriter.createOrFold<arith::ConstantOp>(
+          loc, rewriter.getFloatAttr(srcTy, 0.0));
       return arith::CmpFOp::create(rewriter, loc, arith::CmpFPredicate::UNE,
                                    args.front(), zero);
     }
@@ -609,41 +610,36 @@ static Value createLinalgBodyCalculationForElementwiseOp(
         // Use cmp + select to replace infinites by int min / int max. Other
         // integral values can be represented in the integer space.
         auto conv = arith::FPToSIOp::create(rewriter, loc, dstTy, rounded);
-        auto posInf = arith::ConstantOp::create(
-            rewriter, loc,
-            rewriter.getFloatAttr(getElementTypeOrSelf(srcTy),
-                                  APFloat::getInf(fltSemantics)));
-        auto negInf = arith::ConstantOp::create(
-            rewriter, loc,
-            rewriter.getFloatAttr(
-                getElementTypeOrSelf(srcTy),
-                APFloat::getInf(fltSemantics, /*Negative=*/true)));
+        auto posInf = rewriter.createOrFold<arith::ConstantOp>(
+            loc, rewriter.getFloatAttr(getElementTypeOrSelf(srcTy),
+                                       APFloat::getInf(fltSemantics)));
+        auto negInf = rewriter.createOrFold<arith::ConstantOp>(
+            loc, rewriter.getFloatAttr(
+                     getElementTypeOrSelf(srcTy),
+                     APFloat::getInf(fltSemantics, /*Negative=*/true)));
         auto overflow = arith::CmpFOp::create(
             rewriter, loc, arith::CmpFPredicate::UEQ, rounded, posInf);
         auto underflow = arith::CmpFOp::create(
             rewriter, loc, arith::CmpFPredicate::UEQ, rounded, negInf);
-        auto intMin = arith::ConstantOp::create(
-            rewriter, loc,
-            rewriter.getIntegerAttr(
-                getElementTypeOrSelf(dstTy),
-                APInt::getSignedMinValue(dstTy.getIntOrFloatBitWidth())));
-        auto intMax = arith::ConstantOp::create(
-            rewriter, loc,
-            rewriter.getIntegerAttr(
-                getElementTypeOrSelf(dstTy),
-                APInt::getSignedMaxValue(dstTy.getIntOrFloatBitWidth())));
+        auto intMin = rewriter.createOrFold<arith::ConstantOp>(
+            loc, rewriter.getIntegerAttr(
+                     getElementTypeOrSelf(dstTy),
+                     APInt::getSignedMinValue(dstTy.getIntOrFloatBitWidth())));
+        auto intMax = rewriter.createOrFold<arith::ConstantOp>(
+            loc, rewriter.getIntegerAttr(
+                     getElementTypeOrSelf(dstTy),
+                     APInt::getSignedMaxValue(dstTy.getIntOrFloatBitWidth())));
         auto maxClamped =
             arith::SelectOp::create(rewriter, loc, overflow, intMax, conv);
         return arith::SelectOp::create(rewriter, loc, underflow, intMin,
                                        maxClamped);
       }
 
-      auto intMinFP = arith::ConstantOp::create(
-          rewriter, loc,
-          rewriter.getFloatAttr(
-              getElementTypeOrSelf(srcTy),
-              APInt::getSignedMinValue(dstTy.getIntOrFloatBitWidth())
-                  .getSExtValue()));
+      auto intMinFP = rewriter.createOrFold<arith::ConstantOp>(
+          loc, rewriter.getFloatAttr(
+                   getElementTypeOrSelf(srcTy),
+                   APInt::getSignedMinValue(dstTy.getIntOrFloatBitWidth())
+                       .getSExtValue()));
 
       // Check whether the mantissa has enough bits to represent int max.
       if (cast<FloatType>(srcTy).getFPMantissaWidth() >=
@@ -652,12 +648,11 @@ static Value createLinalgBodyCalculationForElementwiseOp(
         // consists of a single leading bit. Therefore we can clamp the input
         // in the floating-point domain.
 
-        auto intMaxFP = arith::ConstantOp::create(
-            rewriter, loc,
-            rewriter.getFloatAttr(
-                getElementTypeOrSelf(srcTy),
-                APInt::getSignedMaxValue(dstTy.getIntOrFloatBitWidth())
-                    .getSExtValue()));
+        auto intMaxFP = rewriter.createOrFold<arith::ConstantOp>(
+            loc, rewriter.getFloatAttr(
+                     getElementTypeOrSelf(srcTy),
+                     APInt::getSignedMaxValue(dstTy.getIntOrFloatBitWidth())
+                         .getSExtValue()));
 
         Value clamped =
             clampFloatHelper(loc, rounded, intMinFP, intMaxFP, rewriter);
@@ -668,20 +663,18 @@ static Value createLinalgBodyCalculationForElementwiseOp(
       // int min. We can therefore rely on int max + 1 being representable as
       // well because it's just int min with a positive sign. So clamp the min
       // value and compare against that to select the max int value if needed.
-      auto intMaxPlusOneFP = arith::ConstantOp::create(
-          rewriter, loc,
-          rewriter.getFloatAttr(
-              getElementTypeOrSelf(srcTy),
-              static_cast<double>(
-                  APInt::getSignedMaxValue(dstTy.getIntOrFloatBitWidth())
-                      .getSExtValue()) +
-                  1.0f));
+      auto intMaxPlusOneFP = rewriter.createOrFold<arith::ConstantOp>(
+          loc, rewriter.getFloatAttr(
+                   getElementTypeOrSelf(srcTy),
+                   static_cast<double>(
+                       APInt::getSignedMaxValue(dstTy.getIntOrFloatBitWidth())
+                           .getSExtValue()) +
+                       1.0f));
 
-      auto intMax = arith::ConstantOp::create(
-          rewriter, loc,
-          rewriter.getIntegerAttr(
-              getElementTypeOrSelf(dstTy),
-              APInt::getSignedMaxValue(dstTy.getIntOrFloatBitWidth())));
+      auto intMax = rewriter.createOrFold<arith::ConstantOp>(
+          loc, rewriter.getIntegerAttr(
+                   getElementTypeOrSelf(dstTy),
+                   APInt::getSignedMaxValue(dstTy.getIntOrFloatBitWidth())));
       auto minClampedFP =
           arith::MaximumFOp::create(rewriter, loc, rounded, intMinFP);
       auto minClamped =
@@ -695,8 +688,8 @@ static Value createLinalgBodyCalculationForElementwiseOp(
     // Casting to boolean, integers need to only be checked as not-equal to
     // zero.
     if (isa<IntegerType>(srcTy) && dstTy.isInteger(1)) {
-      Value zero = arith::ConstantIntOp::create(rewriter, loc, 0,
-                                                srcTy.getIntOrFloatBitWidth());
+      Value zero = rewriter.createOrFold<arith::ConstantIntOp>(
+          loc, 0, srcTy.getIntOrFloatBitWidth());
       return arith::CmpIOp::create(rewriter, loc, arith::CmpIPredicate::ne,
                                    args.front(), zero);
     }
@@ -724,8 +717,8 @@ static Value createIndex(PatternRewriter &rewriter, Location loc,
                          IndexPool &indexPool, int64_t index) {
   auto [it, inserted] = indexPool.try_emplace(index);
   if (inserted)
-    it->second =
-        arith::ConstantOp::create(rewriter, loc, rewriter.getIndexAttr(index));
+    it->second = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getIndexAttr(index));
   return it->second;
 }
 
@@ -1199,7 +1192,7 @@ static LogicalResult reduceMatchAndRewriteHelper(OpTy op, uint64_t axis,
     return rewriter.notifyMatchFailure(
         op, "No initial value found for reduction operation");
 
-  auto fillValue = arith::ConstantOp::create(rewriter, loc, fillValueAttr);
+  auto fillValue = rewriter.createOrFold<arith::ConstantOp>(loc, fillValueAttr);
   auto filledTensor =
       linalg::FillOp::create(rewriter, loc, ValueRange{fillValue},
                              ValueRange{emptyTensor})
@@ -1218,7 +1211,7 @@ static LogicalResult reduceMatchAndRewriteHelper(OpTy op, uint64_t axis,
       // Additionally we have to keep track of whether we've seen any non-NaN
       // values and then do a final select based on this predicate.
       auto trueAttr = rewriter.getBoolAttr(true);
-      auto trueValue = arith::ConstantOp::create(rewriter, loc, trueAttr);
+      auto trueValue = rewriter.createOrFold<arith::ConstantOp>(loc, trueAttr);
       auto emptyBoolTensor =
           tensor::EmptyOp::create(rewriter, loc, reduceShape,
                                   trueValue.getType(), dynDims)
@@ -1297,7 +1290,7 @@ static LogicalResult reduceMatchAndRewriteHelper(OpTy op, uint64_t axis,
     auto nanValueAttr = rewriter.getFloatAttr(
         accTy,
         APFloat::getNaN(cast<FloatType>(elementTy).getFloatSemantics(), false));
-    auto nanValue = arith::ConstantOp::create(rewriter, loc, nanValueAttr);
+    auto nanValue = rewriter.createOrFold<arith::ConstantOp>(loc, nanValueAttr);
     auto emptyNanTensor =
         tensor::EmptyOp::create(rewriter, loc, reduceShape, accTy, dynDims)
             .getResult();
@@ -1439,7 +1432,7 @@ static void setupLinalgGenericOpInputAndIndexingMap(
       IntegerAttr intAttr = isShift
                                 ? rewriter.getI8IntegerAttr(values.front())
                                 : rewriter.getI32IntegerAttr(values.front());
-      constant = arith::ConstantOp::create(rewriter, loc, intAttr);
+      constant = rewriter.createOrFold<arith::ConstantOp>(loc, intAttr);
     } else {
       auto elementType =
           isShift ? rewriter.getIntegerType(8) : rewriter.getI32Type();
@@ -1451,7 +1444,7 @@ static void setupLinalgGenericOpInputAndIndexingMap(
       else
         EltAttr = DenseIntElementsAttr::get(tensorType, values);
       genericInputs.push_back(
-          arith::ConstantOp::create(rewriter, loc, EltAttr));
+          rewriter.createOrFold<arith::ConstantOp>(loc, EltAttr));
       indexingMaps.push_back(AffineMap::get(/*dimCount=*/rank,
                                             /*symbolCount=*/0, exprs,
                                             rewriter.getContext()));
@@ -1513,8 +1506,8 @@ static Value getExtendZp(OpBuilder &builder, Type valueTy,
       }
     }
   } else {
-    return arith::ConstantOp::create(builder, loc,
-                                     IntegerAttr::get(extendType, *maybeZp));
+    return builder.createOrFold<arith::ConstantOp>(
+        loc, IntegerAttr::get(extendType, *maybeZp));
   }
   return result;
 }
@@ -1712,10 +1705,10 @@ public:
             intMax = APInt::getMaxValue(outBitWidth).getZExtValue();
           }
 
-          auto intMinVal = arith::ConstantOp::create(
-              nestedBuilder, loc, nestedBuilder.getI32IntegerAttr(intMin));
-          auto intMaxVal = arith::ConstantOp::create(
-              nestedBuilder, loc, nestedBuilder.getI32IntegerAttr(intMax));
+          auto intMinVal = nestedBuilder.createOrFold<arith::ConstantOp>(
+              loc, nestedBuilder.getI32IntegerAttr(intMin));
+          auto intMaxVal = nestedBuilder.createOrFold<arith::ConstantOp>(
+              loc, nestedBuilder.getI32IntegerAttr(intMax));
 
           value = clampIntHelper(nestedLoc, value, intMinVal, intMaxVal,
                                  nestedBuilder, /*isUnsigned=*/false);
@@ -1819,14 +1812,14 @@ public:
                                            value);
 
             if (isBilinear && scale[0] != 0) {
-              Value scaleY = arith::ConstantOp::create(
-                  b, loc, b.getI32IntegerAttr(scale[0]));
+              Value scaleY = b.createOrFold<arith::ConstantOp>(
+                  loc, b.getI32IntegerAttr(scale[0]));
               value = arith::MulIOp::create(b, loc, value, scaleY);
             }
 
             if (isBilinear && scale[2] != 0) {
-              Value scaleX = arith::ConstantOp::create(
-                  b, loc, b.getI32IntegerAttr(scale[2]));
+              Value scaleX = b.createOrFold<arith::ConstantOp>(
+                  loc, b.getI32IntegerAttr(scale[2]));
               value = arith::MulIOp::create(b, loc, value, scaleX);
             }
           }
@@ -1989,12 +1982,12 @@ public:
       Value channel = linalg::IndexOp::create(b, 3);
 
       Value zeroI32 =
-          arith::ConstantOp::create(b, b.getZeroAttr(b.getI32Type()));
-      Value zeroFp = arith::ConstantOp::create(b, b.getZeroAttr(floatTy));
+          b.createOrFold<arith::ConstantOp>(b.getZeroAttr(b.getI32Type()));
+      Value zeroFp = b.createOrFold<arith::ConstantOp>(b.getZeroAttr(floatTy));
       Value hMax =
-          arith::ConstantOp::create(b, b.getI32IntegerAttr(imageH - 1));
+          b.createOrFold<arith::ConstantOp>(b.getI32IntegerAttr(imageH - 1));
       Value wMax =
-          arith::ConstantOp::create(b, b.getI32IntegerAttr(imageW - 1));
+          b.createOrFold<arith::ConstantOp>(b.getI32IntegerAttr(imageW - 1));
 
       Value inY = arith::IndexCastOp::create(b, b.getI32Type(), y);
       Value inX = arith::IndexCastOp::create(b, b.getI32Type(), x);
@@ -2009,16 +2002,24 @@ public:
       }
 
       Value yScaleN, yScaleD, xScaleN, xScaleD;
-      yScaleN = arith::ConstantOp::create(b, b.getI32IntegerAttr(scale[0]));
-      yScaleD = arith::ConstantOp::create(b, b.getI32IntegerAttr(scale[1]));
-      xScaleN = arith::ConstantOp::create(b, b.getI32IntegerAttr(scale[2]));
-      xScaleD = arith::ConstantOp::create(b, b.getI32IntegerAttr(scale[3]));
+      yScaleN =
+          b.createOrFold<arith::ConstantOp>(b.getI32IntegerAttr(scale[0]));
+      yScaleD =
+          b.createOrFold<arith::ConstantOp>(b.getI32IntegerAttr(scale[1]));
+      xScaleN =
+          b.createOrFold<arith::ConstantOp>(b.getI32IntegerAttr(scale[2]));
+      xScaleD =
+          b.createOrFold<arith::ConstantOp>(b.getI32IntegerAttr(scale[3]));
 
       Value yOffset, xOffset, yBorder, xBorder;
-      yOffset = arith::ConstantOp::create(b, b.getI32IntegerAttr(offset[0]));
-      xOffset = arith::ConstantOp::create(b, b.getI32IntegerAttr(offset[1]));
-      yBorder = arith::ConstantOp::create(b, b.getI32IntegerAttr(border[0]));
-      xBorder = arith::ConstantOp::create(b, b.getI32IntegerAttr(border[1]));
+      yOffset =
+          b.createOrFold<arith::ConstantOp>(b.getI32IntegerAttr(offset[0]));
+      xOffset =
+          b.createOrFold<arith::ConstantOp>(b.getI32IntegerAttr(offset[1]));
+      yBorder =
+          b.createOrFold<arith::ConstantOp>(b.getI32IntegerAttr(border[0]));
+      xBorder =
+          b.createOrFold<arith::ConstantOp>(b.getI32IntegerAttr(border[1]));
 
       // Compute the ix and dx values for both the X and Y dimensions.
       auto getIndexAndDeltaFp = [&](Value &index, Value &delta, Value in,
@@ -2074,19 +2075,19 @@ public:
       }
 
       if (op.getMode() == ResizeMode::NEAREST_NEIGHBOR) {
-        auto one = arith::ConstantOp::create(b, b.getI32IntegerAttr(1));
+        auto one = b.createOrFold<arith::ConstantOp>(b.getI32IntegerAttr(1));
 
         auto getNearestIndexAndClamp = [&](Value val, Value dval, Value scale,
                                            Value max, int size,
                                            ImplicitLocOpBuilder &b) -> Value {
           if (size == 1) {
-            return arith::ConstantIndexOp::create(b, 0);
+            return b.createOrFold<arith::ConstantIndexOp>(0);
           }
 
           Value pred;
           if (floatingPointMode) {
-            auto h =
-                arith::ConstantOp::create(b, b.getFloatAttr(floatTy, 0.5f));
+            auto h = b.createOrFold<arith::ConstantOp>(
+                b.getFloatAttr(floatTy, 0.5f));
             pred = arith::CmpFOp::create(b, arith::CmpFPredicate::OGE, dval, h);
           } else {
             Value dvalDouble = arith::ShLIOp::create(b, dval, one);
@@ -2111,7 +2112,7 @@ public:
         // The mode here must be BILINEAR.
         assert(op.getMode() == ResizeMode::BILINEAR);
 
-        auto oneVal = arith::ConstantOp::create(b, b.getI32IntegerAttr(1));
+        auto oneVal = b.createOrFold<arith::ConstantOp>(b.getI32IntegerAttr(1));
 
         auto getClampedIdxs = [&](Value &val0, Value &val1, int size, Value in,
                                   Value max, ImplicitLocOpBuilder &b) {
@@ -2145,7 +2146,7 @@ public:
 
         if (floatingPointMode) {
           auto oneVal =
-              arith::ConstantOp::create(b, b.getFloatAttr(floatTy, 1.0f));
+              b.createOrFold<arith::ConstantOp>(b.getFloatAttr(floatTy, 1.0f));
           auto interpolate = [&](Value val0, Value val1, Value delta,
                                  int inputSize,
                                  ImplicitLocOpBuilder &b) -> Value {
@@ -2283,7 +2284,8 @@ public:
             Value index =
                 linalg::IndexOp::create(rewriter, nestedLoc, i).getResult();
             if (i == axis) {
-              auto one = arith::ConstantIndexOp::create(rewriter, nestedLoc, 1);
+              auto one =
+                  rewriter.createOrFold<arith::ConstantIndexOp>(nestedLoc, 1);
               auto sizeMinusOne =
                   arith::SubIOp::create(rewriter, nestedLoc, axisDimSize, one);
               index = arith::SubIOp::create(rewriter, nestedLoc, sizeMinusOne,
@@ -2416,8 +2418,8 @@ public:
         tensor::EmptyOp::create(rewriter, loc, resultTy.getShape(),
                                 outElementTy, dynDims)
             .getResult();
-    auto fillValueIdx = arith::ConstantOp::create(
-        rewriter, loc, rewriter.getIntegerAttr(outElementTy, 0));
+    auto fillValueIdx = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getIntegerAttr(outElementTy, 0));
     auto filledTensorIdx =
         linalg::FillOp::create(rewriter, loc, ValueRange{fillValueIdx},
                                ValueRange{emptyTensorIdx})
@@ -2436,7 +2438,7 @@ public:
           argmaxOp, "unsupported tosa.argmax element type");
 
     auto fillValueMax =
-        arith::ConstantOp::create(rewriter, loc, fillValueMaxAttr);
+        rewriter.createOrFold<arith::ConstantOp>(loc, fillValueMaxAttr);
     auto filledTensorMax =
         linalg::FillOp::create(rewriter, loc, ValueRange{fillValueMax},
                                ValueRange{emptyTensorMax})
@@ -2642,7 +2644,7 @@ public:
           resultElementTy.isInteger(8)) {
         Value index = arith::IndexCastOp::create(
             rewriter, loc, rewriter.getIndexType(), inputValue);
-        Value offset = arith::ConstantIndexOp::create(rewriter, loc, 128);
+        Value offset = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 128);
         index = arith::AddIOp::create(rewriter, loc, rewriter.getIndexType(),
                                       index, offset);
         Value extract =
@@ -2656,14 +2658,14 @@ public:
         Value extend = arith::ExtSIOp::create(
             rewriter, loc, rewriter.getI32Type(), inputValue);
 
-        auto offset = arith::ConstantOp::create(
-            rewriter, loc, rewriter.getI32IntegerAttr(32768));
-        auto seven = arith::ConstantOp::create(rewriter, loc,
-                                               rewriter.getI32IntegerAttr(7));
-        auto one = arith::ConstantOp::create(rewriter, loc,
-                                             rewriter.getI32IntegerAttr(1));
-        auto b1111111 = arith::ConstantOp::create(
-            rewriter, loc, rewriter.getI32IntegerAttr(127));
+        auto offset = rewriter.createOrFold<arith::ConstantOp>(
+            loc, rewriter.getI32IntegerAttr(32768));
+        auto seven = rewriter.createOrFold<arith::ConstantOp>(
+            loc, rewriter.getI32IntegerAttr(7));
+        auto one = rewriter.createOrFold<arith::ConstantOp>(
+            loc, rewriter.getI32IntegerAttr(1));
+        auto b1111111 = rewriter.createOrFold<arith::ConstantOp>(
+            loc, rewriter.getI32IntegerAttr(127));
 
         // Compute the index and fractional part from the input value:
         // value = value + 32768
@@ -2720,8 +2722,8 @@ struct RFFT2dConverter final : public OpRewritePattern<RFFT2dOp> {
 
   static OpFoldResult halfPlusOne(OpBuilder &builder, Location loc,
                                   OpFoldResult ofr) {
-    auto one = arith::ConstantIndexOp::create(builder, loc, 1);
-    auto two = arith::ConstantIndexOp::create(builder, loc, 2);
+    auto one = builder.createOrFold<arith::ConstantIndexOp>(loc, 1);
+    auto two = builder.createOrFold<arith::ConstantIndexOp>(loc, 2);
 
     auto value = getValueOrCreateConstantIndexOp(builder, loc, ofr);
     auto divBy2 = builder.createOrFold<arith::DivUIOp>(loc, value, two);
@@ -2752,7 +2754,8 @@ struct RFFT2dConverter final : public OpRewritePattern<RFFT2dOp> {
     auto emptyTensor =
         tensor::EmptyOp::create(rewriter, loc, type, dynamicSizes);
     auto fillValueAttr = rewriter.getZeroAttr(type.getElementType());
-    auto fillValue = arith::ConstantOp::create(rewriter, loc, fillValueAttr);
+    auto fillValue =
+        rewriter.createOrFold<arith::ConstantOp>(loc, fillValueAttr);
     auto filledTensor =
         linalg::FillOp::create(rewriter, loc, ValueRange{fillValue},
                                ValueRange{emptyTensor})
@@ -2827,13 +2830,13 @@ struct RFFT2dConverter final : public OpRewritePattern<RFFT2dOp> {
     auto dimW = rewriter.createOrFold<tensor::DimOp>(loc, input, 2);
 
     // Constants and dimension sizes
-    auto zeroFloat = arith::ConstantOp::create(
-        rewriter, loc, rewriter.getZeroAttr(elementType));
+    auto zeroFloat = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getZeroAttr(elementType));
     auto twoPiAttr = rewriter.getFloatAttr(elementType, 6.283185307179586);
-    auto twoPi = arith::ConstantOp::create(rewriter, loc, twoPiAttr);
+    auto twoPi = rewriter.createOrFold<arith::ConstantOp>(loc, twoPiAttr);
 
-    auto zeroIndex = arith::ConstantIndexOp::create(rewriter, loc, 0);
-    auto twoIndex = arith::ConstantIndexOp::create(rewriter, loc, 2);
+    auto zeroIndex = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
+    auto twoIndex = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 2);
 
     auto constH = castIndexToFloat(rewriter, loc, elementType, dimH);
     auto constW = castIndexToFloat(rewriter, loc, elementType, dimW);
@@ -2981,7 +2984,7 @@ struct FFT2dConverter final : OpRewritePattern<FFT2dOp> {
 
     // Constants and dimension sizes
     auto twoPiAttr = rewriter.getFloatAttr(real_el_ty, 6.283185307179586);
-    auto twoPi = arith::ConstantOp::create(rewriter, loc, twoPiAttr);
+    auto twoPi = rewriter.createOrFold<arith::ConstantOp>(loc, twoPiAttr);
     Value constH =
         RFFT2dConverter::castIndexToFloat(rewriter, loc, real_el_ty, dimH);
     Value constW =
@@ -3021,8 +3024,8 @@ struct FFT2dConverter final : OpRewritePattern<FFT2dOp> {
       if (inverse.getValue()) {
         angle = arith::MulFOp::create(
             builder, loc, angle,
-            arith::ConstantOp::create(rewriter, loc,
-                                      rewriter.getFloatAttr(real_el_ty, -1.0)));
+            rewriter.createOrFold<arith::ConstantOp>(
+                loc, rewriter.getFloatAttr(real_el_ty, -1.0)));
       }
 
       // realComponent = val_real * cos(a) + val_imag * sin(a);

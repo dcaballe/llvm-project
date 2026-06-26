@@ -16,10 +16,10 @@ func.func @memref_i8() -> i8 {
 //  CHECK-NEXT:   return %[[V]]
 
 // CHECK32-LABEL: func @memref_i8()
-//       CHECK32:   %[[M:.+]] = memref.alloc() : memref<1xi32, 1>
 //       CHECK32:   %[[C0:.+]] = arith.constant 0 : index
-//       CHECK32:   %[[V:.+]] = memref.load %[[M]][%[[C0]]] : memref<1xi32, 1>
 //       CHECK32:   %[[C24:.+]] = arith.constant 24 : index
+//       CHECK32:   %[[M:.+]] = memref.alloc() : memref<1xi32, 1>
+//       CHECK32:   %[[V:.+]] = memref.load %[[M]][%[[C0]]] : memref<1xi32, 1>
 //       CHECK32:   %[[CAST:.+]] = arith.index_cast %[[C24]] : index to i32
 //       CHECK32:   %[[SHIFTRT:.+]] = arith.shrsi %[[V]], %[[CAST]]
 //       CHECK32:   %[[TRUNC:.+]] = arith.trunci %[[SHIFTRT]] : i32 to i8

@@ -49,7 +49,7 @@ public:
       Value size;
       // Load dynamic sizes from the shape input, use constants for static dims.
       if (resultType.isDynamicDim(i)) {
-        Value index = arith::ConstantIndexOp::create(rewriter, loc, i);
+        Value index = rewriter.createOrFold<arith::ConstantIndexOp>(loc, i);
         size = memref::LoadOp::create(rewriter, loc, op.getShape(), index);
         if (!isa<IndexType>(size.getType()))
           size = arith::IndexCastOp::create(rewriter, loc,
@@ -57,7 +57,7 @@ public:
         sizes[i] = size;
       } else {
         auto sizeAttr = rewriter.getIndexAttr(resultType.getDimSize(i));
-        size = arith::ConstantOp::create(rewriter, loc, sizeAttr);
+        size = rewriter.createOrFold<arith::ConstantOp>(loc, sizeAttr);
         sizes[i] = sizeAttr;
       }
       if (stride)
@@ -71,7 +71,7 @@ public:
         } else if (resultType.isDynamicDim(i)) {
           stride = arith::MulIOp::create(
               rewriter, loc,
-              arith::ConstantIndexOp::create(rewriter, loc, staticStride),
+              rewriter.createOrFold<arith::ConstantIndexOp>(loc, staticStride),
               size);
         } else {
           staticStride *= resultType.getDimSize(i);

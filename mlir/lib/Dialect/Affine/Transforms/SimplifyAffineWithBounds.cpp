@@ -168,8 +168,8 @@ struct SimplifyDelinearizeOfLinearizeDisjoint final
       ValueRange remainingInputs = linInputs.drop_back(linTailConsumed);
       if (remainingInputs.empty()) {
         // The outermost delinearize result is guaranteed to be zero.
-        results.push_back(arith::ConstantIndexOp::create(
-            rewriter, delinearizeOp.getLoc(), 0));
+        results.push_back(rewriter.createOrFold<arith::ConstantIndexOp>(
+            delinearizeOp.getLoc(), 0));
       } else if (remainingInputs.size() == 1) {
         // Pass through the single remaining input.
         results.push_back(remainingInputs.front());

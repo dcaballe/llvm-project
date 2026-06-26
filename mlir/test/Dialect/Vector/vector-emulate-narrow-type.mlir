@@ -343,13 +343,12 @@ func.func @vector_maskedload_i4_arith_constant(%passthru: vector<8xi4>) -> vecto
 
 // CHECK: func @vector_maskedload_i4_arith_constant(
 // CHECK-SAME:   %[[PASSTHRU:[a-zA-Z0-9]+]]
-// CHECK: %[[ALLOC:.+]] = memref.alloc() : memref<12xi8>
-// CHECK: %[[MASK:.+]] = arith.constant dense<[false, true, true, true, true, false, false, false]> : vector<8xi1>
-
 // Emit a new, compressed mask for emulated maskedload:
 // CHECK: %[[COMPRESSED_MASK:.+]] = arith.constant dense<[true, true, true, false]> : vector<4xi1>
-// CHECK: %[[PTHU_UPCAST:.+]] = vector.bitcast %[[PASSTHRU]] : vector<8xi4> to vector<4xi8>
 // CHECK: %[[C0:.+]] = arith.constant 0 : index
+// CHECK: %[[ALLOC:.+]] = memref.alloc() : memref<12xi8>
+// CHECK: %[[MASK:.+]] = arith.constant dense<[false, true, true, true, true, false, false, false]> : vector<8xi1>
+// CHECK: %[[PTHU_UPCAST:.+]] = vector.bitcast %[[PASSTHRU]] : vector<8xi4> to vector<4xi8>
 // CHECK: %[[LOAD:.+]] = vector.maskedload %[[ALLOC]][%[[C0]]], %[[COMPRESSED_MASK]], %[[PTHU_UPCAST]]
 // CHECK: %[[LOAD_DOWNCAST:.+]] = vector.bitcast %[[LOAD]] : vector<4xi8> to vector<8xi4>
 // CHECK: %[[SELECT:.+]] = arith.select %[[MASK]], %[[LOAD_DOWNCAST]], %[[PASSTHRU]] : vector<8xi1>, vector<8xi4>
@@ -557,12 +556,12 @@ func.func @vector_maskedstore_i8(%arg0: index, %arg1: index, %arg2: index, %valu
 // CHECK32-SAME:     %[[ARG1:[a-zA-Z0-9]+]]
 // CHECK32-SAME:     %[[ARG2:[a-zA-Z0-9]+]]
 // CHECK32-SAME:     %[[VAL:[a-zA-Z0-9]+]]
+// CHECK32:        %[[PASS_THRU:.+]] = arith.constant dense<0> : vector<2xi32>
 // CHECK32:        %[[ALLOC:.+]] = memref.alloc() : memref<6xi32>
 // CHECK32:        %[[ORIG_MASK:.+]] = vector.create_mask %[[ARG2]] : vector<8xi1>
 // CHECK32:        %[[LIDX:.+]] = affine.apply #[[LOAD_IDX_MAP]]()[%[[ARG0]], %[[ARG1]]]
 // CHECK32:        %[[MASK_IDX:.+]] = affine.apply #[[MASK_IDX_MAP]]()[%[[ARG2]]]
 // CHECK32:        %[[NEW_MASK:.+]] = vector.create_mask %[[MASK_IDX]] : vector<2xi1>
-// CHECK32:        %[[PASS_THRU:.+]] = arith.constant dense<0> : vector<2xi32>
 // CHECK32:        %[[LOAD:.+]] = vector.maskedload %[[ALLOC]][%[[LIDX]]], %[[NEW_MASK]], %[[PASS_THRU]]
 // CHECK32:        %[[BITCAST:.+]] = vector.bitcast %[[LOAD]] : vector<2xi32> to vector<8xi8>
 // CHECK32:        %[[SELECT:.+]] = arith.select %[[ORIG_MASK]], %[[VAL]], %[[BITCAST]] : vector<8xi1>, vector<8xi8>
@@ -591,12 +590,12 @@ func.func @vector_maskedstore_i4(
 // CHECK-SAME:      %[[IDX_2:[a-zA-Z0-9]+]]: index,
 // CHECK-SAME:      %[[NUM_EL_TO_STORE:[a-zA-Z0-9]+]]: index,
 // CHECK-SAME:      %[[VAL_TO_STORE:[a-zA-Z0-9]+]]: vector<8xi4>) {
+// CHECK:           %[[PASS_THRU:.+]] = arith.constant dense<0> : vector<4xi8>
 // CHECK:           %[[ALLOC:.+]] = memref.alloc() : memref<12xi8>
 // CHECK:           %[[ORIG_MASK:.+]] = vector.create_mask %[[NUM_EL_TO_STORE]] : vector<8xi1>
 // CHECK:           %[[LIDX:.+]] = affine.apply #[[$ATTR_10]]()[%[[IDX_1]], %[[IDX_2]]]
 // CHECK:           %[[MASK_IDX:.+]] = affine.apply #[[$ATTR_11]]()[%[[NUM_EL_TO_STORE]]]
 // CHECK:           %[[NEW_MASK:.+]] = vector.create_mask %[[MASK_IDX]] : vector<4xi1>
-// CHECK:           %[[PASS_THRU:.+]] = arith.constant dense<0> : vector<4xi8>
 // CHECK:           %[[LOAD:.+]] = vector.maskedload %[[ALLOC]][%[[LIDX]]], %[[NEW_MASK]], %[[PASS_THRU]] : memref<12xi8>, vector<4xi1>, vector<4xi8> into vector<4xi8>
 // CHECK:           %[[BITCAST:.+]] = vector.bitcast %[[LOAD]] : vector<4xi8> to vector<8xi4>
 // CHECK:           %[[SELECT:.+]] = arith.select %[[ORIG_MASK]], %[[VAL_TO_STORE]], %[[BITCAST]] : vector<8xi1>, vector<8xi4>
@@ -611,12 +610,12 @@ func.func @vector_maskedstore_i4(
 // CHECK32-SAME:      %[[IDX_2:[a-zA-Z0-9]+]]: index,
 // CHECK32-SAME:      %[[NUM_EL_TO_STORE:[a-zA-Z0-9]+]]: index,
 // CHECK32-SAME:      %[[VAL_TO_STORE:[a-zA-Z0-9]+]]: vector<8xi4>) {
+// CHECK32:           %[[PASS_THRU:.+]] = arith.constant dense<0> : vector<1xi32>
 // CHECK32:           %[[ALLOC:.+]] = memref.alloc() : memref<3xi32>
 // CHECK32:           %[[ORIG_MASK:.+]] = vector.create_mask %[[NUM_EL_TO_STORE]] : vector<8xi1>
 // CHECK32:           %[[LIDX:.+]] = affine.apply #[[$ATTR_17]]()[%[[IDX_1]], %[[IDX_2]]]
 // CHECK32:           %[[MASK_IDX:.+]] = affine.apply #[[$ATTR_18]]()[%[[NUM_EL_TO_STORE]]]
 // CHECK32:           %[[NEW_MASK:.+]] = vector.create_mask %[[MASK_IDX]] : vector<1xi1>
-// CHECK32:           %[[PASS_THRU:.+]] = arith.constant dense<0> : vector<1xi32>
 // CHECK32:           %[[LOAD:.+]] = vector.maskedload %[[ALLOC]][%[[LIDX]]], %[[NEW_MASK]], %[[PASS_THRU]] : memref<3xi32>, vector<1xi1>, vector<1xi32> into vector<1xi32>
 // CHECK32:           %[[BITCAST:.+]] = vector.bitcast %[[LOAD]] : vector<1xi32> to vector<8xi4>
 // CHECK32:           %[[SELECT:.+]] = arith.select %[[ORIG_MASK]], %[[VAL_TO_STORE]], %[[BITCAST]] : vector<8xi1>, vector<8xi4>
@@ -646,11 +645,11 @@ func.func @vector_maskedstore_i8_constant_mask(%arg0: index, %arg1: index, %valu
 // CHECK32-SAME:     %[[ARG0:[a-zA-Z0-9]+]]
 // CHECK32-SAME:     %[[ARG1:[a-zA-Z0-9]+]]
 // CHECK32-SAME:     %[[VAL:[a-zA-Z0-9]+]]
+// CHECK32:        %[[PASS_THRU:.+]] = arith.constant dense<0> : vector<2xi32>
 // CHECK32:        %[[ALLOC:.+]] = memref.alloc() : memref<6xi32>
 // CHECK32:        %[[ORIG_MASK:.+]] = vector.constant_mask [4] : vector<8xi1>
 // CHECK32:        %[[LIDX:.+]] = affine.apply #[[LOAD_IDX_MAP]]()[%[[ARG0]], %[[ARG1]]]
 // CHECK32:        %[[NEW_MASK:.+]] = vector.constant_mask [1] : vector<2xi1>
-// CHECK32:        %[[PASS_THRU:.+]] = arith.constant dense<0> : vector<2xi32>
 // CHECK32:        %[[LOAD:.+]] = vector.maskedload %[[ALLOC]][%[[LIDX]]], %[[NEW_MASK]], %[[PASS_THRU]]
 // CHECK32:        %[[BITCAST:.+]] = vector.bitcast %[[LOAD]] : vector<2xi32> to vector<8xi8>
 // CHECK32:        %[[SELECT:.+]] = arith.select %[[ORIG_MASK]], %[[VAL]], %[[BITCAST]] : vector<8xi1>, vector<8xi8>
@@ -676,11 +675,11 @@ func.func @vector_maskedstore_i4_constant_mask(
 // CHECK-SAME:      %[[IDX_1:[a-zA-Z0-9]+]]: index,
 // CHECK-SAME:      %[[IDX_2:[a-zA-Z0-9]+]]: index,
 // CHECK-SAME:      %[[VAL_TO_STORE:[a-zA-Z0-9]+]]: vector<8xi4>) {
+// CHECK:           %[[PASS_THRU:.+]] = arith.constant dense<0> : vector<4xi8>
 // CHECK:           %[[ALLOC:.+]] = memref.alloc() : memref<12xi8>
 // CHECK:           %[[ORIG_MASK:.+]] = vector.constant_mask [4] : vector<8xi1>
 // CHECK:           %[[LIDX:.+]] = affine.apply #[[$ATTR_12]]()[%[[IDX_1]], %[[IDX_2]]]
 // CHECK:           %[[NEW_MASK:.+]] = vector.constant_mask [2] : vector<4xi1>
-// CHECK:           %[[PASS_THRU:.+]] = arith.constant dense<0> : vector<4xi8>
 // CHECK:           %[[LOAD:.+]] = vector.maskedload %[[ALLOC]][%[[LIDX]]], %[[NEW_MASK]], %[[PASS_THRU]] : memref<12xi8>, vector<4xi1>, vector<4xi8> into vector<4xi8>
 // CHECK:           %[[BITCAST:.+]] = vector.bitcast %[[LOAD]] : vector<4xi8> to vector<8xi4>
 // CHECK:           %[[SELECT:.+]] = arith.select %[[ORIG_MASK]], %[[VAL_TO_STORE]], %[[BITCAST]] : vector<8xi1>, vector<8xi4>
@@ -692,11 +691,11 @@ func.func @vector_maskedstore_i4_constant_mask(
 // CHECK32-SAME:      %[[IDX_1:[a-zA-Z0-9]+]]: index,
 // CHECK32-SAME:      %[[IDX_2:[a-zA-Z0-9]+]]: index,
 // CHECK32-SAME:      %[[VAL_TO_STORE:[a-zA-Z0-9]+]]: vector<8xi4>) {
+// CHECK32:           %[[PASS_THRU:.+]] = arith.constant dense<0> : vector<1xi32>
 // CHECK32:           %[[ALLOC:.+]] = memref.alloc() : memref<3xi32>
 // CHECK32:           %[[ORIG_MASK:.+]] = vector.constant_mask [4] : vector<8xi1>
 // CHECK32:           %[[LIDX:.+]] = affine.apply #[[$ATTR_20]]()[%[[IDX_1]], %[[IDX_2]]]
 // CHECK32:           %[[NEW_MASK:.+]] = vector.constant_mask [1] : vector<1xi1>
-// CHECK32:           %[[PASS_THRU:.+]] = arith.constant dense<0> : vector<1xi32>
 // CHECK32:           %[[LOAD:.+]] = vector.maskedload %[[ALLOC]][%[[LIDX]]], %[[NEW_MASK]], %[[PASS_THRU]] : memref<3xi32>, vector<1xi1>, vector<1xi32> into vector<1xi32>
 // CHECK32:           %[[BITCAST:.+]] = vector.bitcast %[[LOAD]] : vector<1xi32> to vector<8xi4>
 // CHECK32:           %[[SELECT:.+]] = arith.select %[[ORIG_MASK]], %[[VAL_TO_STORE]], %[[BITCAST]] : vector<8xi1>, vector<8xi4>
@@ -718,12 +717,12 @@ func.func @vector_maskedstore_i4_arith_constant(%val_to_store: vector<8xi4>) {
 
 // CHECK-LABEL: func @vector_maskedstore_i4_arith_constant
 // CHECK-SAME: %[[VAL_TO_STORE:[a-zA-Z0-9]+]]:
+// CHECK-DAG: %[[COMPRESSED_MASK:.+]] = arith.constant dense<[true, true, true, false]> : vector<4xi1>
+// CHECK-DAG: %[[EMPTY:.+]] = arith.constant dense<0> : vector<4xi8>
+// %c3 * 4 bits = 12
+// CHECK-DAG: %[[IDX_FLATTENED:.+]] = arith.constant 12 : index
 // CHECK: %[[ALLOC:.+]] = memref.alloc() : memref<20xi8>
 // CHECK: %[[MASK:.+]] = arith.constant dense<[false, true, true, true, true, true, false, false]> : vector<8xi1>
-// %c3 * 4 bits = 12
-// CHECK: %[[IDX_FLATTENED:.+]] = arith.constant 12 : index
-// CHECK: %[[COMPRESSED_MASK:.+]] = arith.constant dense<[true, true, true, false]> : vector<4xi1>
-// CHECK: %[[EMPTY:.+]] = arith.constant dense<0> : vector<4xi8>
 // CHECK: %[[MASKEDLOAD:.+]] = vector.maskedload %[[ALLOC]][%[[IDX_FLATTENED]]], %[[COMPRESSED_MASK]], %[[EMPTY]]
 // CHECK: %[[LOAD_UPCAST:.+]] = vector.bitcast %[[MASKEDLOAD]]
 // CHECK: %[[SELECT:.+]] = arith.select %[[MASK]], %[[VAL_TO_STORE]], %[[LOAD_UPCAST]]

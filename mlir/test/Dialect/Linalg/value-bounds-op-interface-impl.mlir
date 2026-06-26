@@ -34,18 +34,18 @@ func.func @linalg_index(%arg0: memref<?x?xf32>,
   {
     ^bb(%a: f32, %b: f32):
       // CHECK: %[[c1:.*]] = arith.constant 1 : index
+      // CHECK: %[[c0:.*]] = arith.constant 0 : index
       // CHECK: %[[ub_0:.*]] = memref.dim %[[arg0]], %[[c1]]
       // CHECK: "test.some_use"(%[[ub_0]])
       %0 = linalg.index 0 : index
       %ub_0 = "test.reify_bound"(%0) {type = "UB"} : (index) -> (index)
       "test.some_use"(%ub_0) : (index) -> ()
 
-      // CHECK: %[[c0:.*]] = arith.constant 0 : index
-      // CHECK: "test.some_use"(%[[c0]])
+      // CHECK: %[[lb_0:.*]] = arith.constant 0 : index
+      // CHECK: "test.some_use"(%[[lb_0]])
       %lb_0 = "test.reify_bound"(%0) {type = "LB"} : (index) -> (index)
       "test.some_use"(%lb_0) : (index) -> ()
 
-      // CHECK: %[[c0:.*]] = arith.constant 0 : index
       // CHECK: %[[ub_1:.*]] = memref.dim %[[arg0]], %[[c0]]
       // CHECK: "test.some_use"(%[[ub_1]])
       %1 = linalg.index 1 : index

@@ -587,7 +587,7 @@ struct LinalgOpPartialReductionInterface
       Type elType = getElementTypeOrSelf(result.getType());
       Value emptyTensor =
           tensor::EmptyOp::create(b, loc, partialResultShape, elType);
-      Value constantOp = arith::ConstantOp::create(b, loc, *identity);
+      Value constantOp = b.createOrFold<arith::ConstantOp>(loc, *identity);
       auto identityTensor =
           linalg::FillOp::create(b, loc, constantOp, emptyTensor);
       inits.push_back(identityTensor.getResult(0));
@@ -1126,8 +1126,8 @@ struct PackOpTiling
       outputShape.push_back(createOrFoldDimOp(builder, loc, dest, dim));
 
     // Generate the loops that iterate over the data tile.
-    Value zero = arith::ConstantIndexOp::create(builder, loc, 0);
-    Value one = arith::ConstantIndexOp::create(builder, loc, 1);
+    Value zero = builder.createOrFold<arith::ConstantIndexOp>(loc, 0);
+    Value one = builder.createOrFold<arith::ConstantIndexOp>(loc, 1);
 
     // All loops except the innermost are simple loops that just iterate
     // over the tile dimensions.

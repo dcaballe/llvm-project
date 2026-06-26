@@ -74,11 +74,11 @@ struct GpuSubgroupIdRewriter final : OpRewritePattern<gpu::SubgroupIdOp> {
 
     Value dimX, dimY;
     if (maybeKnownDimX)
-      dimX = arith::ConstantOp::create(rewriter, loc, maybeKnownDimX);
+      dimX = rewriter.createOrFold<arith::ConstantOp>(loc, maybeKnownDimX);
     else
       dimX = gpu::BlockDimOp::create(rewriter, loc, gpu::Dimension::x);
     if (maybeKnownDimY)
-      dimY = arith::ConstantOp::create(rewriter, loc, maybeKnownDimY);
+      dimY = rewriter.createOrFold<arith::ConstantOp>(loc, maybeKnownDimY);
     else
       dimY = gpu::BlockDimOp::create(rewriter, loc, gpu::Dimension::y);
 

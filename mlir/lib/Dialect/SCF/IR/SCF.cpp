@@ -2314,8 +2314,8 @@ struct ConditionPropagation : public OpRewritePattern<IfOp> {
         changed = true;
 
         if (!constantTrue)
-          constantTrue = arith::ConstantOp::create(
-              rewriter, op.getLoc(), i1Ty, rewriter.getIntegerAttr(i1Ty, 1));
+          constantTrue = rewriter.createOrFold<arith::ConstantOp>(
+              op.getLoc(), i1Ty, rewriter.getIntegerAttr(i1Ty, 1));
 
         rewriter.modifyOpInPlace(use.getOwner(),
                                  [&]() { use.set(constantTrue); });
@@ -2325,8 +2325,8 @@ struct ConditionPropagation : public OpRewritePattern<IfOp> {
         changed = true;
 
         if (!constantFalse)
-          constantFalse = arith::ConstantOp::create(
-              rewriter, op.getLoc(), i1Ty, rewriter.getIntegerAttr(i1Ty, 0));
+          constantFalse = rewriter.createOrFold<arith::ConstantOp>(
+              op.getLoc(), i1Ty, rewriter.getIntegerAttr(i1Ty, 0));
 
         rewriter.modifyOpInPlace(use.getOwner(),
                                  [&]() { use.set(constantFalse); });
@@ -3562,8 +3562,8 @@ struct WhileConditionTruth : public OpRewritePattern<WhileOp> {
       if (std::get<0>(yieldedAndBlockArgs) == term.getCondition()) {
         if (!std::get<1>(yieldedAndBlockArgs).use_empty()) {
           if (!constantTrue)
-            constantTrue = arith::ConstantOp::create(
-                rewriter, op.getLoc(), term.getCondition().getType(),
+            constantTrue = rewriter.createOrFold<arith::ConstantOp>(
+                op.getLoc(), term.getCondition().getType(),
                 rewriter.getBoolAttr(true));
 
           rewriter.replaceAllUsesWith(std::get<1>(yieldedAndBlockArgs),

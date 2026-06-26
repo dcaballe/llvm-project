@@ -75,7 +75,7 @@ static Value allocBuffer(ImplicitLocOpBuilder &b,
   dynamicBufferType =
       MemRefType::Builder(dynamicBufferType).setMemorySpace(memorySpaceAttr);
   Value mul = b.createOrFold<arith::MulIOp>(
-      arith::ConstantIndexOp::create(b, width), allocSize);
+      b.createOrFold<arith::ConstantIndexOp>(width), allocSize);
   if (options.useAlloca)
     return memref::AllocaOp::create(b, dynamicBufferType, mul, alignmentAttr);
   return memref::AllocOp::create(b, dynamicBufferType, mul, alignmentAttr);
@@ -91,8 +91,8 @@ static std::optional<Value> defaultAllocBufferCallBack(
     std::optional<unsigned> alignment, DataLayout &layout) {
   ShapedType viewType = subView.getType();
   ImplicitLocOpBuilder b(subView.getLoc(), builder);
-  auto zero = arith::ConstantIndexOp::create(b, 0);
-  auto one = arith::ConstantIndexOp::create(b, 1);
+  auto zero = b.createOrFold<arith::ConstantIndexOp>(0);
+  auto one = b.createOrFold<arith::ConstantIndexOp>(1);
 
   Attribute memorySpaceAttr;
   if (options.memorySpace.has_value())
@@ -264,7 +264,7 @@ FailureOr<PromotionInfo> mlir::linalg::promoteSubviewAsNewBuffer(
               /*stopCondition=*/nullptr, ValueBoundsOptions{/*closedUB=*/true});
       size = failed(upperBound)
                  ? getValueOrCreateConstantIndexOp(b, loc, rangeValue.size)
-                 : arith::ConstantIndexOp::create(b, loc, *upperBound);
+                 : b.createOrFold<arith::ConstantIndexOp>(loc, *upperBound);
     }
     LLVM_DEBUG(llvm::dbgs() << "Extracted tightest: " << size << "\n");
     fullSizes.push_back(size);
@@ -309,17 +309,19 @@ promoteSubViews(ImplicitLocOpBuilder &b,
     Value fillVal =
         llvm::TypeSwitch<Type, Value>(subviewEltType)
             .Case([&](FloatType t) {
-              return arith::ConstantOp::create(b, FloatAttr::get(t, 0.0));
+              return b.createOrFold<arith::ConstantOp>(FloatAttr::get(t, 0.0));
             })
             .Case([&](IntegerType t) {
-              return arith::ConstantOp::create(b, IntegerAttr::get(t, 0));
+              return b.createOrFold<arith::ConstantOp>(IntegerAttr::get(t, 0));
             })
             .Case([&](ComplexType t) {
               Value tmp;
               if (auto et = dyn_cast<FloatType>(t.getElementType()))
-                tmp = arith::ConstantOp::create(b, FloatAttr::get(et, 0.0));
+                tmp =
+                    b.createOrFold<arith::ConstantOp>(FloatAttr::get(et, 0.0));
               else if (auto et = cast<IntegerType>(t.getElementType()))
-                tmp = arith::ConstantOp::create(b, IntegerAttr::get(et, 0));
+                tmp =
+                    b.createOrFold<arith::ConstantOp>(IntegerAttr::get(et, 0));
               return complex::CreateOp::create(b, t, tmp, tmp);
             })
             .Default(nullptr);

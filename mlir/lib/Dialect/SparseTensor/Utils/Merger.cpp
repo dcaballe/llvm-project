@@ -1563,6 +1563,8 @@ static Value insertYieldOp(RewriterBase &rewriter, Location loc, Region &region,
   Block &clonedBlock = tmpRegion.front();
   YieldOp clonedYield = cast<YieldOp>(clonedBlock.getTerminator());
   // Merge cloned block and return yield value.
+  // Only an insertion anchor, erased below, so it must be a fresh op rather
+  // than a possibly shared constant.
   Operation *placeholder = arith::ConstantIndexOp::create(rewriter, loc, 0);
   rewriter.inlineBlockBefore(&tmpRegion.front(), placeholder, vals);
   Value val = clonedYield.getSingleResult();
@@ -1602,8 +1604,8 @@ static Value buildBinaryOverlap(RewriterBase &rewriter, Location loc,
 static Value buildRelu(RewriterBase &rewriter, Location loc, Value v0,
                        Attribute attr) {
   Type tp = v0.getType();
-  auto zero =
-      arith::ConstantOp::create(rewriter, loc, tp, rewriter.getZeroAttr(tp));
+  auto zero = rewriter.createOrFold<arith::ConstantOp>(
+      loc, tp, rewriter.getZeroAttr(tp));
   Value cmp;
   if (isa<FloatType>(tp)) {
     auto pred = llvm::cast<arith::CmpFPredicateAttr>(attr);
@@ -1668,8 +1670,8 @@ Value Merger::buildExp(RewriterBase &rewriter, Location loc, ExprId e, Value v0,
   case TensorExp::Kind::kNegI: // no negi in std
     return arith::SubIOp::create(
         rewriter, loc,
-        arith::ConstantOp::create(rewriter, loc, v0.getType(),
-                                  rewriter.getZeroAttr(v0.getType())),
+        rewriter.createOrFold<arith::ConstantOp>(
+            loc, v0.getType(), rewriter.getZeroAttr(v0.getType())),
         v0);
   case TensorExp::Kind::kTruncF:
     return arith::TruncFOp::create(rewriter, loc, inferType(e, v0), v0);

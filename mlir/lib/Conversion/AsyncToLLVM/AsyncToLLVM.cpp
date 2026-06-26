@@ -960,9 +960,9 @@ public:
   LogicalResult
   matchAndRewrite(RefCountingOp op, typename RefCountingOp::Adaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    auto count =
-        arith::ConstantOp::create(rewriter, op->getLoc(), rewriter.getI64Type(),
-                                  rewriter.getI64IntegerAttr(op.getCount()));
+    auto count = rewriter.createOrFold<arith::ConstantOp>(
+        op->getLoc(), rewriter.getI64Type(),
+        rewriter.getI64IntegerAttr(op.getCount()));
 
     auto operand = adaptor.getOperand();
     rewriter.replaceOpWithNewOp<func::CallOp>(op, TypeRange(), apiFunctionName,

@@ -15,9 +15,9 @@ func.func @simple_KCRS_to_KCRSsr(%arg0: tensor<?x?xi32>, %arg1: tensor<1x1x?x1xi
 // CHECK-LABEL:   func.func @simple_KCRS_to_KCRSsr(
 // CHECK-SAME:      %[[SRC:[a-zA-Z0-9]+]]: tensor<?x?xi32>,
 // CHECK-SAME:      %[[DEST:[a-zA-Z0-9]+]]: tensor<1x1x?x1xi32>) -> tensor<1x1x?x1xi32>
-// CHECK:           %[[VAL_2:.*]] = arith.constant 1 : index
-// CHECK:           %[[VAL_3:.*]] = arith.constant 5 : i32
-// CHECK:           %[[VAL_4:.*]] = arith.constant 0 : index
+// CHECK-DAG:       %[[VAL_2:.*]] = arith.constant 1 : index
+// CHECK-DAG:       %[[VAL_3:.*]] = arith.constant 5 : i32
+// CHECK-DAG:       %[[VAL_4:.*]] = arith.constant 0 : index
 // CHECK:           %[[VAL_5:.*]] = tensor.dim %[[SRC]], %[[VAL_4]] : tensor<?x?xi32>
 // CHECK:           %[[VAL_6:.*]] = affine.apply #[[$ATTR_0]](){{\[}}%[[VAL_5]]]
 // CHECK:           %[[VAL_7:.*]] = tensor.dim %[[SRC]], %[[VAL_2]] : tensor<?x?xi32>

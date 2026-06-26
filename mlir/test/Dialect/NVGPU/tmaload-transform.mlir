@@ -15,15 +15,16 @@ func.func @main() {
   %memref, %asyncToken = gpu.alloc async [%0] () : memref<64x32xf32>
   %memref_1, %asyncToken_2 = gpu.alloc async [%0] () : memref<8x32xf32>
 
-  //      CHECK: %[[M1:.*]] = memref.cast %{{.*}} : memref<64x32xf32> to memref<*xf32>
+  //      CHECK: %[[c0:.*]] = arith.constant 0 : index
   //      CHECK: %[[c64:.*]] = arith.constant 64 : index
   //      CHECK: %[[c32:.*]] = arith.constant 32 : index
+  //      CHECK: %[[c8_2:.*]] = arith.constant 8 : index
+  //      CHECK: %[[c10000000:.*]] = arith.constant 10000000 : index
+  //      CHECK: %[[M1:.*]] = memref.cast %{{.*}} : memref<64x32xf32> to memref<*xf32>
   //      CHECK: %[[D1:.*]] = nvgpu.tma.create.descriptor %[[M1]] box[%[[c64]], %[[c32]]]
   // CHECK-SAME:   : memref<*xf32> -> <tensor = memref<64x32xf32, #gpu.address_space<workgroup>>, swizzle = none, l2promo = none, oob = zero, interleave = none>
-  //      CHECK: %[[cast_2:.*]] = memref.cast %memref_0 : memref<8x32xf32> to memref<*xf32>
-  //      CHECK: %[[c8_2:.*]] = arith.constant 8 : index
-  //      CHECK: %[[c32_2:.*]] = arith.constant 32 : index
-  //      CHECK: %[[D2:.*]] = nvgpu.tma.create.descriptor %cast_2 box[%[[c8_2]], %[[c32_2]]]
+  //      CHECK: %[[cast_2:.*]] = memref.cast %{{.*}} : memref<8x32xf32> to memref<*xf32>
+  //      CHECK: %[[D2:.*]] = nvgpu.tma.create.descriptor %[[cast_2]] box[%[[c8_2]], %[[c32]]]
   // CHECK-SAME:   : memref<*xf32> -> <tensor = memref<8x32xf32, #gpu.address_space<workgroup>>, swizzle = none, l2promo = none, oob = zero, interleave = none>
   // CHECK: gpu.launch
   gpu.launch blocks(%bx, %by, %bz) in (%grid_x = %c1, %grid_y = %c1, %grid_z = %c1)
@@ -37,7 +38,6 @@ func.func @main() {
     //      CHECK: nvgpu.mbarrier.init %[[B]][%{{.*}}], %{{.*}} : <memorySpace = #gpu.address_space<workgroup>
     //      CHECK: gpu.barrier
     //
-    //      CHECK: %[[c0:.*]] = arith.constant 0 : index
     //      CHECK: %[[TIDX:.*]] = gpu.thread_id x
     //      CHECK: %[[CMP:.*]] = arith.cmpi eq, %[[TIDX]], %[[c0]] : index
     //
@@ -63,7 +63,6 @@ func.func @main() {
     //      CHECK: }
     //
     //      CHECK: %[[c0_6:.*]] = llvm.mlir.constant(false) : i1 
-    //      CHECK: %[[c10000000:.*]] = arith.constant 10000000 : index
     //      CHECK: nvgpu.mbarrier.try_wait.parity %[[B]][%{{.*}}], %[[c0_6]], %[[c10000000]] : <memorySpace = #gpu.address_space<workgroup>
 
     /// Both copies are matched and end up in the same async group.

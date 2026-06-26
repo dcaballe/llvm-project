@@ -197,11 +197,11 @@ func.func @rank_three_array_reduction() {
 }
 
 // CHECK-LABEL: func.func @dynamic_rank_two_array_reduction
+// CHECK: %[[C2:.*]] = arith.constant 2 : index
 // CHECK: scf.for %[[LINEAR:.*]] =
 // CHECK: %[[DIM1:.*]] = memref.dim %{{.*}}, %{{.*}} : memref<2x?xi32>
 // CHECK: %[[IDX1:.*]] = arith.remui %[[LINEAR]], %[[DIM1]] : index
 // CHECK: %[[ROW:.*]] = arith.divui %[[LINEAR]], %[[DIM1]] : index
-// CHECK: %[[C2:.*]] = arith.constant 2 : index
 // CHECK: %[[IDX0:.*]] = arith.remui %[[ROW]], %[[C2]] : index
 // CHECK: %[[ELEM:.*]] = memref.load %{{.*}}[%[[IDX0]], %[[IDX1]]] : memref<2x?xi32>
 // CHECK: %[[RESULT:.*]] = gpu.all_reduce add %[[ELEM]]

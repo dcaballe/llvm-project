@@ -118,7 +118,7 @@ static void packNonUnitDimOperandToVNNI(mlir::PatternRewriter &rewriter,
   if (elemTy.isSignlessInteger(8))
     offset = 2;
 
-  Value cOffset = arith::ConstantIndexOp::create(rewriter, loc, offset);
+  Value cOffset = rewriter.createOrFold<arith::ConstantIndexOp>(loc, offset);
   auto nextIndx =
       arith::AddIOp::create(rewriter, loc, rewriter.getIndexType(), cOffset,
                             indexVals[indexVals.size() - 2]);

@@ -133,10 +133,10 @@ module attributes {transform.with_named_sequence} {
 // CHECK-SAME:     %[[LB2:[a-zA-Z0-9_]+]]: index
 // CHECK-SAME:     %[[UB2:[a-zA-Z0-9_]+]]: index
 // CHECK-SAME:     %[[STEP2:[a-zA-Z0-9_]+]]: index
-//      CHECK:   %[[NITERS0:.+]] = affine.apply
-// CHECK-SAME:       affine_map<()[s0, s1, s2] -> ((-s0 + s1) ceildiv s2)>()[%[[LB0]], %[[UB0]], %[[STEP0]]]
 //      CHECK:   %[[C0:.+]] = arith.constant 0 : index
 //      CHECK:   %[[C1:.+]] = arith.constant 1 : index
+//      CHECK:   %[[NITERS0:.+]] = affine.apply
+// CHECK-SAME:       affine_map<()[s0, s1, s2] -> ((-s0 + s1) ceildiv s2)>()[%[[LB0]], %[[UB0]], %[[STEP0]]]
 //      CHECK:   %[[NITERS1:.+]] = affine.apply
 // CHECK-SAME:       affine_map<()[s0, s1, s2] -> ((-s0 + s1) ceildiv s2)>()[%[[LB1]], %[[UB1]], %[[STEP1]]]
 //      CHECK:   %[[NITERS2:.+]] = affine.apply

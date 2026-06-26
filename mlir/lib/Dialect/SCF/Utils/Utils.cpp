@@ -269,10 +269,10 @@ static Value ceilDivPositive(OpBuilder &builder, Location loc, Value dividend,
   assert(dividend.getType().isIntOrIndex() &&
          "expected integer or index-typed value");
 
-  Value divisorMinusOneCst = arith::ConstantOp::create(
-      builder, loc, builder.getIntegerAttr(dividend.getType(), divisor - 1));
-  Value divisorCst = arith::ConstantOp::create(
-      builder, loc, builder.getIntegerAttr(dividend.getType(), divisor));
+  Value divisorMinusOneCst = builder.createOrFold<arith::ConstantOp>(
+      loc, builder.getIntegerAttr(dividend.getType(), divisor - 1));
+  Value divisorCst = builder.createOrFold<arith::ConstantOp>(
+      loc, builder.getIntegerAttr(dividend.getType(), divisor));
   Value sum = arith::AddIOp::create(builder, loc, dividend, divisorMinusOneCst);
   return arith::DivUIOp::create(builder, loc, sum, divisorCst);
 }
@@ -285,8 +285,8 @@ static Value ceilDivPositive(OpBuilder &builder, Location loc, Value dividend,
                              Value divisor) {
   assert(dividend.getType().isIntOrIndex() &&
          "expected integer or index-typed value");
-  Value cstOne = arith::ConstantOp::create(
-      builder, loc, builder.getOneAttr(dividend.getType()));
+  Value cstOne = builder.createOrFold<arith::ConstantOp>(
+      loc, builder.getOneAttr(dividend.getType()));
   Value divisorMinusOne = arith::SubIOp::create(builder, loc, divisor, cstOne);
   Value sum = arith::AddIOp::create(builder, loc, dividend, divisorMinusOne);
   return arith::DivUIOp::create(builder, loc, sum, divisor);
@@ -422,10 +422,9 @@ FailureOr<UnrolledLoopInfo> mlir::loopUnrollByFactor(
     // Create constant for 'upperBoundUnrolled' and set epilogue loop flag.
     generateEpilogueLoop = upperBoundUnrolledCst < ubCst;
     if (generateEpilogueLoop)
-      upperBoundUnrolled = arith::ConstantOp::create(
-          boundsBuilder, loc,
-          boundsBuilder.getIntegerAttr(forOp.getUpperBound().getType(),
-                                       upperBoundUnrolledCst));
+      upperBoundUnrolled = boundsBuilder.createOrFold<arith::ConstantOp>(
+          loc, boundsBuilder.getIntegerAttr(forOp.getUpperBound().getType(),
+                                            upperBoundUnrolledCst));
     else
       upperBoundUnrolled = forOp.getUpperBound();
 
@@ -437,12 +436,11 @@ FailureOr<UnrolledLoopInfo> mlir::loopUnrollByFactor(
     // prevents the zero-trip main loop from being elided.
     bool mainLoopHasNoIter = (tripCountEvenMultiple == 0);
     bool stepUnchanged = (stepCst == stepUnrolledCst);
-    stepUnrolled =
-        (mainLoopHasNoIter || stepUnchanged)
-            ? step
-            : arith::ConstantOp::create(boundsBuilder, loc,
-                                        boundsBuilder.getIntegerAttr(
-                                            step.getType(), stepUnrolledCst));
+    stepUnrolled = (mainLoopHasNoIter || stepUnchanged)
+                       ? step
+                       : boundsBuilder.createOrFold<arith::ConstantOp>(
+                             loc, boundsBuilder.getIntegerAttr(
+                                      step.getType(), stepUnrolledCst));
   } else {
     // Dynamic loop bounds computation.
     // TODO: Add dynamic asserts for negative lb/ub/step, or
@@ -452,9 +450,8 @@ FailureOr<UnrolledLoopInfo> mlir::loopUnrollByFactor(
     Value diff =
         arith::SubIOp::create(boundsBuilder, loc, upperBound, lowerBound);
     Value tripCount = ceilDivPositive(boundsBuilder, loc, diff, step);
-    Value unrollFactorCst = arith::ConstantOp::create(
-        boundsBuilder, loc,
-        boundsBuilder.getIntegerAttr(tripCount.getType(), unrollFactor));
+    Value unrollFactorCst = boundsBuilder.createOrFold<arith::ConstantOp>(
+        loc, boundsBuilder.getIntegerAttr(tripCount.getType(), unrollFactor));
     Value tripCountRem =
         arith::RemSIOp::create(boundsBuilder, loc, tripCount, unrollFactorCst);
     // Compute tripCountEvenMultiple = tripCount - (tripCount % unrollFactor)
@@ -502,10 +499,10 @@ FailureOr<UnrolledLoopInfo> mlir::loopUnrollByFactor(
       forOp.getBody(), forOp.getInductionVar(), unrollFactor,
       [&](unsigned i, Value iv, OpBuilder b) {
         // iv' = iv + step * i;
-        auto stride = arith::MulIOp::create(
-            b, loc, step,
-            arith::ConstantOp::create(b, loc,
-                                      b.getIntegerAttr(iv.getType(), i)));
+        auto stride =
+            arith::MulIOp::create(b, loc, step,
+                                  b.createOrFold<arith::ConstantOp>(
+                                      loc, b.getIntegerAttr(iv.getType(), i)));
         return arith::AddIOp::create(b, loc, iv, stride);
       },
       annotateFn, iterArgs, yieldedValues);
@@ -862,9 +859,8 @@ static Value getProductOfIntsOrIndexes(RewriterBase &rewriter, Location loc,
       productOf = v;
   }
   if (!productOf) {
-    productOf = arith::ConstantOp::create(
-                    rewriter, loc, rewriter.getOneAttr(getType(values.front())))
-                    .getResult();
+    productOf = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getOneAttr(getType(values.front())));
   }
   return productOf.value();
 }
@@ -905,8 +901,8 @@ delinearizeInductionVariable(RewriterBase &rewriter, Location loc,
     if (!isUbOne.test(index)) {
       break;
     }
-    delinearizedIvs[index] = arith::ConstantOp::create(
-        rewriter, loc, rewriter.getZeroAttr(ub.getType()));
+    delinearizedIvs[index] = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getZeroAttr(ub.getType()));
     numLeadingOneUbs++;
   }
 
@@ -923,8 +919,8 @@ delinearizeInductionVariable(RewriterBase &rewriter, Location loc,
         iv = arith::RemSIOp::create(rewriter, loc, previous, ubs[idx]);
         preservedUsers.insert(iv.getDefiningOp());
       } else {
-        iv = arith::ConstantOp::create(
-            rewriter, loc, rewriter.getZeroAttr(ubs[idx].getType()));
+        iv = rewriter.createOrFold<arith::ConstantOp>(
+            loc, rewriter.getZeroAttr(ubs[idx].getType()));
       }
     }
     delinearizedIvs[idx] = iv;
@@ -1134,10 +1130,10 @@ void mlir::collapseParallelLoops(
 
   // Combine iteration spaces.
   SmallVector<Value, 3> lowerBounds, upperBounds, steps;
-  auto cst0 = arith::ConstantIndexOp::create(rewriter, loc, 0);
-  auto cst1 = arith::ConstantIndexOp::create(rewriter, loc, 1);
+  auto cst0 = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
+  auto cst1 = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
   for (auto &sortedDimension : sortedDimensions) {
-    Value newUpperBound = arith::ConstantIndexOp::create(rewriter, loc, 1);
+    Value newUpperBound = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
     for (auto idx : sortedDimension) {
       newUpperBound = arith::MulIOp::create(rewriter, loc, newUpperBound,
                                             normalizedUpperBounds[idx]);
@@ -1716,7 +1712,7 @@ FailureOr<scf::ParallelOp> mlir::parallelLoopUnrollByFactors(
     auto prevInsertPoint = rewriter.saveInsertionPoint();
     rewriter.setInsertionPoint(op);
     op.getStepMutable()[dimIdx].assign(
-        arith::ConstantIndexOp::create(rewriter, op.getLoc(), newStep));
+        rewriter.createOrFold<arith::ConstantIndexOp>(op.getLoc(), newStep));
     rewriter.restoreInsertionPoint(prevInsertPoint);
   }
   return op;

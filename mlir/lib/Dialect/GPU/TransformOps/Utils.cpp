@@ -67,7 +67,7 @@ buildPredicates(RewriterBase &rewriter, Location loc, ArrayRef<Value> activeIds,
     if (activeMappingSize == availableMappingSize)
       continue;
     Value idx =
-        arith::ConstantIndexOp::create(rewriter, loc, activeMappingSize);
+        rewriter.createOrFold<arith::ConstantIndexOp>(loc, activeMappingSize);
     Value pred = arith::CmpIOp::create(rewriter, loc, arith::CmpIPredicate::ult,
                                        activeId, idx);
     predicateOps.push_back(pred);
@@ -400,7 +400,7 @@ DiagnosedSilenceableFailure createGpuLaunch(
     return diag;
 
   auto createConst = [&](int dim) {
-    return arith::ConstantIndexOp::create(rewriter, loc, dim);
+    return rewriter.createOrFold<arith::ConstantIndexOp>(loc, dim);
   };
   OpBuilder::InsertionGuard guard(rewriter);
   Value one = createConst(1);
@@ -434,8 +434,8 @@ DiagnosedSilenceableFailure alterGpuLaunch(
   OpBuilder::InsertionGuard guard(rewriter);
   rewriter.setInsertionPointAfterValue(currentBlockdim.x);
   auto createConstValue = [&](int dim) {
-    return arith::ConstantIndexOp::create(rewriter, currentBlockdim.x.getLoc(),
-                                          dim);
+    return rewriter.createOrFold<arith::ConstantIndexOp>(
+        currentBlockdim.x.getLoc(), dim);
   };
 
   if (gridDimX.has_value())

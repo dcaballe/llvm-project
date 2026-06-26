@@ -16,13 +16,15 @@
 // because each gets its own semantics enum and gets bitcast/extui/trunci to its own width.
 // CHECK-LABEL:   func.func @full_example() {
 // CHECK:           %[[CONSTANT_0:.*]] = arith.constant 1.375000e+00 : f8E4M3FN
+//                  // fltSemantics semantics for f8E4M3FN
+// CHECK:           %[[CONSTANT_1:.*]] = arith.constant 10 : i32
+//                  // fltSemantics semantics for f6E3M2FN
+// CHECK:           %[[CONSTANT_3:.*]] = arith.constant 16 : i32
 // CHECK:           %[[VAL_0:.*]] = call @foo() : () -> f8E4M3FN
 // CHECK:           %[[BITCAST_0:.*]] = arith.bitcast %[[CONSTANT_0]] : f8E4M3FN to i8
 // CHECK:           %[[EXTUI_0:.*]] = arith.extui %[[BITCAST_0]] : i8 to i64
 // CHECK:           %[[BITCAST_1:.*]] = arith.bitcast %[[VAL_0]] : f8E4M3FN to i8
 // CHECK:           %[[EXTUI_1:.*]] = arith.extui %[[BITCAST_1]] : i8 to i64
-//                  // fltSemantics semantics for f8E4M3FN
-// CHECK:           %[[CONSTANT_1:.*]] = arith.constant 10 : i32
 // CHECK:           %[[VAL_1:.*]] = call @_mlir_apfloat_add(%[[CONSTANT_1]], %[[EXTUI_0]], %[[EXTUI_1]]) : (i32, i64, i64) -> i64
 // CHECK:           %[[TRUNCI_0:.*]] = arith.trunci %[[VAL_1]] : i64 to i8
 // CHECK:           %[[BITCAST_2:.*]] = arith.bitcast %[[TRUNCI_0]] : i8 to f8E4M3FN
@@ -34,8 +36,6 @@
 // CHECK:           %[[EXTUI_2:.*]] = arith.extui %[[BITCAST_3]] : i6 to i64
 // CHECK:           %[[BITCAST_4:.*]] = arith.bitcast %[[VAL_2]] : f6E3M2FN to i6
 // CHECK:           %[[EXTUI_3:.*]] = arith.extui %[[BITCAST_4]] : i6 to i64
-//                  // fltSemantics semantics for f6E3M2FN
-// CHECK:           %[[CONSTANT_3:.*]] = arith.constant 16 : i32
 // CHECK:           %[[VAL_3:.*]] = call @_mlir_apfloat_add(%[[CONSTANT_3]], %[[EXTUI_2]], %[[EXTUI_3]]) : (i32, i64, i64) -> i64
 // CHECK:           %[[TRUNCI_1:.*]] = arith.trunci %[[VAL_3]] : i64 to i6
 // CHECK:           %[[BITCAST_5:.*]] = arith.bitcast %[[TRUNCI_1]] : i6 to f6E3M2FN
@@ -203,10 +203,10 @@ func.func @uitofp(%arg0: i32) {
 
 // CHECK: func.func private @_mlir_apfloat_compare(i32, i64, i64) -> i8
 // CHECK: %[[sem:.*]] = arith.constant 18 : i32
-// CHECK: %[[cmp:.*]] = call @_mlir_apfloat_compare(%[[sem]], %{{.*}}, %{{.*}}) : (i32, i64, i64) -> i8
 // CHECK: %[[c3:.*]] = arith.constant 3 : i8
-// CHECK: %[[is_unordered:.*]] = arith.cmpi eq, %[[cmp]], %[[c3]] : i8
 // CHECK: %[[c0:.*]] = arith.constant 0 : i8
+// CHECK: %[[cmp:.*]] = call @_mlir_apfloat_compare(%[[sem]], %{{.*}}, %{{.*}}) : (i32, i64, i64) -> i8
+// CHECK: %[[is_unordered:.*]] = arith.cmpi eq, %[[cmp]], %[[c3]] : i8
 // CHECK: %[[is_lt:.*]] = arith.cmpi eq, %[[cmp]], %[[c0]] : i8
 // CHECK: arith.ori %[[is_unordered]], %[[is_lt]] : i1
 func.func @cmpf(%arg0: f4E2M1FN, %arg1: f4E2M1FN) {
@@ -228,9 +228,9 @@ func.func @negf(%arg0: f32) {
 
 // CHECK: func.func private @_mlir_apfloat_flush_denormals(i32, i64) -> i64
 // CHECK-LABEL: func.func @flush_denormals
+// CHECK: %[[sem:.*]] = arith.constant 2 : i32
 // CHECK: %[[bc:.*]] = arith.bitcast %{{.*}} : f32 to i32
 // CHECK: %[[ext:.*]] = arith.extui %[[bc]] : i32 to i64
-// CHECK: %[[sem:.*]] = arith.constant 2 : i32
 // CHECK: %[[res:.*]] = call @_mlir_apfloat_flush_denormals(%[[sem]], %[[ext]]) : (i32, i64) -> i64
 // CHECK: %[[trunc:.*]] = arith.trunci %[[res]] : i64 to i32
 // CHECK: arith.bitcast %[[trunc]] : i32 to f32

@@ -759,19 +759,28 @@ public:
   }
 
 protected:
-  /// Initialize the builder. Operation caching is enabled if a valid cache is
-  /// provided.
+  /// Initialize the builder. Operation caching is enabled by default.
   explicit RewriterBase(MLIRContext *ctx,
                         OpBuilder::Listener *listener = nullptr,
                         OperationCache *opCache = nullptr)
-      : OpBuilder(ctx, listener, opCache) {}
+      : OpBuilder(ctx, listener, opCache), localOperationCache(ctx) {
+    if (!opCache)
+      setOperationCache(&localOperationCache);
+  }
   explicit RewriterBase(const OpBuilder &otherBuilder)
-      : OpBuilder(otherBuilder) {}
+      : OpBuilder(otherBuilder),
+        localOperationCache(otherBuilder.getContext()) {
+    if (!getOperationCache())
+      setOperationCache(&localOperationCache);
+  }
   explicit RewriterBase(Operation *op, OpBuilder::Listener *listener = nullptr)
-      : OpBuilder(op, listener) {}
+      : OpBuilder(op, listener), localOperationCache(op->getContext()) {
+    setOperationCache(&localOperationCache);
+  }
   virtual ~RewriterBase();
 
 private:
+  IsolatedRegionScopedConstantLikeCache localOperationCache;
   void operator=(const RewriterBase &) = delete;
   RewriterBase(const RewriterBase &) = delete;
 };

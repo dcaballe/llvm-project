@@ -191,13 +191,13 @@ Value createIdentityValue(OpBuilder &b, Location loc, Type type,
   if (auto numAttr = dyn_cast<complex::NumberAttr>(typedAttr)) {
     auto complexTy = cast<ComplexType>(numAttr.getType());
     auto floatElt = cast<FloatType>(complexTy.getElementType());
-    Value realVal = arith::ConstantOp::create(
-        b, loc, b.getFloatAttr(floatElt, numAttr.getReal()));
-    Value imagVal = arith::ConstantOp::create(
-        b, loc, b.getFloatAttr(floatElt, numAttr.getImag()));
+    Value realVal = b.createOrFold<arith::ConstantOp>(
+        loc, b.getFloatAttr(floatElt, numAttr.getReal()));
+    Value imagVal = b.createOrFold<arith::ConstantOp>(
+        loc, b.getFloatAttr(floatElt, numAttr.getImag()));
     return complex::CreateOp::create(b, loc, complexTy, realVal, imagVal);
   }
-  return arith::ConstantOp::create(b, loc, typedAttr);
+  return b.createOrFold<arith::ConstantOp>(loc, typedAttr);
 }
 
 Value generateReductionOp(OpBuilder &b, Location loc, Value lhs, Value rhs,

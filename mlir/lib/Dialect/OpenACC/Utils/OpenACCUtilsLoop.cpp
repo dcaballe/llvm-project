@@ -37,7 +37,7 @@ static Value calculateTripCount(OpBuilder &b, Location loc, Value lb, Value ub,
   step = getValueOrCreateCastToIndexLike(b, loc, type, step);
 
   if (!inclusiveUpperbound) {
-    Value one = arith::ConstantIndexOp::create(b, loc, 1);
+    Value one = b.createOrFold<arith::ConstantIndexOp>(loc, 1);
     ub = b.createOrFold<arith::SubIOp>(loc, ub, one,
                                        arith::IntegerOverflowFlags::nsw);
   }
@@ -198,8 +198,8 @@ scf::ForOp convertACCLoopToSCFFor(LoopOp loopOp, RewriterBase &rewriter,
   // scf.for requires a positive step, but acc.loop may have arbitrary steps
   // (including negative). Normalizing unconditionally keeps this consistent
   // with convertACCLoopToSCFParallel and lets later passes fold constants.
-  Value zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
-  Value one = arith::ConstantIndexOp::create(rewriter, loc, 1);
+  Value zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
+  Value one = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
 
   SmallVector<Value> tripCounts;
   for (auto [idx, iv] : llvm::enumerate(loopOp.getBody().getArguments())) {
@@ -275,8 +275,8 @@ scf::ParallelOp convertACCLoopToSCFParallel(LoopOp loopOp,
   SmallVector<Value> lowerBounds, upperBounds, steps;
 
   // Normalize all loops: lb=0, step=1, ub=tripCount
-  Value lb = arith::ConstantIndexOp::create(rewriter, loc, 0);
-  Value step = arith::ConstantIndexOp::create(rewriter, loc, 1);
+  Value lb = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
+  Value step = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
 
   for (auto [idx, iv] : llvm::enumerate(loopOp.getBody().getArguments())) {
     bool inclusiveUpperbound = false;

@@ -11,8 +11,7 @@ func.func private @body(index) -> ()
 // CHECK-LABEL: func @simple_loop
 // CHECK-NEXT:   %[[c1:.*]] = arith.constant 1 : index
 // CHECK-NEXT:   %[[c42:.*]] = arith.constant 42 : index
-// CHECK-NEXT:   %[[c1_0:.*]] = arith.constant 1 : index
-// CHECK-NEXT:   for %{{.*}} = %[[c1]] to %[[c42]] step %[[c1_0]] {
+// CHECK-NEXT:   for %{{.*}} = %[[c1]] to %[[c42]] step %[[c1]] {
 // CHECK-NEXT:     call @body(%{{.*}}) : (index) -> ()
 // CHECK-NEXT:   }
 // CHECK-NEXT:   return
@@ -58,11 +57,11 @@ func.func private @post(index) -> ()
 // CHECK-NEXT:   %[[c0:.*]] = arith.constant 0 : index
 // CHECK-NEXT:   %[[c42:.*]] = arith.constant 42 : index
 // CHECK-NEXT:   %[[c1:.*]] = arith.constant 1 : index
+// CHECK-NEXT:   %[[c7:.*]] = arith.constant 7 : index
+// CHECK-NEXT:   %[[c56:.*]] = arith.constant 56 : index
+// CHECK-NEXT:   %[[c2:.*]] = arith.constant 2 : index
 // CHECK-NEXT:   for %{{.*}} = %[[c0]] to %[[c42]] step %[[c1]] {
 // CHECK-NEXT:     call @pre(%{{.*}}) : (index) -> ()
-// CHECK-NEXT:     %[[c7:.*]] = arith.constant 7 : index
-// CHECK-NEXT:     %[[c56:.*]] = arith.constant 56 : index
-// CHECK-NEXT:     %[[c2:.*]] = arith.constant 2 : index
 // CHECK-NEXT:     for %{{.*}} = %[[c7]] to %[[c56]] step %[[c2]] {
 // CHECK-NEXT:       call @body2(%{{.*}}, %{{.*}}) : (index, index) -> ()
 // CHECK-NEXT:     }
@@ -90,18 +89,18 @@ func.func private @body3(index, index) -> ()
 // CHECK-NEXT:   %[[c0:.*]] = arith.constant 0 : index
 // CHECK-NEXT:   %[[c42:.*]] = arith.constant 42 : index
 // CHECK-NEXT:   %[[c1:.*]] = arith.constant 1 : index
+// CHECK-NEXT:   %[[c7:.*]] = arith.constant 7 : index
+// CHECK-NEXT:   %[[c56:.*]] = arith.constant 56 : index
+// CHECK-NEXT:   %[[c2:.*]] = arith.constant 2 : index
+// CHECK-NEXT:   %[[c18:.*]] = arith.constant 18 : index
+// CHECK-NEXT:   %[[c37:.*]] = arith.constant 37 : index
+// CHECK-NEXT:   %[[c3:.*]] = arith.constant 3 : index
 // CHECK-NEXT:   for %{{.*}} = %[[c0]] to %[[c42]] step %[[c1]] {
 // CHECK-NEXT:     call @pre(%{{.*}}) : (index) -> ()
-// CHECK-NEXT:     %[[c7:.*]] = arith.constant 7 : index
-// CHECK-NEXT:     %[[c56:.*]] = arith.constant 56 : index
-// CHECK-NEXT:     %[[c2:.*]] = arith.constant 2 : index
 // CHECK-NEXT:     for %{{.*}} = %[[c7]] to %[[c56]] step %[[c2]] {
 // CHECK-NEXT:       call @body2(%{{.*}}, %{{.*}}) : (index, index) -> ()
 // CHECK-NEXT:     }
 // CHECK-NEXT:     call @mid(%{{.*}}) : (index) -> ()
-// CHECK-NEXT:     %[[c18:.*]] = arith.constant 18 : index
-// CHECK-NEXT:     %[[c37:.*]] = arith.constant 37 : index
-// CHECK-NEXT:     %[[c3:.*]] = arith.constant 3 : index
 // CHECK-NEXT:     for %{{.*}} = %[[c18]] to %[[c37]] step %[[c3]] {
 // CHECK-NEXT:       call @body3(%{{.*}}, %{{.*}}) : (index, index) -> ()
 // CHECK-NEXT:     }
@@ -127,10 +126,9 @@ func.func @more_imperfectly_nested_loops() {
 // CHECK-LABEL: func @affine_apply_loops_shorthand
 // CHECK-NEXT:   %[[c0:.*]] = arith.constant 0 : index
 // CHECK-NEXT:   %[[c1:.*]] = arith.constant 1 : index
+// CHECK-NEXT:   %[[c42:.*]] = arith.constant 42 : index
 // CHECK-NEXT:   for %{{.*}} = %[[c0]] to %{{.*}} step %[[c1]] {
-// CHECK-NEXT:     %[[c42:.*]] = arith.constant 42 : index
-// CHECK-NEXT:     %[[c1_0:.*]] = arith.constant 1 : index
-// CHECK-NEXT:     for %{{.*}} = %{{.*}} to %[[c42]] step %[[c1_0]] {
+// CHECK-NEXT:     for %{{.*}} = %{{.*}} to %[[c42]] step %[[c1]] {
 // CHECK-NEXT:       call @body2(%{{.*}}, %{{.*}}) : (index, index) -> ()
 // CHECK-NEXT:     }
 // CHECK-NEXT:   }
@@ -153,11 +151,11 @@ func.func private @get_idx() -> (index)
 #set2 = affine_set<(d0) : (d0 - 10 >= 0)>
 
 // CHECK-LABEL: func @if_only
-// CHECK-NEXT:   %[[v0:.*]] = call @get_idx() : () -> index
 // CHECK-NEXT:   %[[c0:.*]] = arith.constant 0 : index
 // CHECK-NEXT:   %[[cm1:.*]] = arith.constant -1 : index
-// CHECK-NEXT:   %[[v1:.*]] = arith.muli %[[v0]], %[[cm1]] overflow<nsw> : index
 // CHECK-NEXT:   %[[c20:.*]] = arith.constant 20 : index
+// CHECK-NEXT:   %[[v0:.*]] = call @get_idx() : () -> index
+// CHECK-NEXT:   %[[v1:.*]] = arith.muli %[[v0]], %[[cm1]] overflow<nsw> : index
 // CHECK-NEXT:   %[[v2:.*]] = arith.addi %[[v1]], %[[c20]] : index
 // CHECK-NEXT:   %[[v3:.*]] = arith.cmpi sge, %[[v2]], %[[c0]] : index
 // CHECK-NEXT:   if %[[v3]] {
@@ -174,11 +172,11 @@ func.func @if_only() {
 }
 
 // CHECK-LABEL: func @if_else
-// CHECK-NEXT:   %[[v0:.*]] = call @get_idx() : () -> index
 // CHECK-NEXT:   %[[c0:.*]] = arith.constant 0 : index
 // CHECK-NEXT:   %[[cm1:.*]] = arith.constant -1 : index
-// CHECK-NEXT:   %[[v1:.*]] = arith.muli %[[v0]], %[[cm1]] overflow<nsw> : index
 // CHECK-NEXT:   %[[c20:.*]] = arith.constant 20 : index
+// CHECK-NEXT:   %[[v0:.*]] = call @get_idx() : () -> index
+// CHECK-NEXT:   %[[v1:.*]] = arith.muli %[[v0]], %[[cm1]] overflow<nsw> : index
 // CHECK-NEXT:   %[[v2:.*]] = arith.addi %[[v1]], %[[c20]] : index
 // CHECK-NEXT:   %[[v3:.*]] = arith.cmpi sge, %[[v2]], %[[c0]] : index
 // CHECK-NEXT:   if %[[v3]] {
@@ -199,26 +197,23 @@ func.func @if_else() {
 }
 
 // CHECK-LABEL: func @nested_ifs
-// CHECK-NEXT:   %[[v0:.*]] = call @get_idx() : () -> index
 // CHECK-NEXT:   %[[c0:.*]] = arith.constant 0 : index
 // CHECK-NEXT:   %[[cm1:.*]] = arith.constant -1 : index
-// CHECK-NEXT:   %[[v1:.*]] = arith.muli %[[v0]], %[[cm1]] overflow<nsw> : index
 // CHECK-NEXT:   %[[c20:.*]] = arith.constant 20 : index
+// CHECK-NEXT:   %[[cm10:.*]] = arith.constant -10 : index
+// CHECK-NEXT:   %[[v0:.*]] = call @get_idx() : () -> index
+// CHECK-NEXT:   %[[v1:.*]] = arith.muli %[[v0]], %[[cm1]] overflow<nsw> : index
 // CHECK-NEXT:   %[[v2:.*]] = arith.addi %[[v1]], %[[c20]] : index
 // CHECK-NEXT:   %[[v3:.*]] = arith.cmpi sge, %[[v2]], %[[c0]] : index
 // CHECK-NEXT:   if %[[v3]] {
-// CHECK-NEXT:     %[[c0_0:.*]] = arith.constant 0 : index
-// CHECK-NEXT:     %[[cm10:.*]] = arith.constant -10 : index
 // CHECK-NEXT:     %[[v4:.*]] = arith.addi %[[v0]], %[[cm10]] : index
-// CHECK-NEXT:     %[[v5:.*]] = arith.cmpi sge, %[[v4]], %[[c0_0]] : index
+// CHECK-NEXT:     %[[v5:.*]] = arith.cmpi sge, %[[v4]], %[[c0]] : index
 // CHECK-NEXT:     if %[[v5]] {
 // CHECK-NEXT:       call @body(%[[v0:.*]]) : (index) -> ()
 // CHECK-NEXT:     }
 // CHECK-NEXT:   } else {
-// CHECK-NEXT:     %[[c0_0:.*]] = arith.constant 0 : index
-// CHECK-NEXT:     %[[cm10:.*]] = arith.constant -10 : index
 // CHECK-NEXT:     %{{.*}} = arith.addi %[[v0]], %[[cm10]] : index
-// CHECK-NEXT:     %{{.*}} = arith.cmpi sge, %{{.*}}, %[[c0_0]] : index
+// CHECK-NEXT:     %{{.*}} = arith.cmpi sge, %{{.*}}, %[[c0]] : index
 // CHECK-NEXT:     if %{{.*}} {
 // CHECK-NEXT:       call @mid(%[[v0:.*]]) : (index) -> ()
 // CHECK-NEXT:     }
@@ -242,9 +237,9 @@ func.func @nested_ifs() {
 // CHECK-LABEL: func @if_with_yield
 // CHECK-NEXT:   %[[c0_i64:.*]] = arith.constant 0 : i64
 // CHECK-NEXT:   %[[c1_i64:.*]] = arith.constant 1 : i64
-// CHECK-NEXT:   %[[v0:.*]] = call @get_idx() : () -> index
 // CHECK-NEXT:   %[[c0:.*]] = arith.constant 0 : index
 // CHECK-NEXT:   %[[cm10:.*]] = arith.constant -10 : index
+// CHECK-NEXT:   %[[v0:.*]] = call @get_idx() : () -> index
 // CHECK-NEXT:   %[[v1:.*]] = arith.addi %[[v0]], %[[cm10]] : index
 // CHECK-NEXT:   %[[v2:.*]] = arith.cmpi sge, %[[v1]], %[[c0]] : index
 // CHECK-NEXT:   %[[v3:.*]] = scf.if %[[v2]] -> (i64) {
@@ -269,27 +264,24 @@ func.func @if_with_yield() -> (i64) {
 #setN = affine_set<(d0)[N,M,K,L] : (N - d0 + 1 >= 0, N - 1 >= 0, M - 1 >= 0, K - 1 >= 0, L - 42 == 0)>
 
 // CHECK-LABEL: func @multi_cond
-// CHECK-NEXT:   %[[v0:.*]] = call @get_idx() : () -> index
 // CHECK-NEXT:   %[[c0:.*]] = arith.constant 0 : index
 // CHECK-NEXT:   %[[cm1:.*]] = arith.constant -1 : index
+// CHECK-NEXT:   %[[c1:.*]] = arith.constant 1 : index
+// CHECK-NEXT:   %[[cm42:.*]] = arith.constant -42 : index
+// CHECK-NEXT:   %[[v0:.*]] = call @get_idx() : () -> index
 // CHECK-NEXT:   %[[v1:.*]] = arith.muli %[[v0]], %[[cm1]] overflow<nsw> : index
 // CHECK-NEXT:   %[[v2:.*]] = arith.addi %[[v1]], %{{.*}} : index
-// CHECK-NEXT:   %[[c1:.*]] = arith.constant 1 : index
 // CHECK-NEXT:   %[[v3:.*]] = arith.addi %[[v2]], %[[c1]] : index
 // CHECK-NEXT:   %[[v4:.*]] = arith.cmpi sge, %[[v3]], %[[c0]] : index
-// CHECK-NEXT:   %[[cm1_0:.*]] = arith.constant -1 : index
-// CHECK-NEXT:   %[[v5:.*]] = arith.addi %{{.*}}, %[[cm1_0]] : index
+// CHECK-NEXT:   %[[v5:.*]] = arith.addi %{{.*}}, %[[cm1]] : index
 // CHECK-NEXT:   %[[v6:.*]] = arith.cmpi sge, %[[v5]], %[[c0]] : index
 // CHECK-NEXT:   %[[v7:.*]] = arith.andi %[[v4]], %[[v6]] : i1
-// CHECK-NEXT:   %[[cm1_1:.*]] = arith.constant -1 : index
-// CHECK-NEXT:   %[[v8:.*]] = arith.addi %{{.*}}, %[[cm1_1]] : index
+// CHECK-NEXT:   %[[v8:.*]] = arith.addi %{{.*}}, %[[cm1]] : index
 // CHECK-NEXT:   %[[v9:.*]] = arith.cmpi sge, %[[v8]], %[[c0]] : index
 // CHECK-NEXT:   %[[v10:.*]] = arith.andi %[[v7]], %[[v9]] : i1
-// CHECK-NEXT:   %[[cm1_2:.*]] = arith.constant -1 : index
-// CHECK-NEXT:   %[[v11:.*]] = arith.addi %{{.*}}, %[[cm1_2]] : index
+// CHECK-NEXT:   %[[v11:.*]] = arith.addi %{{.*}}, %[[cm1]] : index
 // CHECK-NEXT:   %[[v12:.*]] = arith.cmpi sge, %[[v11]], %[[c0]] : index
 // CHECK-NEXT:   %[[v13:.*]] = arith.andi %[[v10]], %[[v12]] : i1
-// CHECK-NEXT:   %[[cm42:.*]] = arith.constant -42 : index
 // CHECK-NEXT:   %[[v14:.*]] = arith.addi %{{.*}}, %[[cm42]] : index
 // CHECK-NEXT:   %[[v15:.*]] = arith.cmpi eq, %[[v14]], %[[c0]] : index
 // CHECK-NEXT:   %[[v16:.*]] = arith.andi %[[v13]], %[[v15]] : i1
@@ -312,23 +304,21 @@ func.func @multi_cond(%N : index, %M : index, %K : index, %L : index) {
 
 // CHECK-LABEL: func @if_for
 func.func @if_for() {
-// CHECK-NEXT:   %[[v0:.*]] = call @get_idx() : () -> index
-  %i = call @get_idx() : () -> (index)
 // CHECK-NEXT:   %[[c0:.*]] = arith.constant 0 : index
 // CHECK-NEXT:   %[[cm1:.*]] = arith.constant -1 : index
-// CHECK-NEXT:   %[[v1:.*]] = arith.muli %[[v0]], %[[cm1]] overflow<nsw> : index
 // CHECK-NEXT:   %[[c20:.*]] = arith.constant 20 : index
+// CHECK-NEXT:   %[[c42:.*]] = arith.constant 42 : index
+// CHECK-NEXT:   %[[c1:.*]] = arith.constant 1 : index
+// CHECK-NEXT:   %[[cm10:.*]] = arith.constant -10 : index
+// CHECK-NEXT:   %[[v0:.*]] = call @get_idx() : () -> index
+  %i = call @get_idx() : () -> (index)
+// CHECK-NEXT:   %[[v1:.*]] = arith.muli %[[v0]], %[[cm1]] overflow<nsw> : index
 // CHECK-NEXT:   %[[v2:.*]] = arith.addi %[[v1]], %[[c20]] : index
 // CHECK-NEXT:   %[[v3:.*]] = arith.cmpi sge, %[[v2]], %[[c0]] : index
 // CHECK-NEXT:   if %[[v3]] {
-// CHECK-NEXT:     %[[c0:.*]]{{.*}} = arith.constant 0 : index
-// CHECK-NEXT:     %[[c42:.*]]{{.*}} = arith.constant 42 : index
-// CHECK-NEXT:     %[[c1:.*]]{{.*}} = arith.constant 1 : index
-// CHECK-NEXT:     for %{{.*}} = %[[c0:.*]]{{.*}} to %[[c42:.*]]{{.*}} step %[[c1:.*]]{{.*}} {
-// CHECK-NEXT:       %[[c0_:.*]]{{.*}} = arith.constant 0 : index
-// CHECK-NEXT:       %[[cm10:.*]] = arith.constant -10 : index
+// CHECK-NEXT:     for %{{.*}} = %[[c0]] to %[[c42]] step %[[c1]] {
 // CHECK-NEXT:       %[[v4:.*]] = arith.addi %{{.*}}, %[[cm10]] : index
-// CHECK-NEXT:       %[[v5:.*]] = arith.cmpi sge, %[[v4]], %[[c0_:.*]]{{.*}} : index
+// CHECK-NEXT:       %[[v5:.*]] = arith.cmpi sge, %[[v4]], %[[c0]] : index
 // CHECK-NEXT:       if %[[v5]] {
 // CHECK-NEXT:         call @body2(%[[v0]], %{{.*}}) : (index, index) -> ()
   affine.if #set1(%i) {
@@ -338,19 +328,11 @@ func.func @if_for() {
       }
     }
   }
-//      CHECK:   %[[c0:.*]]{{.*}} = arith.constant 0 : index
-// CHECK-NEXT:   %[[c42:.*]]{{.*}} = arith.constant 42 : index
-// CHECK-NEXT:   %[[c1:.*]]{{.*}} = arith.constant 1 : index
-// CHECK-NEXT:   for %{{.*}} = %[[c0:.*]]{{.*}} to %[[c42:.*]]{{.*}} step %[[c1:.*]]{{.*}} {
-// CHECK-NEXT:     %[[c0:.*]]{{.*}} = arith.constant 0 : index
-// CHECK-NEXT:     %[[cm10:.*]]{{.*}} = arith.constant -10 : index
-// CHECK-NEXT:     %{{.*}} = arith.addi %{{.*}}, %[[cm10:.*]]{{.*}} : index
-// CHECK-NEXT:     %{{.*}} = arith.cmpi sge, %{{.*}}, %[[c0:.*]]{{.*}} : index
+//      CHECK:   for %{{.*}} = %[[c0]] to %[[c42]] step %[[c1]] {
+// CHECK-NEXT:     %{{.*}} = arith.addi %{{.*}}, %[[cm10]] : index
+// CHECK-NEXT:     %{{.*}} = arith.cmpi sge, %{{.*}}, %[[c0]] : index
 // CHECK-NEXT:     if %{{.*}} {
-// CHECK-NEXT:       %[[c0_:.*]]{{.*}} = arith.constant 0 : index
-// CHECK-NEXT:       %[[c42_:.*]]{{.*}} = arith.constant 42 : index
-// CHECK-NEXT:       %[[c1_:.*]]{{.*}} = arith.constant 1 : index
-// CHECK-NEXT:       for %{{.*}} = %[[c0_:.*]]{{.*}} to %[[c42_:.*]]{{.*}} step %[[c1_:.*]]{{.*}} {
+// CHECK-NEXT:       for %{{.*}} = %[[c0]] to %[[c42]] step %[[c1]] {
   affine.for %k = 0 to 42 {
     affine.if #set2(%k) {
       affine.for %l = 0 to 42 {
@@ -369,16 +351,15 @@ func.func @if_for() {
 // CHECK-NEXT:   %[[c0:.*]] = arith.constant 0 : index
 // CHECK-NEXT:   %[[c42:.*]] = arith.constant 42 : index
 // CHECK-NEXT:   %[[c1:.*]] = arith.constant 1 : index
+// CHECK-NEXT:   %[[cm1:.*]] = arith.constant -1 : index
+// CHECK-NEXT:   %[[c10:.*]] = arith.constant 10 : index
 // CHECK-NEXT:   for %{{.*}} = %[[c0]] to %[[c42]] step %[[c1]] {
-// CHECK-NEXT:     %[[cm1:.*]] = arith.constant -1 : index
 // CHECK-NEXT:     %[[mul0:.*]] = arith.muli %{{.*}}, %[[cm1]] overflow<nsw> : index
 // CHECK-NEXT:     %[[add0:.*]] = arith.addi %[[mul0]], %{{.*}} : index
 // CHECK-NEXT:     %[[max:.*]] = arith.maxsi %{{.*}}, %[[add0]] : index
-// CHECK-NEXT:     %[[c10:.*]] = arith.constant 10 : index
 // CHECK-NEXT:     %[[add1:.*]] = arith.addi %{{.*}}, %[[c10]] : index
 // CHECK-NEXT:     %[[min:.*]] = arith.minsi %{{.*}}, %[[add1]] : index
-// CHECK-NEXT:     %[[c1_0:.*]] = arith.constant 1 : index
-// CHECK-NEXT:     for %{{.*}} = %[[max]] to %[[min]] step %[[c1_0]] {
+// CHECK-NEXT:     for %{{.*}} = %[[max]] to %[[min]] step %[[c1]] {
 // CHECK-NEXT:       call @body2(%{{.*}}, %{{.*}}) : (index, index) -> ()
 // CHECK-NEXT:     }
 // CHECK-NEXT:   }
@@ -400,13 +381,13 @@ func.func @loop_min_max(%N : index) {
 
 // CHECK-LABEL: func @min_reduction_tree
 // CHECK-NEXT:   %[[c0:.*]] = arith.constant 0 : index
+// CHECK-NEXT:   %[[c1:.*]] = arith.constant 1 : index
 // CHECK-NEXT:   %[[min:.+]] = arith.minsi %{{.*}}, %{{.*}} : index
 // CHECK-NEXT:   %[[min_0:.+]] = arith.minsi %[[min]], %{{.*}} : index
 // CHECK-NEXT:   %[[min_1:.+]] = arith.minsi %[[min_0]], %{{.*}} : index
 // CHECK-NEXT:   %[[min_2:.+]] = arith.minsi %[[min_1]], %{{.*}} : index
 // CHECK-NEXT:   %[[min_3:.+]] = arith.minsi %[[min_2]], %{{.*}} : index
 // CHECK-NEXT:   %[[min_4:.+]] = arith.minsi %[[min_3]], %{{.*}} : index
-// CHECK-NEXT:   %[[c1:.*]] = arith.constant 1 : index
 // CHECK-NEXT:   for %{{.*}} = %[[c0]] to %[[min_4]] step %[[c1]] {
 // CHECK-NEXT:     call @body(%{{.*}}) : (index) -> ()
 // CHECK-NEXT:   }
@@ -432,6 +413,13 @@ func.func @min_reduction_tree(%v1 : index, %v2 : index, %v3 : index, %v4 : index
 // CHECK-LABEL: func @affine_applies(
 func.func @affine_applies(%arg0 : index) {
 // CHECK: %[[c0:.*]] = arith.constant 0 : index
+// CHECK-NEXT: %[[c1:.*]] = arith.constant 1 : index
+// CHECK-NEXT: %[[c2:.*]] = arith.constant 2 : index
+// CHECK-NEXT: %[[c3:.*]] = arith.constant 3 : index
+// CHECK-NEXT: %[[c4:.*]] = arith.constant 4 : index
+// CHECK-NEXT: %[[c5:.*]] = arith.constant 5 : index
+// CHECK-NEXT: %[[c6:.*]] = arith.constant 6 : index
+// CHECK-NEXT: %[[c7:.*]] = arith.constant 7 : index
   %zero = affine.apply #map0()
 
 // Identity maps are just discarded.
@@ -443,26 +431,19 @@ func.func @affine_applies(%arg0 : index) {
   %copy = affine.apply #map2(%zero)
 
 // CHECK-NEXT: %[[v0:.*]] = arith.addi %[[c0]], %[[c0]] : index
-// CHECK-NEXT: %[[c1:.*]] = arith.constant 1 : index
 // CHECK-NEXT: %[[v1:.*]] = arith.addi %[[v0]], %[[c1]] : index
   %one = affine.apply #map3(%symbZero)[%zero]
 
-// CHECK-NEXT: %[[c2:.*]] = arith.constant 2 : index
 // CHECK-NEXT: %[[v2:.*]] = arith.muli %arg0, %[[c2]] overflow<nsw> : index
 // CHECK-NEXT: %[[v3:.*]] = arith.addi %arg0, %[[v2]] : index
-// CHECK-NEXT: %[[c3:.*]] = arith.constant 3 : index
 // CHECK-NEXT: %[[v4:.*]] = arith.muli %arg0, %[[c3]] overflow<nsw> : index
 // CHECK-NEXT: %[[v5:.*]] = arith.addi %[[v3]], %[[v4]] : index
-// CHECK-NEXT: %[[c4:.*]] = arith.constant 4 : index
 // CHECK-NEXT: %[[v6:.*]] = arith.muli %arg0, %[[c4]] overflow<nsw> : index
 // CHECK-NEXT: %[[v7:.*]] = arith.addi %[[v5]], %[[v6]] : index
-// CHECK-NEXT: %[[c5:.*]] = arith.constant 5 : index
 // CHECK-NEXT: %[[v8:.*]] = arith.muli %arg0, %[[c5]] overflow<nsw> : index
 // CHECK-NEXT: %[[v9:.*]] = arith.addi %[[v7]], %[[v8]] : index
-// CHECK-NEXT: %[[c6:.*]] = arith.constant 6 : index
 // CHECK-NEXT: %[[v10:.*]] = arith.muli %arg0, %[[c6]] overflow<nsw> : index
 // CHECK-NEXT: %[[v11:.*]] = arith.addi %[[v9]], %[[v10]] : index
-// CHECK-NEXT: %[[c7:.*]] = arith.constant 7 : index
 // CHECK-NEXT: %[[v12:.*]] = arith.muli %arg0, %[[c7]] overflow<nsw> : index
 // CHECK-NEXT: %[[v13:.*]] = arith.addi %[[v11]], %[[v12]] : index
   %four = affine.apply #map4(%arg0, %arg0, %arg0, %arg0)[%arg0, %arg0, %arg0]
@@ -495,8 +476,8 @@ func.func @args_ret_affine_apply(index, index) -> (index, index) {
 // CHECK-LABEL: func @affine_apply_mod
 func.func @affine_apply_mod(%arg0 : index) -> (index) {
 // CHECK-NEXT: %[[c42:.*]] = arith.constant 42 : index
-// CHECK-NEXT: %[[v0:.*]] = arith.remsi %{{.*}}, %[[c42]] : index
 // CHECK-NEXT: %[[c0:.*]] = arith.constant 0 : index
+// CHECK-NEXT: %[[v0:.*]] = arith.remsi %{{.*}}, %[[c42]] : index
 // CHECK-NEXT: %[[v1:.*]] = arith.cmpi slt, %[[v0]], %[[c0]] : index
 // CHECK-NEXT: %[[v2:.*]] = arith.addi %[[v0]], %[[c42]] : index
 // CHECK-NEXT: %[[v3:.*]] = arith.select %[[v1]], %[[v2]], %[[v0]] : index
@@ -506,8 +487,8 @@ func.func @affine_apply_mod(%arg0 : index) -> (index) {
 #map_mod_dynamic_divisor = affine_map<(i)[s] -> (i mod s)>
 // CHECK-LABEL: func @affine_apply_mod_dynamic_divisor
 func.func @affine_apply_mod_dynamic_divisor(%arg0 : index, %arg1 : index) -> (index) {
-// CHECK-NEXT: %[[v0:.*]] = arith.remsi %{{.*}}, %arg1 : index
 // CHECK-NEXT: %[[c0:.*]] = arith.constant 0 : index
+// CHECK-NEXT: %[[v0:.*]] = arith.remsi %{{.*}}, %arg1 : index
 // CHECK-NEXT: %[[v1:.*]] = arith.cmpi slt, %[[v0]], %[[c0]] : index
 // CHECK-NEXT: %[[v2:.*]] = arith.addi %[[v0]], %arg1 : index
 // CHECK-NEXT: %[[v3:.*]] = arith.select %[[v1]], %[[v2]], %[[v0]] : index
@@ -595,8 +576,8 @@ func.func @affine_load(%arg0 : index) {
   affine.for %i0 = 0 to 10 {
     %1 = affine.load %0[%i0 + symbol(%arg0) + 7] : memref<10xf32>
   }
+// CHECK:       %[[c7:.*]] = arith.constant 7 : index
 // CHECK:       %[[a:.*]] = arith.addi %{{.*}}, %{{.*}} : index
-// CHECK-NEXT:  %[[c7:.*]] = arith.constant 7 : index
 // CHECK-NEXT:  %[[b:.*]] = arith.addi %[[a]], %[[c7]] : index
 // CHECK-NEXT:  %{{.*}} = memref.load %[[v0:.*]][%[[b]]] : memref<10xf32>
   return
@@ -610,9 +591,9 @@ func.func @affine_store(%arg0 : index) {
     affine.store %1, %0[%i0 - symbol(%arg0) + 7] : memref<10xf32>
   }
 // CHECK:       %[[cm1:.*]] = arith.constant -1 : index
-// CHECK-NEXT:  %[[a:.*]] = arith.muli %{{.*}}, %[[cm1]] overflow<nsw> : index
-// CHECK-NEXT:  %[[b:.*]] = arith.addi %{{.*}}, %[[a]] : index
 // CHECK-NEXT:  %[[c7:.*]] = arith.constant 7 : index
+// CHECK:       %[[a:.*]] = arith.muli %{{.*}}, %[[cm1]] overflow<nsw> : index
+// CHECK-NEXT:  %[[b:.*]] = arith.addi %{{.*}}, %[[a]] : index
 // CHECK-NEXT:  %[[c:.*]] = arith.addi %[[b]], %[[c7]] : index
 // CHECK-NEXT:  store %{{.*}}, %{{.*}}[%[[c]]] : memref<10xf32>
   return
@@ -633,8 +614,8 @@ func.func @affine_prefetch(%arg0 : index) {
   affine.for %i0 = 0 to 10 {
     affine.prefetch %0[%i0 + symbol(%arg0) + 7], read, locality<3>, data : memref<10xf32>
   }
+// CHECK:       %[[c7:.*]] = arith.constant 7 : index
 // CHECK:       %[[a:.*]] = arith.addi %{{.*}}, %{{.*}} : index
-// CHECK-NEXT:  %[[c7:.*]] = arith.constant 7 : index
 // CHECK-NEXT:  %[[b:.*]] = arith.addi %[[a]], %[[c7]] : index
 // CHECK-NEXT:  memref.prefetch %[[v0:.*]][%[[b]]], read, locality<3>, data : memref<10xf32>
   return
@@ -652,8 +633,8 @@ func.func @affine_dma_start(%arg0 : index) {
         : memref<100xf32>, memref<100xf32, 2>, memref<1xi32>
   }
 // CHECK:       %[[c7:.*]] = arith.constant 7 : index
-// CHECK-NEXT:  %[[a:.*]] = arith.addi %{{.*}}, %[[c7]] : index
 // CHECK-NEXT:  %[[c11:.*]] = arith.constant 11 : index
+// CHECK:       %[[a:.*]] = arith.addi %{{.*}}, %[[c7]] : index
 // CHECK-NEXT:  %[[b:.*]] = arith.addi %{{.*}}, %[[c11]] : index
 // CHECK-NEXT:  dma_start %{{.*}}[%[[a]]], %{{.*}}[%[[b]]], %{{.*}}, %{{.*}}[%{{.*}}] : memref<100xf32>, memref<100xf32, 2>, memref<1xi32>
   return
@@ -666,8 +647,8 @@ func.func @affine_dma_wait(%arg0 : index) {
   affine.for %i0 = 0 to 10 {
     affine.dma_wait %2[%i0 + %arg0 + 17], %c64 : memref<1xi32>
   }
+// CHECK:       %[[c17:.*]] = arith.constant 17 : index
 // CHECK:       %[[a:.*]] = arith.addi %{{.*}}, %arg0 : index
-// CHECK-NEXT:  %[[c17:.*]] = arith.constant 17 : index
 // CHECK-NEXT:  %[[b:.*]] = arith.addi %[[a]], %[[c17]] : index
 // CHECK-NEXT:  dma_wait %{{.*}}[%[[b]]], %{{.*}} : memref<1xi32>
   return
@@ -679,8 +660,7 @@ func.func @affine_min(%arg0: index, %arg1: index) -> index{
   // CHECK: %[[Cm1:.*]] = arith.constant -1
   // CHECK: %[[neg1:.*]] = arith.muli %[[ARG1]], %[[Cm1:.*]]
   // CHECK: %[[first:.*]] = arith.addi %[[ARG0]], %[[neg1]]
-  // CHECK: %[[Cm2:.*]] = arith.constant -1
-  // CHECK: %[[neg2:.*]] = arith.muli %[[ARG0]], %[[Cm2:.*]]
+  // CHECK: %[[neg2:.*]] = arith.muli %[[ARG0]], %[[Cm1]]
   // CHECK: %[[second:.*]] = arith.addi %[[ARG1]], %[[neg2]]
   // CHECK: arith.minsi %[[first]], %[[second]]
   %0 = affine.min affine_map<(d0,d1) -> (d0 - d1, d1 - d0)>(%arg0, %arg1)
@@ -693,8 +673,7 @@ func.func @affine_max(%arg0: index, %arg1: index) -> index{
   // CHECK: %[[Cm1:.*]] = arith.constant -1
   // CHECK: %[[neg1:.*]] = arith.muli %[[ARG1]], %[[Cm1:.*]]
   // CHECK: %[[first:.*]] = arith.addi %[[ARG0]], %[[neg1]]
-  // CHECK: %[[Cm2:.*]] = arith.constant -1
-  // CHECK: %[[neg2:.*]] = arith.muli %[[ARG0]], %[[Cm2:.*]]
+  // CHECK: %[[neg2:.*]] = arith.muli %[[ARG0]], %[[Cm1]]
   // CHECK: %[[second:.*]] = arith.addi %[[ARG1]], %[[neg2]]
   // CHECK: arith.maxsi %[[first]], %[[second]]
   %0 = affine.max affine_map<(d0,d1) -> (d0 - d1, d1 - d0)>(%arg0, %arg1)
@@ -710,12 +689,9 @@ func.func @affine_parallel(%o: memref<100x100xf32>, %a: memref<100x100xf32>) {
 }
 
 // CHECK-DAG:    %[[C100:.*]] = arith.constant 100
-// CHECK-DAG:    %[[C100_1:.*]] = arith.constant 100
 // CHECK-DAG:    %[[C0:.*]] = arith.constant 0
-// CHECK-DAG:    %[[C0_1:.*]] = arith.constant 0
 // CHECK-DAG:    %[[C1:.*]] = arith.constant 1
-// CHECK-DAG:    %[[C1_1:.*]] = arith.constant 1
-// CHECK-DAG:    scf.parallel (%arg2, %arg3) = (%[[C0]], %[[C0_1]]) to (%[[C100]], %[[C100_1]]) step (%[[C1]], %[[C1_1]]) {
+// CHECK-DAG:    scf.parallel (%arg2, %arg3) = (%[[C0]], %[[C0]]) to (%[[C100]], %[[C100]]) step (%[[C1]], %[[C1]]) {
 
 // CHECK-LABEL: func @affine_parallel_tiled(
 // CHECK-SAME: %[[ARG0:.*]]: memref<100x100xf32>, %[[ARG1:.*]]: memref<100x100xf32>, %[[ARG2:.*]]: memref<100x100xf32>) {
@@ -731,25 +707,14 @@ func.func @affine_parallel_tiled(%o: memref<100x100xf32>, %a: memref<100x100xf32
 }
 
 // CHECK-DAG:     %[[C100:.*]] = arith.constant 100
-// CHECK-DAG:     %[[C100_0:.*]] = arith.constant 100
-// CHECK-DAG:     %[[C100_1:.*]] = arith.constant 100
 // CHECK-DAG:     %[[C0:.*]] = arith.constant 0
-// CHECK-DAG:     %[[C0_2:.*]] = arith.constant 0
-// CHECK-DAG:     %[[C0_3:.*]] = arith.constant 0
 // CHECK-DAG:     %[[C10:.*]] = arith.constant 10
-// CHECK-DAG:     %[[C10_4:.*]] = arith.constant 10
-// CHECK-DAG:     %[[C10_5:.*]] = arith.constant 10
-// CHECK:         scf.parallel (%[[arg3:.*]], %[[arg4:.*]], %[[arg5:.*]]) = (%[[C0]], %[[C0_2]], %[[C0_3]]) to (%[[C100]], %[[C100_0]], %[[C100_1]]) step (%[[C10]], %[[C10_4]], %[[C10_5]]) {
-// CHECK-DAG:       %[[C10_6:.*]] = arith.constant 10
-// CHECK-DAG:       %[[A0:.*]] = arith.addi %[[arg3]], %[[C10_6]]
-// CHECK-DAG:       %[[C10_7:.*]] = arith.constant 10
-// CHECK-DAG:       %[[A1:.*]] = arith.addi %[[arg4]], %[[C10_7]]
-// CHECK-DAG:       %[[C10_8:.*]] = arith.constant 10
-// CHECK-DAG:       %[[A2:.*]] = arith.addi %[[arg5]], %[[C10_8]]
-// CHECK-DAG:       %[[C1:.*]] = arith.constant 1
-// CHECK-DAG:       %[[C1_9:.*]] = arith.constant 1
-// CHECK-DAG:       %[[C1_10:.*]] = arith.constant 1
-// CHECK:           scf.parallel (%[[arg6:.*]], %[[arg7:.*]], %[[arg8:.*]]) = (%[[arg3]], %[[arg4]], %[[arg5]]) to (%[[A0]], %[[A1]], %[[A2]]) step (%[[C1]], %[[C1_9]], %[[C1_10]]) {
+// CHECK-DAG:     %[[C1:.*]] = arith.constant 1
+// CHECK:         scf.parallel (%[[arg3:.*]], %[[arg4:.*]], %[[arg5:.*]]) = (%[[C0]], %[[C0]], %[[C0]]) to (%[[C100]], %[[C100]], %[[C100]]) step (%[[C10]], %[[C10]], %[[C10]]) {
+// CHECK-DAG:       %[[A0:.*]] = arith.addi %[[arg3]], %[[C10]]
+// CHECK-DAG:       %[[A1:.*]] = arith.addi %[[arg4]], %[[C10]]
+// CHECK-DAG:       %[[A2:.*]] = arith.addi %[[arg5]], %[[C10]]
+// CHECK:           scf.parallel (%[[arg6:.*]], %[[arg7:.*]], %[[arg8:.*]]) = (%[[arg3]], %[[arg4]], %[[arg5]]) to (%[[A0]], %[[A1]], %[[A2]]) step (%[[C1]], %[[C1]], %[[C1]]) {
 // CHECK:             %[[A3:.*]] = memref.load %[[ARG1]][%[[arg6]], %[[arg8]]] : memref<100x100xf32>
 // CHECK:             %[[A4:.*]] = memref.load %[[ARG2]][%[[arg8]], %[[arg7]]] : memref<100x100xf32>
 // CHECK:             arith.mulf %[[A3]], %[[A4]] : f32
@@ -770,11 +735,8 @@ func.func @affine_parallel_simple(%arg0: memref<3x3xf32>, %arg1: memref<3x3xf32>
 // CHECK-LABEL: func @affine_parallel_simple
 // CHECK:         %[[LOWER_1:.*]] = arith.constant 0 : index
 // CHECK-NEXT:    %[[UPPER_1:.*]] = arith.constant 2 : index
-// CHECK-NEXT:    %[[LOWER_2:.*]] = arith.constant 0 : index
-// CHECK-NEXT:    %[[UPPER_2:.*]] = arith.constant 2 : index
 // CHECK-NEXT:    %[[STEP_1:.*]] = arith.constant 1 : index
-// CHECK-NEXT:    %[[STEP_2:.*]] = arith.constant 1 : index
-// CHECK-NEXT:    scf.parallel (%[[I:.*]], %[[J:.*]]) = (%[[LOWER_1]], %[[LOWER_2]]) to (%[[UPPER_1]], %[[UPPER_2]]) step (%[[STEP_1]], %[[STEP_2]]) {
+// CHECK:         scf.parallel (%[[I:.*]], %[[J:.*]]) = (%[[LOWER_1]], %[[LOWER_1]]) to (%[[UPPER_1]], %[[UPPER_1]]) step (%[[STEP_1]], %[[STEP_1]]) {
 // CHECK-NEXT:      %[[VAL_1:.*]] = memref.load
 // CHECK-NEXT:      %[[VAL_2:.*]] = memref.load
 // CHECK-NEXT:      %[[PRODUCT:.*]] = arith.mulf
@@ -800,12 +762,10 @@ func.func @affine_parallel_simple_dynamic_bounds(%arg0: memref<?x?xf32>, %arg1: 
 // CHECK-LABEL: func @affine_parallel_simple_dynamic_bounds
 // CHECK-SAME:  %[[ARG_0:.*]]: memref<?x?xf32>, %[[ARG_1:.*]]: memref<?x?xf32>, %[[ARG_2:.*]]: memref<?x?xf32>
 // CHECK:         %[[DIM_INDEX:.*]] = arith.constant 0 : index
-// CHECK-NEXT:    %[[UPPER:.*]] = memref.dim %[[ARG_0]], %[[DIM_INDEX]] : memref<?x?xf32>
 // CHECK-NEXT:    %[[LOWER_1:.*]] = arith.constant 0 : index
-// CHECK-NEXT:    %[[LOWER_2:.*]] = arith.constant 0 : index
 // CHECK-NEXT:    %[[STEP_1:.*]] = arith.constant 1 : index
-// CHECK-NEXT:    %[[STEP_2:.*]] = arith.constant 1 : index
-// CHECK-NEXT:    scf.parallel (%[[I:.*]], %[[J:.*]]) = (%[[LOWER_1]], %[[LOWER_2]]) to (%[[UPPER]], %[[UPPER]]) step (%[[STEP_1]], %[[STEP_2]]) {
+// CHECK-NEXT:    %[[UPPER:.*]] = memref.dim %[[ARG_0]], %[[DIM_INDEX]] : memref<?x?xf32>
+// CHECK-NEXT:    scf.parallel (%[[I:.*]], %[[J:.*]]) = (%[[LOWER_1]], %[[LOWER_1]]) to (%[[UPPER]], %[[UPPER]]) step (%[[STEP_1]], %[[STEP_1]]) {
 // CHECK-NEXT:      %[[VAL_1:.*]] = memref.load
 // CHECK-NEXT:      %[[VAL_2:.*]] = memref.load
 // CHECK-NEXT:      %[[PRODUCT:.*]] = arith.mulf
@@ -830,13 +790,10 @@ func.func @affine_parallel_with_reductions(%arg0: memref<3x3xf32>, %arg1: memref
 // CHECK-LABEL: func @affine_parallel_with_reductions
 // CHECK:         %[[LOWER_1:.*]] = arith.constant 0 : index
 // CHECK-NEXT:    %[[UPPER_1:.*]] = arith.constant 2 : index
-// CHECK-NEXT:    %[[LOWER_2:.*]] = arith.constant 0 : index
-// CHECK-NEXT:    %[[UPPER_2:.*]] = arith.constant 2 : index
 // CHECK-NEXT:    %[[STEP_1:.*]] = arith.constant 1 : index
-// CHECK-NEXT:    %[[STEP_2:.*]] = arith.constant 1 : index
 // CHECK-NEXT:    %[[INIT_1:.*]] = arith.constant 0.000000e+00 : f32
 // CHECK-NEXT:    %[[INIT_2:.*]] = arith.constant 1.000000e+00 : f32
-// CHECK-NEXT:    %[[RES:.*]] = scf.parallel (%[[I:.*]], %[[J:.*]]) = (%[[LOWER_1]], %[[LOWER_2]]) to (%[[UPPER_1]], %[[UPPER_2]]) step (%[[STEP_1]], %[[STEP_2]]) init (%[[INIT_1]], %[[INIT_2]]) -> (f32, f32) {
+// CHECK-NEXT:    %[[RES:.*]] = scf.parallel (%[[I:.*]], %[[J:.*]]) = (%[[LOWER_1]], %[[LOWER_1]]) to (%[[UPPER_1]], %[[UPPER_1]]) step (%[[STEP_1]], %[[STEP_1]]) init (%[[INIT_1]], %[[INIT_2]]) -> (f32, f32) {
 // CHECK-NEXT:      %[[VAL_1:.*]] = memref.load
 // CHECK-NEXT:      %[[VAL_2:.*]] = memref.load
 // CHECK-NEXT:      %[[PRODUCT:.*]] = arith.mulf
@@ -869,13 +826,10 @@ func.func @affine_parallel_with_reductions_f64(%arg0: memref<3x3xf64>, %arg1: me
 // CHECK-LABEL: @affine_parallel_with_reductions_f64
 // CHECK:  %[[LOWER_1:.*]] = arith.constant 0 : index
 // CHECK:  %[[UPPER_1:.*]] = arith.constant 2 : index
-// CHECK:  %[[LOWER_2:.*]] = arith.constant 0 : index
-// CHECK:  %[[UPPER_2:.*]] = arith.constant 2 : index
 // CHECK:  %[[STEP_1:.*]] = arith.constant 1 : index
-// CHECK:  %[[STEP_2:.*]] = arith.constant 1 : index
 // CHECK:  %[[INIT_1:.*]] = arith.constant 0.000000e+00 : f64
 // CHECK:  %[[INIT_2:.*]] = arith.constant 1.000000e+00 : f64
-// CHECK:  %[[RES:.*]] = scf.parallel (%[[I:.*]], %[[J:.*]]) = (%[[LOWER_1]], %[[LOWER_2]]) to (%[[UPPER_1]], %[[UPPER_2]]) step (%[[STEP_1]], %[[STEP_2]]) init (%[[INIT_1]], %[[INIT_2]]) -> (f64, f64) {
+// CHECK:  %[[RES:.*]] = scf.parallel (%[[I:.*]], %[[J:.*]]) = (%[[LOWER_1]], %[[LOWER_1]]) to (%[[UPPER_1]], %[[UPPER_1]]) step (%[[STEP_1]], %[[STEP_1]]) init (%[[INIT_1]], %[[INIT_2]]) -> (f64, f64) {
 // CHECK:    %[[VAL_1:.*]] = memref.load
 // CHECK:    %[[VAL_2:.*]] = memref.load
 // CHECK:    %[[PRODUCT:.*]] = arith.mulf
@@ -906,13 +860,10 @@ func.func @affine_parallel_with_reductions_i64(%arg0: memref<3x3xi64>, %arg1: me
 // CHECK-LABEL: @affine_parallel_with_reductions_i64
 // CHECK:  %[[LOWER_1:.*]] = arith.constant 0 : index
 // CHECK:  %[[UPPER_1:.*]] = arith.constant 2 : index
-// CHECK:  %[[LOWER_2:.*]] = arith.constant 0 : index
-// CHECK:  %[[UPPER_2:.*]] = arith.constant 2 : index
 // CHECK:  %[[STEP_1:.*]] = arith.constant 1 : index
-// CHECK:  %[[STEP_2:.*]] = arith.constant 1 : index
 // CHECK:  %[[INIT_1:.*]] = arith.constant 0 : i64
 // CHECK:  %[[INIT_2:.*]] = arith.constant 1 : i64
-// CHECK:  %[[RES:.*]] = scf.parallel (%[[I:.*]], %[[J:.*]]) = (%[[LOWER_1]], %[[LOWER_2]]) to (%[[UPPER_1]], %[[UPPER_2]]) step (%[[STEP_1]], %[[STEP_2]]) init (%[[INIT_1]], %[[INIT_2]]) -> (i64, i64) {
+// CHECK:  %[[RES:.*]] = scf.parallel (%[[I:.*]], %[[J:.*]]) = (%[[LOWER_1]], %[[LOWER_1]]) to (%[[UPPER_1]], %[[UPPER_1]]) step (%[[STEP_1]], %[[STEP_1]]) init (%[[INIT_1]], %[[INIT_2]]) -> (i64, i64) {
 // CHECK:    %[[VAL_1:.*]] = memref.load
 // CHECK:    %[[VAL_2:.*]] = memref.load
 // CHECK:    %[[PRODUCT:.*]] = arith.muli

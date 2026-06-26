@@ -220,10 +220,10 @@ func.func @parametric(%lb1 : index, %ub1 : index, %step1 : index,
                  %lb2 : index, %ub2 : index, %step2 : index) {
   // Compute the number of iterations for each of the loops and the total
   // number of iterations.
-  // CHECK: %[[normalized_i:.*]] = affine.apply
-  // CHECK-SAME: affine_map<()[s0, s1, s2] -> ((-s0 + s1) ceildiv s2)>()[%[[orig_lb1]], %[[orig_ub1]], %[[orig_step1]]]
   // CHECK: %[[c0:.+]] = arith.constant 0
   // CHECK: %[[c1:.+]] = arith.constant 1
+  // CHECK: %[[normalized_i:.*]] = affine.apply
+  // CHECK-SAME: affine_map<()[s0, s1, s2] -> ((-s0 + s1) ceildiv s2)>()[%[[orig_lb1]], %[[orig_ub1]], %[[orig_step1]]]
   // CHECK: %[[normalized_j:.*]] = affine.apply
   // CHECK-SAME: affine_map<()[s0, s1, s2] -> ((-s0 + s1) ceildiv s2)>()[%[[orig_lb2]], %[[orig_ub2]], %[[orig_step2]]]
   // CHECK: %[[range:.+]] = affine.apply

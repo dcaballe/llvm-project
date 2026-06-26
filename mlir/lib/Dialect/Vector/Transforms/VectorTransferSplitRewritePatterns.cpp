@@ -248,7 +248,7 @@ createFullPartialLinalgCopy(RewriterBase &b, vector::TransferReadOp xferOp,
                             TypeRange returnTypes, Value inBoundsCond,
                             MemRefType compatibleMemRefType, Value alloc) {
   Location loc = xferOp.getLoc();
-  Value zero = arith::ConstantIndexOp::create(b, loc, 0);
+  Value zero = b.createOrFold<arith::ConstantIndexOp>(loc, 0);
   Value memref = xferOp.getBase();
   return scf::IfOp::create(
       b, loc, inBoundsCond,
@@ -301,7 +301,7 @@ static scf::IfOp createFullPartialVectorTransferRead(
     Value inBoundsCond, MemRefType compatibleMemRefType, Value alloc) {
   Location loc = xferOp.getLoc();
   scf::IfOp fullPartialIfOp;
-  Value zero = arith::ConstantIndexOp::create(b, loc, 0);
+  Value zero = b.createOrFold<arith::ConstantIndexOp>(loc, 0);
   Value memref = xferOp.getBase();
   return scf::IfOp::create(
       b, loc, inBoundsCond,
@@ -348,7 +348,7 @@ getLocationToWriteFullVec(RewriterBase &b, vector::TransferWriteOp xferOp,
                           TypeRange returnTypes, Value inBoundsCond,
                           MemRefType compatibleMemRefType, Value alloc) {
   Location loc = xferOp.getLoc();
-  Value zero = arith::ConstantIndexOp::create(b, loc, 0);
+  Value zero = b.createOrFold<arith::ConstantIndexOp>(loc, 0);
   Value memref = xferOp.getBase();
   return scf::IfOp::create(
              b, loc, inBoundsCond,
@@ -388,7 +388,7 @@ static void createFullPartialLinalgCopy(RewriterBase &b,
                                         Value inBoundsCond, Value alloc) {
   Location loc = xferOp.getLoc();
   auto notInBounds = arith::XOrIOp::create(
-      b, loc, inBoundsCond, arith::ConstantIntOp::create(b, loc, true, 1));
+      b, loc, inBoundsCond, b.createOrFold<arith::ConstantIntOp>(loc, true, 1));
   scf::IfOp::create(b, loc, notInBounds, [&](OpBuilder &b, Location loc) {
     IRRewriter rewriter(b);
     std::pair<Value, Value> copyArgs = createSubViewIntersection(
@@ -417,7 +417,7 @@ static void createFullPartialVectorTransferWrite(RewriterBase &b,
                                                  Value alloc) {
   Location loc = xferOp.getLoc();
   auto notInBounds = arith::XOrIOp::create(
-      b, loc, inBoundsCond, arith::ConstantIntOp::create(b, loc, true, 1));
+      b, loc, inBoundsCond, b.createOrFold<arith::ConstantIntOp>(loc, true, 1));
   scf::IfOp::create(b, loc, notInBounds, [&](OpBuilder &b, Location loc) {
     IRMapping mapping;
     Value load = memref::LoadOp::create(

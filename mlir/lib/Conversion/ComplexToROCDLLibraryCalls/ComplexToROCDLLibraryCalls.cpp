@@ -94,8 +94,8 @@ struct PowiOpToROCDLLibraryCalls : public OpRewritePattern<complex::PowiOp> {
     Location loc = op.getLoc();
     Value exponentReal =
         arith::SIToFPOp::create(rewriter, loc, exponentFloatType, op.getRhs());
-    Value zeroImag = arith::ConstantOp::create(
-        rewriter, loc, rewriter.getZeroAttr(exponentFloatType));
+    Value zeroImag = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getZeroAttr(exponentFloatType));
     Value exponent = complex::CreateOp::create(
         rewriter, loc, op.getLhs().getType(), exponentReal, zeroImag);
 

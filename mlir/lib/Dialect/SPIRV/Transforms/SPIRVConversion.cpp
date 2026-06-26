@@ -1099,6 +1099,8 @@ struct FuncOpVectorUnroll final : OpRewritePattern<func::FuncOp> {
       auto origVecType = dyn_cast<VectorType>(origType);
       if (!origVecType) {
         // We need a placeholder for the old argument that will be erased later.
+        // It must be a fresh op, since `tmpOps` keys on it to map back to the
+        // argument.
         Value result = arith::ConstantOp::create(
             rewriter, loc, origType, rewriter.getZeroAttr(origType));
         rewriter.replaceAllUsesWith(newFuncOp.getArgument(origInputNo), result);
@@ -1112,6 +1114,8 @@ struct FuncOpVectorUnroll final : OpRewritePattern<func::FuncOp> {
       auto targetShape = getTargetShape(origVecType);
       if (!targetShape) {
         // We need a placeholder for the old argument that will be erased later.
+        // It must be a fresh op, since `tmpOps` keys on it to map back to the
+        // argument.
         Value result = arith::ConstantOp::create(
             rewriter, loc, origType, rewriter.getZeroAttr(origType));
         rewriter.replaceAllUsesWith(newFuncOp.getArgument(origInputNo), result);
@@ -1126,7 +1130,8 @@ struct FuncOpVectorUnroll final : OpRewritePattern<func::FuncOp> {
       auto originalShape =
           llvm::to_vector_of<int64_t, 4>(origVecType.getShape());
 
-      // Prepare the result vector.
+      // Prepare the result vector. These must be fresh ops, since `newOpCount`
+      // tracks how many ops were added here.
       Value result = arith::ConstantOp::create(
           rewriter, loc, origVecType, rewriter.getZeroAttr(origVecType));
       ++newOpCount;

@@ -249,7 +249,7 @@ static amx::TileLoadOp createTileLoads(OpBuilder &rewriter, Location loc,
   }
 
   if (rhs && isVnni) {
-    auto cOffset = arith::ConstantIndexOp::create(rewriter, loc, offset);
+    auto cOffset = rewriter.createOrFold<arith::ConstantIndexOp>(loc, offset);
     indices[indices.size() - 1] = arith::MulIOp::create(
         rewriter, loc, indices[indices.size() - 1], cOffset);
   }
@@ -262,15 +262,16 @@ static void performShuffle(OpBuilder &rewriter, Location loc, Value matB,
                            Type ipType, unsigned int offset, Value packedBuffer,
                            Value indxToStoreInBuffer) {
 
-  Value c0 = arith::ConstantIndexOp::create(rewriter, loc, 0);
-  Value c16 = arith::ConstantIndexOp::create(rewriter, loc, 16);
+  Value c0 = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
+  Value c16 = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 16);
   SmallVector<Value> subviewOffset(
       llvm::cast<MemRefType>(matB.getType()).getRank(), c0);
 
-  Value cStep = arith::ConstantIndexOp::create(rewriter, loc, offset);
-  Value cBound = arith::ConstantIndexOp::create(rewriter, loc, (16 * offset));
+  Value cStep = rewriter.createOrFold<arith::ConstantIndexOp>(loc, offset);
+  Value cBound =
+      rewriter.createOrFold<arith::ConstantIndexOp>(loc, (16 * offset));
   Value offsetIndx =
-      arith::ConstantIndexOp::create(rewriter, loc, (offset / 2));
+      rewriter.createOrFold<arith::ConstantIndexOp>(loc, (offset / 2));
 
   scf::ForOp::create(
       rewriter, loc, c0, cBound, cStep, ValueRange{},
@@ -373,8 +374,8 @@ packInputs(OpBuilder &rewriter, Location loc,
            Value indxToStoreInBuffer, Value indxToLoadFromMatB) {
 
   llvm::DenseMap<Operation *, amx::TileLoadOp> readsToTileLoads;
-  Value c0 = arith::ConstantIndexOp::create(rewriter, loc, 0);
-  Value c16 = arith::ConstantIndexOp::create(rewriter, loc, 16);
+  Value c0 = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
+  Value c16 = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 16);
 
   for (size_t j = 0; j < ops.size(); j++) {
     for (size_t i = 0; i < ops.size(); i++) {
@@ -499,7 +500,7 @@ static Value getIndxToLoadStoreFromPckBuffer(OpBuilder &rewriter, Location loc,
                                              bool isInnerLoopUBLarger,
                                              bool pack, Value blockStride) {
 
-  Value c2 = arith::ConstantIndexOp::create(rewriter, loc, 2);
+  Value c2 = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 2);
 
   // `blockStride` is the reduction (K) loop step, i.e. the amount by which the
   // induction variable advances for one K-block. Dividing the induction value
@@ -535,12 +536,12 @@ createLoops(OpBuilder &rewriter, Location loc, Value lowerBound,
             vector::ContractionOp contractOp, scf::ForOp outerLoop,
             scf::ForOp innerLoop, SmallVector<vector::ContractionOp> ops,
             Value ivOuterLoop, Value packedBuffer, bool pack,
-            arith::ConstantIndexOp innerLoopIndex, bool isInnerLoopUBLarger,
+            Value innerLoopIndex, bool isInnerLoopUBLarger,
             bool isInnerLoopUBHasOddQuot) {
 
-  Value c0 = arith::ConstantIndexOp::create(rewriter, loc, 0);
-  Value c1 = arith::ConstantIndexOp::create(rewriter, loc, 1);
-  Value c2 = arith::ConstantIndexOp::create(rewriter, loc, 2);
+  Value c0 = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
+  Value c1 = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
+  Value c2 = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 2);
 
   int64_t offset = 16 * blockingFactor;
   if (auto cst = step.getDefiningOp<arith::ConstantIndexOp>())
@@ -565,7 +566,7 @@ createLoops(OpBuilder &rewriter, Location loc, Value lowerBound,
         Value indxToLoadFromBuffer = c0;
         if (!isVnni) {
           if (outerLoop) {
-            if (innerLoopIndex.value() == 0) {
+            if (getConstantIntValue(innerLoopIndex) == 0) {
               if (pack) {
                 ivNewInnerLoop = c0;
                 ivOuterLoop = arith::AddIOp::create(rewriter, locNewInnerLoop,
@@ -585,8 +586,8 @@ createLoops(OpBuilder &rewriter, Location loc, Value lowerBound,
               }
 
             } else {
-              Value nLoadIndx = arith::ConstantIndexOp::create(
-                  rewriter, locNewInnerLoop, offset);
+              Value nLoadIndx = rewriter.createOrFold<arith::ConstantIndexOp>(
+                  locNewInnerLoop, offset);
               ivNewInnerLoop = arith::AddIOp::create(rewriter, locNewInnerLoop,
                                                      nLoadIndx, ivNewInnerLoop);
               indxToStoreInBuffer = getIndxToLoadStoreFromPckBuffer(
@@ -600,8 +601,8 @@ createLoops(OpBuilder &rewriter, Location loc, Value lowerBound,
             }
           } else {
             if (pack) {
-              Value nLoadIndx = arith::ConstantIndexOp::create(
-                  rewriter, locNewInnerLoop, offset);
+              Value nLoadIndx = rewriter.createOrFold<arith::ConstantIndexOp>(
+                  locNewInnerLoop, offset);
               ivNewInnerLoop = arith::AddIOp::create(rewriter, locNewInnerLoop,
                                                      nLoadIndx, ivNewInnerLoop);
               Value quotient_K = arith::DivUIOp::create(
@@ -669,8 +670,8 @@ createLoops(OpBuilder &rewriter, Location loc, Value lowerBound,
             }
           } else {
             if (!pack) {
-              Value nLoadIndx = arith::ConstantIndexOp::create(
-                  rewriter, locNewInnerLoop, offset);
+              Value nLoadIndx = rewriter.createOrFold<arith::ConstantIndexOp>(
+                  locNewInnerLoop, offset);
               matB = Value();
               Value quotient_K = arith::DivUIOp::create(
                   rewriter, loc, ivNewInnerLoop, nLoadIndx);
@@ -891,7 +892,7 @@ struct VectorContractToAMXDotProduct
                                            "Failed to get the ACC src.");
       auto [srcBuffAcc, indicesAcc] = *srcIndxAcc;
 
-      Value c0 = arith::ConstantIndexOp::create(rewriter, loc, 0);
+      Value c0 = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
 
       // amx.tile_loads
       auto tileType = amx::TileType::get({16, (16 * blockingFactor)}, ipType);
@@ -921,13 +922,13 @@ struct VectorContractToAMXDotProduct
 
         // create a loop that does online packing.
         Value step =
-            arith::ConstantIndexOp::create(rewriter, loc, blockingFactor);
-        Value uBound = arith::ConstantIndexOp::create(rewriter, loc,
-                                                      (blockingFactor * 16));
-        Value nextLoadIndx =
-            arith::ConstantIndexOp::create(rewriter, loc, (blockingFactor / 2));
-        Value nextStoreIndx = arith::ConstantIndexOp::create(
-            rewriter, loc, 16 * (blockingFactor / 2));
+            rewriter.createOrFold<arith::ConstantIndexOp>(loc, blockingFactor);
+        Value uBound = rewriter.createOrFold<arith::ConstantIndexOp>(
+            loc, (blockingFactor * 16));
+        Value nextLoadIndx = rewriter.createOrFold<arith::ConstantIndexOp>(
+            loc, (blockingFactor / 2));
+        Value nextStoreIndx = rewriter.createOrFold<arith::ConstantIndexOp>(
+            loc, 16 * (blockingFactor / 2));
 
         scf::ForOp::create(
             rewriter, loc, c0, uBound, step, ValueRange{},
@@ -1202,12 +1203,12 @@ struct VectorContractToAMXDotProduct
 
         rewriter.setInsertionPoint(outerLoop);
 
-        auto c0 =
-            arith::ConstantIndexOp::create(rewriter, outerLoop.getLoc(), 0);
-        auto c1 =
-            arith::ConstantIndexOp::create(rewriter, outerLoop.getLoc(), 1);
-        auto spillLoopBound = arith::ConstantIndexOp::create(
-            rewriter, outerLoop.getLoc(), 16 * blockingFactor);
+        auto c0 = rewriter.createOrFold<arith::ConstantIndexOp>(
+            outerLoop.getLoc(), 0);
+        auto c1 = rewriter.createOrFold<arith::ConstantIndexOp>(
+            outerLoop.getLoc(), 1);
+        auto spillLoopBound = rewriter.createOrFold<arith::ConstantIndexOp>(
+            outerLoop.getLoc(), 16 * blockingFactor);
 
         Value spillOuterLoop = arith::SubIOp::create(
             rewriter, outerLoop.getLoc(), outerLoop.getUpperBound(), c1);
@@ -1240,8 +1241,8 @@ struct VectorContractToAMXDotProduct
 
         Value quotient_add = arith::AddIOp::create(rewriter, outerLoop.getLoc(),
                                                    quotient_batch, quotient_k);
-        Value c2 =
-            arith::ConstantIndexOp::create(rewriter, outerLoop.getLoc(), 2);
+        Value c2 = rewriter.createOrFold<arith::ConstantIndexOp>(
+            outerLoop.getLoc(), 2);
         Value rem = arith::RemUIOp::create(rewriter, outerLoop.getLoc(),
                                            quotient_add, c2);
 
@@ -1350,15 +1351,15 @@ struct VectorContractToAMXDotProduct
 
         rewriter.setInsertionPoint(innerLoop);
 
-        auto c0 =
-            arith::ConstantIndexOp::create(rewriter, innerLoop.getLoc(), 0);
+        auto c0 = rewriter.createOrFold<arith::ConstantIndexOp>(
+            innerLoop.getLoc(), 0);
         int64_t offset = 16 * blockingFactor;
         if (auto cst =
                 innerLoop.getStep().getDefiningOp<arith::ConstantIndexOp>())
           offset = cst.value();
 
-        auto spillLoopBound = arith::ConstantIndexOp::create(
-            rewriter, innerLoop.getLoc(), offset);
+        auto spillLoopBound = rewriter.createOrFold<arith::ConstantIndexOp>(
+            innerLoop.getLoc(), offset);
         Value spillInnerLoop =
             arith::SubIOp::create(rewriter, innerLoop.getLoc(),
                                   innerLoop.getUpperBound(), spillLoopBound);
@@ -1379,8 +1380,8 @@ struct VectorContractToAMXDotProduct
         Value quotient_k = arith::DivUIOp::create(rewriter, innerLoop.getLoc(),
                                                   innerLoop.getLowerBound(),
                                                   innerLoop.getStep());
-        Value c2 =
-            arith::ConstantIndexOp::create(rewriter, innerLoop.getLoc(), 2);
+        Value c2 = rewriter.createOrFold<arith::ConstantIndexOp>(
+            innerLoop.getLoc(), 2);
         Value rem = arith::RemUIOp::create(rewriter, innerLoop.getLoc(),
                                            quotient_k, c2);
 
@@ -1440,17 +1441,17 @@ struct VectorContractToAMXDotProduct
     // Store the amx tiled-dot product output into an MxN memref.
     for (unsigned int i = 0, k = 0; i < M; i = i + 16) {
       for (unsigned int j = 0; j < N; j = j + 16) {
-        Value indexOp_i = arith::ConstantIndexOp::create(rewriter, loc, i);
-        Value indexOp_j = arith::ConstantIndexOp::create(rewriter, loc, j);
+        Value indexOp_i = rewriter.createOrFold<arith::ConstantIndexOp>(loc, i);
+        Value indexOp_j = rewriter.createOrFold<arith::ConstantIndexOp>(loc, j);
         amx::TileStoreOp::create(rewriter, loc, resultBuffer,
                                  ValueRange{indexOp_i, indexOp_j}, dps[k]);
         k++;
       }
     }
-    auto c0 = arith::ConstantIndexOp::create(rewriter, loc, 0);
-    auto c16 = arith::ConstantIndexOp::create(rewriter, loc, 16);
-    auto one = arith::ConstantIndexOp::create(rewriter, loc, 1);
-    auto nBound = arith::ConstantIndexOp::create(rewriter, loc, N);
+    auto c0 = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
+    auto c16 = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 16);
+    auto one = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
+    auto nBound = rewriter.createOrFold<arith::ConstantIndexOp>(loc, N);
 
     // Create a loop that iterates over the MxN memerf, retrives two rows +
     // shuffle them, add up the C element values and stores them to temp buffer.
@@ -1518,8 +1519,8 @@ struct VectorContractToAMXDotProduct
     SmallVector<Value> writeResults;
     for (unsigned int i = 0; i < M; i = i + 16) {
       for (unsigned int j = 0; j < N; j = j + 16) {
-        Value indexOp_i = arith::ConstantIndexOp::create(rewriter, loc, i);
-        Value indexOp_j = arith::ConstantIndexOp::create(rewriter, loc, j);
+        Value indexOp_i = rewriter.createOrFold<arith::ConstantIndexOp>(loc, i);
+        Value indexOp_j = rewriter.createOrFold<arith::ConstantIndexOp>(loc, j);
 
         auto vectorType = mlir::VectorType::get({16, 16}, opType);
 

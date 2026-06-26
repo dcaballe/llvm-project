@@ -29,8 +29,8 @@ func.func @memref_alloca(%sz: index) -> (index, index) {
 
 // CHECK-LABEL: func @memref_assume_alignment(
 //  CHECK-SAME:     %[[sz:.*]]: index
-//       CHECK:   %[[c6:.*]] = arith.constant 6 : index
 //       CHECK:   %[[c1:.*]] = arith.constant 1 : index
+//       CHECK:   %[[c6:.*]] = arith.constant 6 : index
 //       CHECK:   %[[dim:.*]] = memref.dim %{{.*}}, %[[c1]] : memref<6x?xf32>
 //       CHECK:   return %[[c6]], %[[dim]]
 func.func @memref_assume_alignment(%sz: index) -> (index, index) {
@@ -95,9 +95,9 @@ func.func @memref_expand(%m: memref<?xf32>, %sz: index) -> (index, index) {
 
 // CHECK-LABEL: func @memref_extract_strided_metadata_static_metadata(
 //  CHECK-SAME:     %[[m:.*]]: memref<4x?xf32, strided<[11, 7], offset: 5>>
+//       CHECK:   %[[c1:.*]] = arith.constant 1 : index
 //       CHECK:   %[[c5:.*]] = arith.constant 5 : index
 //       CHECK:   %[[c4:.*]] = arith.constant 4 : index
-//       CHECK:   %[[c1:.*]] = arith.constant 1 : index
 //       CHECK:   %[[dim:.*]] = memref.dim %[[m]], %[[c1]]
 //       CHECK:   %[[c11:.*]] = arith.constant 11 : index
 //       CHECK:   %[[c7:.*]] = arith.constant 7 : index

@@ -57,7 +57,8 @@ struct PromoteShuffleToSwizzlePattern
         rewriter, loc, op.getResult(0).getType(), op.getValue(),
         /*and_mask=*/31,
         /*orMask=*/0, /*xorMask=*/offsetValue);
-    Value valid = arith::ConstantIntOp::create(rewriter, loc, 1, /*width*/ 1);
+    Value valid =
+        rewriter.createOrFold<arith::ConstantIntOp>(loc, 1, /*width*/ 1);
     rewriter.replaceOp(op, {res, valid});
     return success();
   }
@@ -91,7 +92,8 @@ struct PromoteShuffleToPermlanePattern
     Location loc = op.getLoc();
     Value res = amdgpu::PermlaneSwapOp::create(
         rewriter, loc, op.getResult(0).getType(), op.getValue(), offsetValue);
-    Value valid = arith::ConstantIntOp::create(rewriter, loc, 1, /*width*/ 1);
+    Value valid =
+        rewriter.createOrFold<arith::ConstantIntOp>(loc, 1, /*width*/ 1);
     rewriter.replaceOp(op, {res, valid});
     return success();
   }

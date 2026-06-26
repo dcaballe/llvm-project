@@ -9,14 +9,14 @@ func.func @static_sizes_output_divisible(%arg0: tensor<24x12xf32>,
                                          %iv0 : index, %iv1 : index, %iv2 : index) -> tensor<24x25xf32> {
   %0 = affine.min #map()[%iv2]
 
+  //  CHECK-DAG: %[[CST:.*]] = arith.constant 0.
+
   //      CHECK: %[[T0:.*]] = tensor.extract_slice %
   //      CHECK: %[[T1:.*]] = tensor.extract_slice %
   //      CHECK: %[[T2:.*]] = tensor.extract_slice %
   %1 = tensor.extract_slice %arg0[%iv0, %iv2] [4, %0] [1, 1] : tensor<24x12xf32> to tensor<4x?xf32>
   %2 = tensor.extract_slice %arg1[%iv2, %iv1] [%0, 5] [1, 1] : tensor<12x25xf32> to tensor<?x5xf32>
   %3 = tensor.extract_slice %arg2[%iv0, %iv1] [4, 5] [1, 1] : tensor<24x25xf32> to tensor<4x5xf32>
-
-  //  CHECK-DAG: %[[CST:.*]] = arith.constant 0.
 
   //      CHECK: %[[T3:.*]] = tensor.pad %[[T0]] nofold
   //      CHECK: tensor.yield %[[CST]]
@@ -128,14 +128,14 @@ func.func @static_sizes_output_divisible_on_empty_op(%arg0: tensor<24x12xf32>,
     %iv1: index, %iv2: index) -> tensor<24x25xf32> {
   %0 = affine.min #map()[%iv2]
 
+  //  CHECK-DAG: %[[CST:.*]] = arith.constant 0.
+
   //      CHECK: %[[T0:.*]] = tensor.empty
   //      CHECK: %[[T1:.*]] = tensor.empty
   //      CHECK: %[[T2:.*]] = tensor.empty
   %1 = tensor.empty(%0) : tensor<4x?xf32>
   %2 = tensor.empty(%0) : tensor<?x5xf32>
   %3 = tensor.empty() : tensor<4x5xf32>
-
-  //  CHECK-DAG: %[[CST:.*]] = arith.constant 0.
 
   //      CHECK: %[[T3:.*]] = tensor.pad %[[T0]] nofold
   //      CHECK: tensor.yield %[[CST]]
@@ -364,6 +364,10 @@ func.func @outs_not_produced_by_empty_or_extract_slice(%a : tensor<128x2044xf32>
   %c0 = arith.constant 0 : index
   %c16 = arith.constant 16 : index
   %c2044 = arith.constant 2044 : index
+  // The fill and the padding value are distinct constants, both hoisted to the
+  // top of the function.
+  // CHECK: arith.constant 0.
+  // CHECK: %[[CST:.*]] = arith.constant 0.
   // CHECK: scf.for %[[ARG3:.*]] = {{.*}} iter_args(%[[ARG4:.*]] = %{{.*}})
   %10 = scf.for %arg3 = %c0 to %c2044 step %c16 iter_args(%arg4 = %9) -> (tensor<128x128xf32>) {
     // CHECK: %[[MIN:.*]] = affine.min #[[$MAP_MIN]](%[[ARG3]])
@@ -372,7 +376,6 @@ func.func @outs_not_produced_by_empty_or_extract_slice(%a : tensor<128x2044xf32>
     // CHECK: %[[B_SLICE:.*]] = tensor.extract_slice %[[B]]
     %extracted_slice_2 = tensor.extract_slice %a[0, %arg3] [128, %11] [1, 1] : tensor<128x2044xf32> to tensor<128x?xf32>
     %extracted_slice_3 = tensor.extract_slice %b[%arg3, 0] [%11, 128] [1, 1] : tensor<2044x128xf32> to tensor<?x128xf32>
-    // CHECK-DAG: %[[CST:.*]] = arith.constant 0.
 
     // CHECK-DAG: %[[TO_16:.*]] = affine.apply #[[$MAP_TO_16]](%[[MIN]])
     // CHECK: %[[PADDED_A_SLICE:.*]] = tensor.pad %[[A_SLICE]] nofold low[0, 0] high[0, %[[TO_16]]]
@@ -414,14 +417,14 @@ func.func @pack_everything(%arg0: tensor<24x12xf32>,
                            %iv0 : index, %iv1 : index, %iv2 : index) -> tensor<24x25xf32> {
   %0 = affine.min #map()[%iv2]
 
+  //  CHECK-DAG: %[[CST:.*]] = arith.constant 0.
+
   //      CHECK: %[[T0:.*]] = tensor.extract_slice %
   //      CHECK: %[[T1:.*]] = tensor.extract_slice %
   //      CHECK: %[[T2:.*]] = tensor.extract_slice %
   %1 = tensor.extract_slice %arg0[%iv0, %iv2] [4, %0] [1, 1] : tensor<24x12xf32> to tensor<4x?xf32>
   %2 = tensor.extract_slice %arg1[%iv2, %iv1] [%0, 5] [1, 1] : tensor<12x25xf32> to tensor<?x5xf32>
   %3 = tensor.extract_slice %arg2[%iv0, %iv1] [4, 5] [1, 1] : tensor<24x25xf32> to tensor<4x5xf32>
-
-  //  CHECK-DAG: %[[CST:.*]] = arith.constant 0.
 
   //      CHECK: %[[PAD0:.*]] = tensor.pad %[[T0]] nofold
   //      CHECK: %[[PAD1:.*]] = tensor.pad %[[T1]] nofold

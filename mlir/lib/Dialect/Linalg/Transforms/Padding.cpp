@@ -222,8 +222,8 @@ static FailureOr<Value> padOperandToSmallestStaticBoundingBox(
     paddingValue = complex::ConstantOp::create(rewriter, opToPad.getLoc(),
                                                complexTy, complexAttr);
   } else {
-    paddingValue = arith::ConstantOp::create(rewriter, opToPad.getLoc(),
-                                             cast<TypedAttr>(paddingAttr));
+    paddingValue = rewriter.createOrFold<arith::ConstantOp>(
+        opToPad.getLoc(), cast<TypedAttr>(paddingAttr));
   }
 
   // Computes the padded shape.

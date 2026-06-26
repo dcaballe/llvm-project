@@ -63,7 +63,7 @@ static void specializeParallelLoopForUnrolling(ParallelOp op) {
   Value cond;
   for (auto bound : llvm::zip(op.getUpperBound(), constantIndices)) {
     Value constant =
-        arith::ConstantIndexOp::create(b, op.getLoc(), std::get<1>(bound));
+        b.createOrFold<arith::ConstantIndexOp>(op.getLoc(), std::get<1>(bound));
     Value cmp = arith::CmpIOp::create(b, op.getLoc(), arith::CmpIPredicate::eq,
                                       std::get<0>(bound), constant);
     cond = cond ? arith::AndIOp::create(b, op.getLoc(), cond, cmp) : cmp;
@@ -94,9 +94,8 @@ static void specializeForLoopForUnrolling(ForOp op) {
 
   OpBuilder b(op);
   IRMapping map;
-  Value constant = arith::ConstantOp::create(
-      b, op.getLoc(),
-      IntegerAttr::get(op.getUpperBound().getType(), minConstant));
+  Value constant = b.createOrFold<arith::ConstantOp>(
+      op.getLoc(), IntegerAttr::get(op.getUpperBound().getType(), minConstant));
   Value cond = arith::CmpIOp::create(b, op.getLoc(), arith::CmpIPredicate::eq,
                                      bound, constant);
   map.map(bound, constant);

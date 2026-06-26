@@ -40,9 +40,9 @@ func.func @subview_strided(%input: memref<4x1024xf32>) -> memref<1x128xf32, stri
 // CHECK-LABEL: func.func @subview_strided(
 // CHECK-SAME:  %[[input:.*]]: memref<4x1024xf32>) -> memref<1x128xf32, strided<[1024, 1], offset: ?>> {
 func.func @subview_strided(%input: memref<4x1024xf32>) -> memref<1x128xf32, strided<[1024, 1], offset: ?>> {
-  // CHECK: %[[C3:.*]] = arith.constant 3 : index
+  // CHECK-DAG: %[[C3:.*]] = arith.constant 3 : index
   %cst_2 = arith.constant 2 : index
-  // CHECK: %[[C384:.*]] = arith.constant 384 : index
+  // CHECK-DAG: %[[C384:.*]] = arith.constant 384 : index
   %cst_128 = arith.constant 128 : index
   // CHECK: {{.*}} = memref.subview %[[input]]{{\[}}%[[C3]], %[[C384]]] [1, 128] [1, 1] : memref<4x1024xf32> to memref<1x128xf32, strided<[1024, 1], offset: ?>>
   %0 = memref.subview %input[%cst_2, 256] [2, 256] [1, 1] : memref<4x1024xf32> to memref<2x256xf32, strided<[1024, 1], offset: ?>>
@@ -78,9 +78,9 @@ func.func @subview_strided(%input: memref<30x30xf32>) -> memref<2x2xf32, strided
 // CHECK-LABEL: func.func @subview_strided(
 // CHECK-SAME:  %[[input:.*]]: memref<4x1024xf32>) -> memref<1x64xf32, strided<[4096, 4], offset: ?>> {
 func.func @subview_strided(%input: memref<4x1024xf32>) -> memref<1x64xf32, strided<[4096, 4], offset: ?>> {
-  // CHECK:     %[[C4:.*]] = arith.constant 4 : index
+  // CHECK-DAG: %[[C4:.*]] = arith.constant 4 : index
   %cst_2 = arith.constant 2 : index
-  // CHECK:     %[[C384:.*]] = arith.constant 384 : index
+  // CHECK-DAG: %[[C384:.*]] = arith.constant 384 : index
   %cst_64 = arith.constant 64 : index
   // CHECK:     {{.*}} = memref.subview %[[input]]{{\[}}%[[C4]], %[[C384]]] [1, 64] [4, 4] : memref<4x1024xf32> to memref<1x64xf32, strided<[4096, 4], offset: ?>>
   %0 = memref.subview %input[%cst_2, 256] [2, 256] [2, 2] : memref<4x1024xf32> to memref<2x256xf32, strided<[2048, 2], offset: ?>>

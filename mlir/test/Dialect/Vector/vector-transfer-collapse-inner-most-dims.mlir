@@ -409,8 +409,8 @@ func.func @contiguous_inner_most_dynamic_outer(%i: index, %ii: index, %dest: mem
 // CHECK-SAME:      %[[IDX_0:.*]]: index, %[[IDX_1:.*]]: index,
 // CHECK-SAME:      %[[MEM:.*]]: memref<?x?x16x1xf32>,
 // CHECK-SAME:      %[[VEC:.*]]: vector<8x1xf32>) {
-// CHECK:           %[[C1:.*]] = arith.constant 1 : index
 // CHECK:           %[[C0:.*]] = arith.constant 0 : index
+// CHECK:           %[[C1:.*]] = arith.constant 1 : index
 // CHECK:           %[[DIM0:.*]] = memref.dim %[[MEM]], %[[C0]] : memref<?x?x16x1xf32>
 // CHECK:           %[[DIM1:.*]] = memref.dim %[[MEM]], %[[C1]] : memref<?x?x16x1xf32>
 // CHECK:           %[[SV:.*]] = memref.subview %[[MEM]][0, 0, 0, 0] {{\[}}%[[DIM0]], %[[DIM1]], 16, 1] [1, 1, 1, 1] : memref<?x?x16x1xf32> to memref<?x?x16xf32, strided<[?, 16, 1]>>
@@ -430,8 +430,8 @@ func.func @contiguous_inner_most_dynamic_outer_scalable_inner_dim(%i: index, %ii
 // CHECK-SAME:      %[[IDX_0:.*]]: index, %[[IDX_1:.*]]: index,
 // CHECK-SAME:      %[[MEM:.*]]: memref<?x?x16x1xf32>,
 // CHECK-SAME:      %[[VEC:.*]]: vector<[8]x1xf32>) {
-// CHECK:           %[[C1:.*]] = arith.constant 1 : index
 // CHECK:           %[[C0:.*]] = arith.constant 0 : index
+// CHECK:           %[[C1:.*]] = arith.constant 1 : index
 // CHECK:           %[[DIM0:.*]] = memref.dim %[[MEM]], %[[C0]] : memref<?x?x16x1xf32>
 // CHECK:           %[[DIM1:.*]] = memref.dim %[[MEM]], %[[C1]] : memref<?x?x16x1xf32>
 // CHECK:           %[[SV:.*]] = memref.subview %[[MEM]][0, 0, 0, 0] {{\[}}%[[DIM0]], %[[DIM1]], 16, 1] [1, 1, 1, 1] : memref<?x?x16x1xf32> to memref<?x?x16xf32, strided<[?, 16, 1]>>

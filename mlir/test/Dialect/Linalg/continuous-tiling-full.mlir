@@ -26,9 +26,9 @@ func.func @continuous_tile_linalg_matmul(
 
 // CHECK-LABEL: @continuous_tile_linalg_matmul
 // CHECK-SAME:  (%[[IN1:.+]]: tensor<25x34xf32>, %[[IN2:.+]]: tensor<34x25xf32>, %[[OUT:.+]]: tensor<25x25xf32>) -> tensor<25x25xf32> {
-// CHECK:         %[[C18:.+]] = arith.constant 18 : index
-// CHECK:         %[[C0:.+]] = arith.constant 0 : index
 // CHECK:         %[[C9:.+]] = arith.constant 9 : index
+// CHECK:         %[[C0:.+]] = arith.constant 0 : index
+// CHECK:         %[[C18:.+]] = arith.constant 18 : index
 // CHECK:         %[[XSIN18:.+]] = tensor.extract_slice %[[IN1]][0, 0] [18, 34] [1, 1] : tensor<25x34xf32> to tensor<18x34xf32>
 // CHECK:         %[[XSOUT18:.+]] = tensor.extract_slice %[[OUT]][0, 0] [18, 25] [1, 1] : tensor<25x25xf32> to tensor<18x25xf32>
 // CHECK:         %[[R0:.+]] = scf.for %[[IDX:.+]] = %[[C0]] to %[[C18]] step %[[C9]] iter_args(%[[XSOUT18ARG:.+]] = %[[XSOUT18]]) -> (tensor<18x25xf32>) {
@@ -87,9 +87,9 @@ func.func @continuous_tile_static_linalg_matmul(
 
 // CHECK-LABEL: @continuous_tile_static_linalg_matmul
 // CHECK-SAME:  (%[[IN1:.+]]: tensor<25x34xf32>, %[[IN2:.+]]: tensor<34x25xf32>, %[[OUT:.+]]: tensor<25x25xf32>) -> tensor<25x25xf32> {
-// CHECK:         %[[C9:.+]] = arith.constant 9 : index
-// CHECK:         %[[C18:.+]] = arith.constant 18 : index
 // CHECK:         %[[C0:.+]] = arith.constant 0 : index
+// CHECK:         %[[C18:.+]] = arith.constant 18 : index
+// CHECK:         %[[C9:.+]] = arith.constant 9 : index
 // CHECK:         %[[XSIN18:.+]] = tensor.extract_slice %[[IN1]][0, 0] [18, 34] [1, 1] : tensor<25x34xf32> to tensor<18x34xf32>
 // CHECK:         %[[XSOUT18:.+]] = tensor.extract_slice %[[OUT]][0, 0] [18, 25] [1, 1] : tensor<25x25xf32> to tensor<18x25xf32>
 // CHECK:         %[[R0:.+]] = scf.for %[[IDX:.+]] = %[[C0]] to %[[C18]] step %[[C9]] iter_args(%[[XSOUT18ARG:.+]] = %[[XSOUT18]]) -> (tensor<18x25xf32>) {

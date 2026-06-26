@@ -6,8 +6,8 @@ gpu.module @test {
 // CHECK-SAME: %[[ARG3:.*]]: vector<1xi1>
 gpu.func @load_gather_i64_src_value_offset(%src: i64, %offset: vector<1xindex>, %dst: memref<1xf16>, %mask: vector<1xi1>) {
   // CHECK: %[[C0:.*]] = arith.constant 0 : index
-  // CHECK: %[[CST_0:.*]] = arith.constant 0.000000e+00 : f16
   // CHECK: %[[C2_I64:.*]] = arith.constant 2 : i64
+  // CHECK: %[[CST_0:.*]] = arith.constant 0.000000e+00 : f16
   // CHECK: %[[VAR2:.*]] = vector.extract %[[ARG3]][0] : i1 from vector<1xi1>
   // CHECK: %[[VAR0:.*]] = vector.extract %[[ARG1]][0] : index from vector<1xindex>
   // CHECK: %[[VAR1:.*]] = arith.index_castui %[[VAR0]] : index to i64
@@ -52,8 +52,8 @@ gpu.module @test {
 // CHECK-LABEL: @store_scatter_i64_src_value_offset
 // CHECK-SAME: %[[ARG0:.*]]: i64, %[[ARG1:.*]]: vector<1xindex>, %[[ARG2:.*]]: vector<1xi1>
 gpu.func @store_scatter_i64_src_value_offset(%src: i64, %offset: vector<1xindex>, %mask: vector<1xi1>) {
-  // CHECK: %[[CST_0:.*]] = arith.constant 2.900000e+00 : f32
-  // CHECK: %[[C4_I64:.*]] = arith.constant 4 : i64
+  // CHECK-DAG: %[[CST_0:.*]] = arith.constant 2.900000e+00 : f32
+  // CHECK-DAG: %[[C4_I64:.*]] = arith.constant 4 : i64
   // CHECK: %[[VAR2:.*]] = vector.extract %[[ARG2]][0] : i1 from vector<1xi1>
   // CHECK: %[[VAR0:.*]] = vector.extract %[[ARG1]][0] : index from vector<1xindex>
   // CHECK: %[[VAR1:.*]] = arith.index_castui %[[VAR0]] : index to i64

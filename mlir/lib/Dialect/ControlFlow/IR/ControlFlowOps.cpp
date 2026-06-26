@@ -502,8 +502,8 @@ struct CondBranchTruthPropagation : public OpRewritePattern<CondBranchOp> {
           replaced = true;
 
           if (!constantTrue)
-            constantTrue = arith::ConstantOp::create(
-                rewriter, condbr.getLoc(), ty, rewriter.getBoolAttr(true));
+            constantTrue = rewriter.createOrFold<arith::ConstantOp>(
+                condbr.getLoc(), ty, rewriter.getBoolAttr(true));
 
           rewriter.modifyOpInPlace(use.getOwner(),
                                    [&] { use.set(constantTrue); });
@@ -517,8 +517,8 @@ struct CondBranchTruthPropagation : public OpRewritePattern<CondBranchOp> {
           replaced = true;
 
           if (!constantFalse)
-            constantFalse = arith::ConstantOp::create(
-                rewriter, condbr.getLoc(), ty, rewriter.getBoolAttr(false));
+            constantFalse = rewriter.createOrFold<arith::ConstantOp>(
+                condbr.getLoc(), ty, rewriter.getBoolAttr(false));
 
           rewriter.modifyOpInPlace(use.getOwner(),
                                    [&] { use.set(constantFalse); });

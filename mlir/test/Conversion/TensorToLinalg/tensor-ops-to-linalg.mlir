@@ -24,10 +24,10 @@ func.func @generalize_pad_tensor_static_shape(%arg0: tensor<1x28x28x1xf32>) -> t
 // CHECK-SAME:                                              %[[OFFSET:.*]]: index) -> tensor<4x?x?x?xf32> {
 // CHECK-DAG:       %[[CST:.*]] = arith.constant 0.000000e+00 : f32
 // CHECK-DAG:       %[[C1:.*]] = arith.constant 1 : index
-// CHECK:           %[[DIM1:.*]] = tensor.dim %[[IN]], %[[C1]] : tensor<4x?x2x?xf32>
 // CHECK-DAG:       %[[C2:.*]] = arith.constant 2 : index
-// CHECK:           %[[OUT_DIM2:.*]] = arith.addi %[[OFFSET]], %[[C2]] : index
 // CHECK-DAG:       %[[C3:.*]] = arith.constant 3 : index
+// CHECK:           %[[DIM1:.*]] = tensor.dim %[[IN]], %[[C1]] : tensor<4x?x2x?xf32>
+// CHECK:           %[[OUT_DIM2:.*]] = arith.addi %[[OFFSET]], %[[C2]] : index
 // CHECK:           %[[DIM3:.*]] = tensor.dim %[[IN]], %[[C3]] : tensor<4x?x2x?xf32>
 // CHECK:           %[[OUT_DIM3:.*]] = arith.addi %[[DIM3]], %[[OFFSET]] : index
 // CHECK:           %[[INIT:.*]] = tensor.empty(%[[DIM1]], %[[OUT_DIM2]], %[[OUT_DIM3]]) : tensor<4x?x?x?xf32>

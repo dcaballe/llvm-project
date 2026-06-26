@@ -162,8 +162,8 @@ struct RemoveStrideFromGatherSource : OpRewritePattern<vector::GatherOp> {
     // So the newIdxs is scaled with the stride.
     IntegerAttr stride = rewriter.getIndexAttr(srcTrailingDim);
     VectorType vType = op.getIndices().getType();
-    Value mulCst = arith::ConstantOp::create(
-        rewriter, op.getLoc(), vType, DenseElementsAttr::get(vType, stride));
+    Value mulCst = rewriter.createOrFold<arith::ConstantOp>(
+        op.getLoc(), vType, DenseElementsAttr::get(vType, stride));
     Value newIdxs =
         arith::MulIOp::create(rewriter, op.getLoc(), op.getIndices(), mulCst);
 
@@ -176,12 +176,12 @@ struct RemoveStrideFromGatherSource : OpRewritePattern<vector::GatherOp> {
     // Note that createOrFold collapses the muli/addi when the trailing offset
     // is a constant zero or the subview offset is zero.
     SmallVector<Value> newOffsets(op.getOffsets());
-    Value strideVal =
-        arith::ConstantIndexOp::create(rewriter, op.getLoc(), srcTrailingDim);
+    Value strideVal = rewriter.createOrFold<arith::ConstantIndexOp>(
+        op.getLoc(), srcTrailingDim);
     newOffsets.back() = rewriter.createOrFold<arith::MulIOp>(
         op.getLoc(), newOffsets.back(), strideVal);
-    Value subviewOffsetValue =
-        arith::ConstantIndexOp::create(rewriter, op.getLoc(), subviewOffset);
+    Value subviewOffsetValue = rewriter.createOrFold<arith::ConstantIndexOp>(
+        op.getLoc(), subviewOffset);
     newOffsets.back() = rewriter.createOrFold<arith::AddIOp>(
         op.getLoc(), newOffsets.back(), subviewOffsetValue);
 

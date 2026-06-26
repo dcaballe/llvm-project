@@ -683,10 +683,10 @@ func.func @rsqrt_scalar(%arg0: f32) -> f32 {
 // CHECK:           math.rsqrt
 // AVX2-LABEL:    func @rsqrt_vector_8xf32(
 // AVX2-SAME:       %[[VAL_0:.*]]: vector<8xf32>) -> vector<8xf32> {
-// AVX2:   %[[VAL_1:.*]] = arith.constant dense<0x7F800000> : vector<8xf32>
-// AVX2:   %[[VAL_2:.*]] = arith.constant dense<1.500000e+00> : vector<8xf32>
-// AVX2:   %[[VAL_3:.*]] = arith.constant dense<-5.000000e-01> : vector<8xf32>
 // AVX2:   %[[VAL_4:.*]] = arith.constant dense<1.17549435E-38> : vector<8xf32>
+// AVX2:   %[[VAL_3:.*]] = arith.constant dense<-5.000000e-01> : vector<8xf32>
+// AVX2:   %[[VAL_2:.*]] = arith.constant dense<1.500000e+00> : vector<8xf32>
+// AVX2:   %[[VAL_1:.*]] = arith.constant dense<0x7F800000> : vector<8xf32>
 // AVX2:   %[[VAL_5:.*]] = arith.mulf %[[VAL_0]], %[[VAL_3]] : vector<8xf32>
 // AVX2:   %[[VAL_6:.*]] = arith.cmpf olt, %[[VAL_0]], %[[VAL_4]] : vector<8xf32>
 // AVX2:   %[[VAL_7:.*]] = arith.cmpf oeq, %[[VAL_0]], %[[VAL_1]] : vector<8xf32>
@@ -914,13 +914,13 @@ func.func @atan2_scalar(%arg0: f16, %arg1: f16) -> f16 {
 // CHECK-LABEL: @cbrt_vector
 // CHECK-SAME: %[[ARG0:.+]]: vector<4xf32>
 
-// CHECK: %[[TWO_INT:.+]] = arith.constant dense<2>
-// CHECK: %[[FOUR_INT:.+]] = arith.constant dense<4>
-// CHECK: %[[EIGHT_INT:.+]] = arith.constant dense<8>
-// CHECK: %[[MAGIC:.+]] = arith.constant dense<709965728>
-// CHECK: %[[THIRD_FP:.+]] = arith.constant dense<0.333333343> : vector<4xf32>
-// CHECK: %[[TWO_FP:.+]] = arith.constant dense<2.000000e+00> : vector<4xf32>
 // CHECK: %[[ZERO_FP:.+]] = arith.constant dense<0.000000e+00> : vector<4xf32>
+// CHECK: %[[TWO_FP:.+]] = arith.constant dense<2.000000e+00> : vector<4xf32>
+// CHECK: %[[THIRD_FP:.+]] = arith.constant dense<0.333333343> : vector<4xf32>
+// CHECK: %[[MAGIC:.+]] = arith.constant dense<709965728>
+// CHECK: %[[EIGHT_INT:.+]] = arith.constant dense<8>
+// CHECK: %[[FOUR_INT:.+]] = arith.constant dense<4>
+// CHECK: %[[TWO_INT:.+]] = arith.constant dense<2>
 
 // CHECK: %[[ABS:.+]] = math.absf %[[ARG0]] : vector<4xf32>
 

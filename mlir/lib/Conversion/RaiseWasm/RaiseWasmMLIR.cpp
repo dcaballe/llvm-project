@@ -317,10 +317,8 @@ struct WasmEqzOpConversion : OpConversionPattern<EqzOp> {
   matchAndRewrite(EqzOp eqzOp, EqzOp::Adaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     auto loc = eqzOp->getLoc();
-    auto zero = arith::ConstantOp::create(
-                    rewriter, loc,
-                    rewriter.getIntegerAttr(adaptor.getInput().getType(), 0))
-                    .getResult();
+    auto zero = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getIntegerAttr(adaptor.getInput().getType(), 0));
     auto cmpRes = arith::CmpIOp::create(
                       rewriter, loc, rewriter.getI1Type(),
                       arith::CmpIPredicateAttr::get(rewriter.getContext(),
@@ -378,8 +376,8 @@ struct WasmFuncOpConversion : OpConversionPattern<FuncOp> {
     using branch_to_dest_t = llvm::DenseMap<LabelBranchingOpInterface, Block *>;
     Value getCompResultAsI1(Value compResult,
                             ConversionPatternRewriter &rewriter) {
-      auto testValue = arith::ConstantOp::create(rewriter, compResult.getLoc(),
-                                                 rewriter.getI32IntegerAttr(0));
+      auto testValue = rewriter.createOrFold<arith::ConstantOp>(
+          compResult.getLoc(), rewriter.getI32IntegerAttr(0));
       auto flag = arith::CmpIOp::create(
                       rewriter, compResult.getLoc(), rewriter.getIntegerType(1),
                       arith::CmpIPredicate::ne, compResult, testValue)
@@ -660,7 +658,7 @@ struct WasmGlobalWithGetGlobalInitConversion
     auto destGlobalPtr =
         memref::GetGlobalOp::create(rewriter, loc, globalReplacement.getType(),
                                     globalReplacement.getSymName());
-    auto idx = arith::ConstantIndexOp::create(rewriter, loc, 0).getResult();
+    auto idx = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
     auto loadSrc =
         memref::LoadOp::create(rewriter, loc, srcGlobalPtr, ValueRange{idx});
     memref::StoreOp::create(rewriter, loc, loadSrc.getResult(),
@@ -680,10 +678,10 @@ struct WasmGlobalSetOpConversion : OpConversionPattern<GlobalSetOp> {
     auto globalPtr = memref::GetGlobalOp::create(
         rewriter, loc, MemRefType::get({1}, adaptor.getValue().getType()),
         globalSetOp.getGlobal());
-    auto idx = arith::ConstantIndexOp::create(rewriter, loc, 0);
+    auto idx = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
     rewriter.replaceOpWithNewOp<memref::StoreOp>(
         globalSetOp, adaptor.getValue(), globalPtr.getResult(),
-        ValueRange{idx.getResult()});
+        ValueRange{idx});
     return success();
   }
 };
@@ -729,9 +727,9 @@ struct WasmMemoryOpConversion : OpConversionPattern<MemOp> {
         MemRefType::get({memOp.getLimits().getMin()}, rewriter.getI8Type()));
     auto castOp =
         memref::CastOp::create(rewriter, loc, bufferType, alloc.getResult());
-    auto idx = arith::ConstantIndexOp::create(rewriter, loc, 0);
+    auto idx = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
     memref::StoreOp::create(rewriter, loc, castOp.getResult(),
-                            memRefPtr.getResult(), ValueRange{idx.getResult()});
+                            memRefPtr.getResult(), ValueRange{idx});
     func::ReturnOp::create(rewriter, loc);
     rewriter.restoreInsertionPoint(sip);
     func::CallOp::create(rewriter, loc, memInitializer);
@@ -757,11 +755,11 @@ struct WasmLocalConversion : OpConversionPattern<LocalOp> {
     auto alloca = rewriter.replaceOpWithNewOp<memref::AllocaOp>(
         localOp,
         MemRefType::get({}, localOp.getResult().getType().getElementType()));
-    auto initializer = arith::ConstantOp::create(
-        rewriter, localOp->getLoc(),
+    auto initializer = rewriter.createOrFold<arith::ConstantOp>(
+        localOp->getLoc(),
         getInitializerAttr(localOp.getResult().getType().getElementType()));
-    memref::StoreOp::create(rewriter, localOp->getLoc(),
-                            initializer.getResult(), alloca.getResult());
+    memref::StoreOp::create(rewriter, localOp->getLoc(), initializer,
+                            alloca.getResult());
     return success();
   }
 };
@@ -820,10 +818,10 @@ struct WasmSelectOpConversion : OpConversionPattern<SelectOp> {
   matchAndRewrite(SelectOp selectOp, SelectOp::Adaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     auto loc = selectOp.getLoc();
-    auto zero =
-        arith::ConstantOp::create(rewriter, loc, rewriter.getI32IntegerAttr(0));
+    auto zero = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getI32IntegerAttr(0));
     auto flag = arith::CmpIOp::create(rewriter, loc, arith::CmpIPredicate::ne,
-                                      adaptor.getCondition(), zero.getResult());
+                                      adaptor.getCondition(), zero);
     rewriter.replaceOpWithNewOp<arith::SelectOp>(selectOp, flag.getResult(),
                                                  adaptor.getTrueValue(),
                                                  adaptor.getFalseValue());

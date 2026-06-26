@@ -94,7 +94,7 @@ static void emitIsPositiveIndexAssertion(ImplicitLocOpBuilder &b,
     return;
   }
 
-  Value zero = arith::ConstantIndexOp::create(b, 0);
+  Value zero = b.createOrFold<arith::ConstantIndexOp>(0);
   Value condition = arith::CmpIOp::create(b, arith::CmpIPredicate::sgt,
                                           cast<Value>(value), zero);
   cf::AssertOp::create(

@@ -35,18 +35,18 @@ module attributes {transform.with_named_sequence} {
 // CHECK: #[[$MAP2:.+]] = affine_map<(d0, d1) -> (d0, d1)>
 // CHECK-LABEL: func.func @conv2d
 // CHECK-SAME:  (%[[ARG0:.*]]: tensor<2x10x10x5xf32>, %[[ARG1:.*]]: tensor<2x3x3x5xf32>, %[[ARG2:.*]]: tensor<2x8x8x2xf32>) -> tensor<2x8x8x2xf32> {
-// CHECK:  %[[CST:.*]] = arith.constant 1.024000e+03 : f32
-// CHECK:  %[[CST_0:.*]] = arith.constant dense<{{.*}}> : tensor<6x4xf32>
-// CHECK:  %[[CST_1:.*]] = arith.constant dense<{{.*}}> : tensor<4x6xf32>
-// CHECK:  %[[CST_2:.*]] = arith.constant dense<{{.*}}> : tensor<6x6xf32>
-// CHECK:  %[[CST_3:.*]] = arith.constant dense<{{.*}}> : tensor<6x6xf32>
-// CHECK:  %[[CST_4:.*]] = arith.constant dense<{{.*}}> : tensor<3x6xf32>
-// CHECK:  %[[CST_5:.*]] = arith.constant dense<{{.*}}> : tensor<6x3xf32>
-// CHECK:  %[[CST_6:.*]] = arith.constant 0.000000e+00 : f32
+// CHECK:  %[[C0:.*]] = arith.constant 0 : index
+// CHECK:  %[[C2:.*]] = arith.constant 2 : index
 // CHECK:  %[[C1:.*]] = arith.constant 1 : index
 // CHECK:  %[[C5:.*]] = arith.constant 5 : index
-// CHECK:  %[[C2:.*]] = arith.constant 2 : index
-// CHECK:  %[[C0:.*]] = arith.constant 0 : index
+// CHECK:  %[[CST_6:.*]] = arith.constant 0.000000e+00 : f32
+// CHECK:  %[[CST_5:.*]] = arith.constant dense<{{.*}}> : tensor<6x3xf32>
+// CHECK:  %[[CST_4:.*]] = arith.constant dense<{{.*}}> : tensor<3x6xf32>
+// CHECK:  %[[CST_3:.*]] = arith.constant dense<{{.*}}> : tensor<6x6xf32>
+// CHECK:  %[[CST_2:.*]] = arith.constant dense<{{.*}}> : tensor<6x6xf32>
+// CHECK:  %[[CST_1:.*]] = arith.constant dense<{{.*}}> : tensor<4x6xf32>
+// CHECK:  %[[CST_0:.*]] = arith.constant dense<{{.*}}> : tensor<6x4xf32>
+// CHECK:  %[[CST:.*]] = arith.constant 1.024000e+03 : f32
 // CHECK:  %[[S0:.*]] = tensor.empty()
 // CHECK:  %[[S1:.*]] = scf.for %[[ARG3:.*]] = %[[C0]] to %[[C2]] step %[[C1]] iter_args(%[[ARG4:.*]] = %[[S0]])
 // CHECK:    %[[S9:.*]] = scf.for %[[ARG5:.*]] = %[[C0]] to %[[C5]] step %[[C1]] iter_args(%[[ARG6:.*]] = %[[ARG4]])
@@ -166,19 +166,19 @@ module attributes {transform.with_named_sequence} {
 // CHECK: #[[$MAP2:.+]] = affine_map<(d0, d1) -> (d0, d1)>
 // CHECK-LABEL: func.func @conv2d_unaligned
 // CHECK-SAME:  (%[[ARG0:.*]]: tensor<2x11x11x5xf32>, %[[ARG1:.*]]: tensor<2x3x3x5xf32>, %[[ARG2:.*]]: tensor<2x9x9x2xf32>) -> tensor<2x9x9x2xf32> {
-// CHECK:  %[[CST:.*]] = arith.constant 1.024000e+03 : f32
-// CHECK:  %[[CST_0:.*]] = arith.constant dense<{{.*}}> : tensor<6x4xf32>
-// CHECK:  %[[CST_1:.*]] = arith.constant dense<{{.*}}> : tensor<4x6xf32>
-// CHECK:  %[[CST_2:.*]] = arith.constant dense<{{.*}}> : tensor<6x6xf32>
-// CHECK:  %[[CST_3:.*]] = arith.constant dense<{{.*}}> : tensor<6x6xf32>
-// CHECK:  %[[C3:.*]] = arith.constant 3 : index
-// CHECK:  %[[CST_4:.*]] = arith.constant dense<{{.*}}> : tensor<3x6xf32>
-// CHECK:  %[[CST_5:.*]] = arith.constant dense<{{.*}}> : tensor<6x3xf32>
-// CHECK:  %[[C1:.*]] = arith.constant 1 : index
-// CHECK:  %[[C5:.*]] = arith.constant 5 : index
-// CHECK:  %[[C2:.*]] = arith.constant 2 : index
-// CHECK:  %[[C0:.*]] = arith.constant 0 : index
 // CHECK:  %[[CST_6:.*]] = arith.constant 0.000000e+00 : f32
+// CHECK:  %[[C0:.*]] = arith.constant 0 : index
+// CHECK:  %[[C3:.*]] = arith.constant 3 : index
+// CHECK:  %[[C1:.*]] = arith.constant 1 : index
+// CHECK:  %[[C2:.*]] = arith.constant 2 : index
+// CHECK:  %[[C5:.*]] = arith.constant 5 : index
+// CHECK:  %[[CST_5:.*]] = arith.constant dense<{{.*}}> : tensor<6x3xf32>
+// CHECK:  %[[CST_4:.*]] = arith.constant dense<{{.*}}> : tensor<3x6xf32>
+// CHECK:  %[[CST_3:.*]] = arith.constant dense<{{.*}}> : tensor<6x6xf32>
+// CHECK:  %[[CST_2:.*]] = arith.constant dense<{{.*}}> : tensor<6x6xf32>
+// CHECK:  %[[CST_1:.*]] = arith.constant dense<{{.*}}> : tensor<4x6xf32>
+// CHECK:  %[[CST_0:.*]] = arith.constant dense<{{.*}}> : tensor<6x4xf32>
+// CHECK:  %[[CST:.*]] = arith.constant 1.024000e+03 : f32
 // CHECK:  %[[S0:.*]] = tensor.empty()
 // CHECK:  %[[S1:.*]] = scf.for %[[ARG4:.*]] = %[[C0]] to %[[C2]] step %[[C1]] iter_args(%[[ARG5:.*]] = %[[S0]])
 // CHECK:    %[[S9:.*]] = scf.for %[[ARG6:.*]] = %[[C0]] to %[[C5]] step %[[C1]] iter_args(%[[ARG7:.*]] = %[[ARG5]])
@@ -292,15 +292,15 @@ module attributes {transform.with_named_sequence} {
 // CHECK: #[[$MAP1:.+]] = affine_map<(d0, d1) -> (d0, d1)>
 // CHECK-LABEL: func.func @conv2d_mx1_rx1
 // CHECK-SAME:  (%[[ARG0:.*]]: tensor<2x6x1x5xf32>, %[[ARG1:.*]]: tensor<2x3x1x5xf32>, %[[ARG2:.*]]: tensor<2x4x1x2xf32>) -> tensor<2x4x1x2xf32> {
-// CHECK:   %[[CST:.*]] = arith.constant 3.200000e+01 : f32
-// CHECK:  %[[CST_0:.*]] = arith.constant dense<{{.*}}> : tensor<4x6xf32>
-// CHECK:  %[[CST_1:.*]] = arith.constant dense<{{.*}}> : tensor<6x6xf32>
-// CHECK:  %[[CST_2:.*]] = arith.constant dense<{{.*}}> : tensor<6x3xf32>
-// CHECK:   %[[C1:.*]] = arith.constant 1 : index
-// CHECK:   %[[C5:.*]] = arith.constant 5 : index
-// CHECK:   %[[C2:.*]] = arith.constant 2 : index
-// CHECK:   %[[C0:.*]] = arith.constant 0 : index
 // CHECK:   %[[CST_3:.*]] = arith.constant 0.000000e+00 : f32
+// CHECK:   %[[C0:.*]] = arith.constant 0 : index
+// CHECK:   %[[C1:.*]] = arith.constant 1 : index
+// CHECK:   %[[C2:.*]] = arith.constant 2 : index
+// CHECK:   %[[C5:.*]] = arith.constant 5 : index
+// CHECK:  %[[CST_2:.*]] = arith.constant dense<{{.*}}> : tensor<6x3xf32>
+// CHECK:  %[[CST_1:.*]] = arith.constant dense<{{.*}}> : tensor<6x6xf32>
+// CHECK:  %[[CST_0:.*]] = arith.constant dense<{{.*}}> : tensor<4x6xf32>
+// CHECK:   %[[CST:.*]] = arith.constant 3.200000e+01 : f32
 // CHECK:   %[[S0:.*]] = tensor.empty() : tensor<6x1x5x2xf32>
 // CHECK:   %[[S1:.*]] = scf.for %[[ARG3:.*]] = %[[C0]] to %[[C2]] step %[[C1]] iter_args(%[[ARG4:.*]] = %[[S0]])
 // CHECK:     %[[S7:.*]] = scf.for %[[ARG5:.*]] = %[[C0]] to %[[C5]] step %[[C1]] iter_args(%[[ARG6:.*]] = %[[ARG4]])
@@ -383,15 +383,15 @@ module attributes {transform.with_named_sequence} {
 // CHECK: #[[$MAP1:.+]] = affine_map<(d0, d1) -> (d0, d1)>
 // CHECK-LABEL: func.func @conv2d_mx1_rx1_2
 // CHECK-SAME:  (%[[ARG0:.*]]: tensor<2x6x2x5xf32>, %[[ARG1:.*]]: tensor<2x3x1x5xf32>, %[[ARG2:.*]]: tensor<2x4x2x2xf32>) -> tensor<2x4x2x2xf32> {
-// CHECK:   %[[CST:.*]] = arith.constant 3.200000e+01 : f32
-// CHECK:  %[[CST_0:.*]] = arith.constant dense<{{.*}}> : tensor<4x6xf32>
-// CHECK:  %[[CST_1:.*]] = arith.constant dense<{{.*}}> : tensor<6x6xf32>
-// CHECK:  %[[CST_2:.*]] = arith.constant dense<{{.*}}> : tensor<6x3xf32>
-// CHECK:   %[[C1:.*]] = arith.constant 1 : index
-// CHECK:   %[[C5:.*]] = arith.constant 5 : index
-// CHECK:   %[[C2:.*]] = arith.constant 2 : index
-// CHECK:   %[[C0:.*]] = arith.constant 0 : index
 // CHECK:   %[[CST_3:.*]] = arith.constant 0.000000e+00 : f32
+// CHECK:   %[[C0:.*]] = arith.constant 0 : index
+// CHECK:   %[[C1:.*]] = arith.constant 1 : index
+// CHECK:   %[[C2:.*]] = arith.constant 2 : index
+// CHECK:   %[[C5:.*]] = arith.constant 5 : index
+// CHECK:  %[[CST_2:.*]] = arith.constant dense<{{.*}}> : tensor<6x3xf32>
+// CHECK:  %[[CST_1:.*]] = arith.constant dense<{{.*}}> : tensor<6x6xf32>
+// CHECK:  %[[CST_0:.*]] = arith.constant dense<{{.*}}> : tensor<4x6xf32>
+// CHECK:   %[[CST:.*]] = arith.constant 3.200000e+01 : f32
 // CHECK:   %[[S0:.*]] = tensor.empty() : tensor<6x1x5x2xf32>
 // CHECK:   %[[S1:.*]] = scf.for %[[ARG3:.*]] = %[[C0]] to %[[C2]] step %[[C1]] iter_args(%[[ARG4:.*]] = %[[S0]])
 // CHECK:     %[[S7:.*]] = scf.for %[[ARG5:.*]] = %[[C0]] to %[[C5]] step %[[C1]] iter_args(%[[ARG6:.*]] = %[[ARG4]])

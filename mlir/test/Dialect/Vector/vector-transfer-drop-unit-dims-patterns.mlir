@@ -190,8 +190,8 @@ func.func @transfer_read_with_mask_dynamic_rank_reducing_1_create_mask(
 // CHECK-LABEL: func @transfer_read_with_mask_dynamic_rank_reducing_1_create_mask
 //  CHECK-SAME:     %[[ARG:.+]]: memref<?x1xi8
 //  CHECK-SAME:     %[[MASK_DIM0:.+]]: index
-//       CHECK:   %[[C0:.+]] = arith.constant 0 : index
-//       CHECK:   %[[PAD:.+]] = arith.constant 0 : i8
+//   CHECK-DAG:   %[[C0:.+]] = arith.constant 0 : index
+//   CHECK-DAG:   %[[PAD:.+]] = arith.constant 0 : i8
 //       CHECK:   %[[MASK:.+]] = vector.create_mask %[[MASK_DIM0]] : vector<[16]xi1>
 //       CHECK:   %[[DIM0:.+]] = memref.dim %[[ARG]], %[[C0]] : memref<?x1xi8, strided<[?, ?], offset: ?>>
 //       CHECK:   %[[SUBVIEW:.+]] = memref.subview %[[ARG]][0, 0] [%[[DIM0]], 1] [1, 1] : memref<?x1xi8, {{.*}}> to memref<?xi8, {{.*}}>

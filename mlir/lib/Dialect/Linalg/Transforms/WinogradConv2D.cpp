@@ -209,10 +209,9 @@ Value create2DTransformMatrix(OpBuilder &builder, Location loc,
         return builder.getFloatAttr(type, v);
       });
   SmallVector<int64_t, 2> shape{transform.rows, transform.cols};
-  return arith::ConstantOp::create(
-      builder, loc,
-      DenseFPElementsAttr::get(RankedTensorType::get(shape, type),
-                               constAttrVec));
+  return builder.createOrFold<arith::ConstantOp>(
+      loc, DenseFPElementsAttr::get(RankedTensorType::get(shape, type),
+                                    constAttrVec));
 }
 
 /// Extract height x width data from 4D tensors.
@@ -379,7 +378,7 @@ Value filterTransform(RewriterBase &rewriter, Location loc, Value filter,
   if (filterW != r && filterW != 1)
     return Value();
 
-  Value zeroIdx = arith::ConstantIndexOp::create(rewriter, loc, 0);
+  Value zeroIdx = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
   auto buildBody = [&](OpBuilder &builder, Location loc, ValueRange ivs,
                        ValueRange args) -> scf::ValueVector {
     Value FIter = ivs[0];
@@ -393,8 +392,8 @@ Value filterTransform(RewriterBase &rewriter, Location loc, Value filter,
 
     int64_t retRows = 1;
     Value matmulRetValue = extractFilter;
-    Value zero = arith::ConstantOp::create(builder, loc,
-                                           rewriter.getZeroAttr(elementType));
+    Value zero = builder.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getZeroAttr(elementType));
     if (leftTransform) {
       // Get constant transform matrix G.
       auto it = GMatrices.find(fmr);
@@ -454,9 +453,11 @@ Value filterTransform(RewriterBase &rewriter, Location loc, Value filter,
     return {insertSliceOp};
   };
 
-  auto fUpperBound = arith::ConstantIndexOp::create(rewriter, loc, filterF);
-  auto cUpperBound = arith::ConstantIndexOp::create(rewriter, loc, filterC);
-  auto oneStep = arith::ConstantIndexOp::create(rewriter, loc, 1);
+  auto fUpperBound =
+      rewriter.createOrFold<arith::ConstantIndexOp>(loc, filterF);
+  auto cUpperBound =
+      rewriter.createOrFold<arith::ConstantIndexOp>(loc, filterC);
+  auto oneStep = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
   scf::LoopNest loops = scf::buildLoopNest(
       rewriter, loc, {zeroIdx, zeroIdx}, {fUpperBound, cUpperBound},
       {oneStep, oneStep}, {retValue}, buildBody);
@@ -540,8 +541,8 @@ Value inputTransform(RewriterBase &rewriter, Location loc, Value input,
     int64_t retRows = 1;
     int64_t retCols = 1;
     Value matmulRetValue = extractInput;
-    Value zero = arith::ConstantOp::create(builder, loc,
-                                           rewriter.getZeroAttr(elementType));
+    Value zero = builder.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getZeroAttr(elementType));
     if (leftTransform) {
       // Get constant transform matrix BT.
       auto it = BTMatrices.find(fmr);
@@ -596,12 +597,12 @@ Value inputTransform(RewriterBase &rewriter, Location loc, Value input,
     return {combinedVal};
   };
 
-  auto zeroIdx = arith::ConstantIndexOp::create(rewriter, loc, 0);
-  auto tileHBound = arith::ConstantIndexOp::create(rewriter, loc, tileH);
-  auto tileWBound = arith::ConstantIndexOp::create(rewriter, loc, tileW);
-  auto nUpperBound = arith::ConstantIndexOp::create(rewriter, loc, inputN);
-  auto cUpperBound = arith::ConstantIndexOp::create(rewriter, loc, inputC);
-  auto oneStep = arith::ConstantIndexOp::create(rewriter, loc, 1);
+  auto zeroIdx = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
+  auto tileHBound = rewriter.createOrFold<arith::ConstantIndexOp>(loc, tileH);
+  auto tileWBound = rewriter.createOrFold<arith::ConstantIndexOp>(loc, tileW);
+  auto nUpperBound = rewriter.createOrFold<arith::ConstantIndexOp>(loc, inputN);
+  auto cUpperBound = rewriter.createOrFold<arith::ConstantIndexOp>(loc, inputC);
+  auto oneStep = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
   scf::LoopNest loops = scf::buildLoopNest(
       rewriter, loc, {zeroIdx, zeroIdx, zeroIdx, zeroIdx},
       {tileHBound, tileWBound, nUpperBound, cUpperBound},
@@ -664,8 +665,8 @@ static Value matrixMultiply(RewriterBase &rewriter, Location loc,
   Value empty = tensor::EmptyOp::create(rewriter, loc, matmulType.getShape(),
                                         outputElementType)
                     .getResult();
-  Value zero = arith::ConstantOp::create(
-      rewriter, loc, rewriter.getZeroAttr(outputElementType));
+  Value zero = rewriter.createOrFold<arith::ConstantOp>(
+      loc, rewriter.getZeroAttr(outputElementType));
   Value init = linalg::FillOp::create(rewriter, loc, zero, empty).getResult(0);
 
   auto matmulOp = linalg::BatchMatmulOp::create(
@@ -759,8 +760,8 @@ Value outputTransform(RewriterBase &rewriter, Location loc, Value value,
     int64_t retRows = leftTransform ? ATMatrix.rows : 1;
 
     Value matmulRetValue = extractValue;
-    Value zero = arith::ConstantOp::create(builder, loc,
-                                           rewriter.getZeroAttr(elementType));
+    Value zero = builder.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getZeroAttr(elementType));
 
     auto identityAffineMap = rewriter.getMultiDimIdentityMap(1);
     auto affineMap =
@@ -816,8 +817,8 @@ Value outputTransform(RewriterBase &rewriter, Location loc, Value value,
 
     if (scalarFactor != 1) {
       // Multiply by scalar factor and add outInitVal.
-      Value scalarFactorValue = arith::ConstantOp::create(
-          builder, loc, FloatAttr::get(elementType, scalarFactor));
+      Value scalarFactorValue = builder.createOrFold<arith::ConstantOp>(
+          loc, FloatAttr::get(elementType, scalarFactor));
       auto matmulType = RankedTensorType::get({retRows, retCols}, elementType);
       auto identityAffineMap = rewriter.getMultiDimIdentityMap(2);
       SmallVector<AffineMap> affineMaps = {
@@ -855,12 +856,12 @@ Value outputTransform(RewriterBase &rewriter, Location loc, Value value,
 
   int64_t tilwH = valueShape[2];
   int64_t tileW = valueShape[3];
-  auto zeroIdx = arith::ConstantIndexOp::create(rewriter, loc, 0);
-  auto tileHBound = arith::ConstantIndexOp::create(rewriter, loc, tilwH);
-  auto tileWBound = arith::ConstantIndexOp::create(rewriter, loc, tileW);
-  auto nUpperBound = arith::ConstantIndexOp::create(rewriter, loc, valueN);
-  auto fUpperBound = arith::ConstantIndexOp::create(rewriter, loc, valueF);
-  auto oneStep = arith::ConstantIndexOp::create(rewriter, loc, 1);
+  auto zeroIdx = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
+  auto tileHBound = rewriter.createOrFold<arith::ConstantIndexOp>(loc, tilwH);
+  auto tileWBound = rewriter.createOrFold<arith::ConstantIndexOp>(loc, tileW);
+  auto nUpperBound = rewriter.createOrFold<arith::ConstantIndexOp>(loc, valueN);
+  auto fUpperBound = rewriter.createOrFold<arith::ConstantIndexOp>(loc, valueF);
+  auto oneStep = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
   scf::LoopNest loops = scf::buildLoopNest(
       rewriter, loc, {zeroIdx, zeroIdx, zeroIdx, zeroIdx},
       {tileHBound, tileWBound, nUpperBound, fUpperBound},
@@ -875,8 +876,8 @@ static Value padToAlignedTensor(RewriterBase &rewriter, Location loc,
   auto valueType = cast<ShapedType>(value.getType());
   Type elementType = valueType.getElementType();
   auto alignedType = RankedTensorType::get(alignedShape, elementType);
-  Value padValue = arith::ConstantOp::create(rewriter, loc, elementType,
-                                             rewriter.getZeroAttr(elementType));
+  Value padValue = rewriter.createOrFold<arith::ConstantOp>(
+      loc, elementType, rewriter.getZeroAttr(elementType));
 
   return linalg::makeComposedPadHighOp(rewriter, loc, alignedType, value,
                                        padValue, false);

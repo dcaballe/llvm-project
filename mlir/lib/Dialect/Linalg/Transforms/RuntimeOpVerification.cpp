@@ -41,8 +41,8 @@ struct StructuredOpInterface
     SmallVector<Range> loopRanges = linalgOp.createLoopRanges(builder, loc);
     auto [starts, ends, _] = getOffsetsSizesAndStrides(loopRanges);
 
-    auto zero = arith::ConstantIndexOp::create(builder, loc, 0);
-    auto one = arith::ConstantIndexOp::create(builder, loc, 1);
+    auto zero = builder.createOrFold<arith::ConstantIndexOp>(loc, 0);
+    auto one = builder.createOrFold<arith::ConstantIndexOp>(loc, 1);
 
     Value iterationDomainIsNonDegenerate;
     for (auto [start, end] : llvm::zip(starts, ends)) {

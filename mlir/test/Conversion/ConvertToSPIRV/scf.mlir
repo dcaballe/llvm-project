@@ -1,17 +1,17 @@
 // RUN: mlir-opt -test-convert-to-spirv="run-signature-conversion=false run-vector-unrolling=false" -split-input-file %s | FileCheck %s
 
 // CHECK-LABEL: @if_yield
+// CHECK: %[[RETTRUE:.*]] = spirv.Constant 0.000000e+00 : f32
+// CHECK: %[[RETFALSE:.*]] = spirv.Constant 2.71828175 : f32
 // CHECK: %[[VAR:.*]] = spirv.Variable : !spirv.ptr<f32, Function>
 // CHECK:       spirv.mlir.selection {
 // CHECK-NEXT:    spirv.BranchConditional {{%.*}}, [[TRUE:\^.*]], [[FALSE:\^.*]]
 // CHECK-NEXT:  [[TRUE]]:
 // CHECK:         %[[C0TRUE:.*]] = spirv.Constant 0.000000e+00 : f32
-// CHECK:         %[[RETTRUE:.*]] = spirv.Constant 0.000000e+00 : f32
 // CHECK-DAG:     spirv.Store "Function" %[[VAR]], %[[RETTRUE]] : f32
 // CHECK:         spirv.Branch ^[[MERGE:.*]]
 // CHECK-NEXT:  [[FALSE]]:
 // CHECK:         %[[C0FALSE:.*]] = spirv.Constant 1.000000e+00 : f32
-// CHECK:         %[[RETFALSE:.*]] = spirv.Constant 2.71828175 : f32
 // CHECK-DAG:     spirv.Store "Function" %[[VAR]], %[[RETFALSE]] : f32
 // CHECK:         spirv.Branch ^[[MERGE]]
 // CHECK-NEXT:  ^[[MERGE]]:

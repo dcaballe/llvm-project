@@ -213,7 +213,6 @@ func.func private @loop_unroll_and_jam_op(%arg0: memref<96x128xi8, 3>, %arg1: me
   // CHECK:           %[[STEP_INNER:.*]] = arith.constant 1
   // CHECK:           %[[UB_OUTER:.*]] = arith.constant 128
   // CHECK:           %[[LB:.*]] = arith.constant 0
-  // CHECK:           %[[UNUSED:.*]] = arith.constant 4
   // CHECK:           %[[UNROLL_FACTOR:.*]] = arith.constant 4
   %c96 = arith.constant 96 : index
   %c1 = arith.constant 1 : index
@@ -518,8 +517,6 @@ func.func @coalesce_i32_loops() {
   // CHECK:           %[[ZERO:.*]] = arith.constant 0 : i32
   // CHECK:           %[[ONE:.*]] = arith.constant 1 : i32
   // CHECK:           %[[VAL_7:.*]] = arith.constant 32 : i32
-  // CHECK:           %[[VAL_8:.*]] = arith.constant 0 : i32
-  // CHECK:           %[[VAL_9:.*]] = arith.constant 1 : i32
   // CHECK:           %[[UB:.*]] = arith.muli %[[VAL_4]], %[[VAL_7]] : i32
   // CHECK:           scf.for %[[VAL_11:.*]] = %[[ZERO]] to %[[UB]] step %[[ONE]]  : i32 {
   scf.for %i = %0 to %1 step %2 : i32 {

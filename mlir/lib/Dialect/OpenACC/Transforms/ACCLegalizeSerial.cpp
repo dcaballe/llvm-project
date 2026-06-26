@@ -57,7 +57,7 @@ struct ACCSerialOpConversion : public OpRewritePattern<acc::SerialOp> {
     // Create a container holding the constant value of 1 for use as the
     // num_gangs, num_workers, and vector_length attributes.
     llvm::SmallVector<mlir::Value> numValues;
-    auto value = arith::ConstantIntOp::create(rewriter, loc, 1, 32);
+    auto value = rewriter.createOrFold<arith::ConstantIntOp>(loc, 1, 32);
     numValues.push_back(value);
 
     // Since num_gangs is specified as both attributes and values, create a

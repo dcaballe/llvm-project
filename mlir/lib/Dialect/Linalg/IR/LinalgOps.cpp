@@ -487,8 +487,8 @@ public:
       return arith::NegFOp::create(builder, arg.getLoc(), arg);
     case UnaryFn::reciprocal: {
       Attribute oneAttr = builder.getOneAttr(arg.getType());
-      auto one = arith::ConstantOp::create(builder, arg.getLoc(),
-                                           ::cast<TypedAttr>(oneAttr));
+      auto one = builder.createOrFold<arith::ConstantOp>(
+          arg.getLoc(), ::cast<TypedAttr>(oneAttr));
       return arith::DivFOp::create(builder, arg.getLoc(), one, arg);
     }
     case UnaryFn::round:
@@ -695,8 +695,8 @@ public:
     builder.setInsertionPointToEnd(&block);
     Location loc = builder.getUnknownLoc();
     Attribute valueAttr = parseAttribute(value, builder.getContext());
-    return arith::ConstantOp::create(builder, loc,
-                                     ::cast<TypedAttr>(valueAttr));
+    return builder.createOrFold<arith::ConstantOp>(
+        loc, ::cast<TypedAttr>(valueAttr));
   }
 
   Value index(int64_t dim) {
@@ -2926,8 +2926,8 @@ SmallVector<Range> SoftmaxOp::getIterationDomain(OpBuilder &builder) {
   int64_t operandRank = getInputOperandRank();
   SmallVector<Range> loopBounds(operandRank);
   Location loc = getLoc();
-  Value zero = arith::ConstantIndexOp::create(builder, loc, 0);
-  Value one = arith::ConstantIndexOp::create(builder, loc, 1);
+  Value zero = builder.createOrFold<arith::ConstantIndexOp>(loc, 0);
+  Value one = builder.createOrFold<arith::ConstantIndexOp>(loc, 1);
   Value source = getInput();
   for (auto dim : llvm::seq<int64_t>(0, operandRank)) {
     loopBounds[dim].offset = zero;

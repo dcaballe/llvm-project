@@ -118,9 +118,10 @@ func.func @matmul_slice() -> tensor<2x2xf32> {
 }
 
 // CHECK: func @matmul_slice
-// CHECK: %[[SLICE0:.+]] = arith.constant dense<1.000000e+00> : tensor<2x4xf32>
+// CHECK: %[[CST:.+]] = arith.constant dense<{{.*}}> : tensor<4x4xf32>
 // CHECK: %[[SLICE1:.+]] = arith.constant dense<1.000000e+00> : tensor<4x2xf32>
-// CHECK: %[[SLICE3:.+]] = tensor.extract_slice %[[CST:.+]][1, 1] [2, 2] [1, 1] : tensor<4x4xf32> to tensor<2x2xf32>
+// CHECK: %[[SLICE0:.+]] = arith.constant dense<1.000000e+00> : tensor<2x4xf32>
+// CHECK: %[[SLICE3:.+]] = tensor.extract_slice %[[CST]][1, 1] [2, 2] [1, 1] : tensor<4x4xf32> to tensor<2x2xf32>
 // CHECK: %[[MATMUL:.+]] = linalg.matmul ins(%[[SLICE0]], %[[SLICE1]] : tensor<2x4xf32>, tensor<4x2xf32>) outs(%[[SLICE3]] : tensor<2x2xf32>) -> tensor<2x2xf32>
 // CHECK: return %[[MATMUL]] : tensor<2x2xf32>
 

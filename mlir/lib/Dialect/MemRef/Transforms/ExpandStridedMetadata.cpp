@@ -768,7 +768,8 @@ public:
     }
 
     // Offset.
-    results.push_back(arith::ConstantIndexOp::create(rewriter, loc, offset));
+    results.push_back(
+        rewriter.createOrFold<arith::ConstantIndexOp>(loc, offset));
 
     for (OpFoldResult size : sizes)
       results.push_back(getValueOrCreateConstantIndexOp(rewriter, loc, size));
@@ -839,13 +840,16 @@ public:
           /*strides=*/ArrayRef<int64_t>()));
 
     // Offset.
-    results.push_back(arith::ConstantIndexOp::create(rewriter, loc, offset));
+    results.push_back(
+        rewriter.createOrFold<arith::ConstantIndexOp>(loc, offset));
 
     for (auto size : sizes)
-      results.push_back(arith::ConstantIndexOp::create(rewriter, loc, size));
+      results.push_back(
+          rewriter.createOrFold<arith::ConstantIndexOp>(loc, size));
 
     for (auto stride : strides)
-      results.push_back(arith::ConstantIndexOp::create(rewriter, loc, stride));
+      results.push_back(
+          rewriter.createOrFold<arith::ConstantIndexOp>(loc, stride));
 
     rewriter.replaceOp(op, results);
     return success();

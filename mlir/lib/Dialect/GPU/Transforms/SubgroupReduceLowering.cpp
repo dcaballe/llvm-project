@@ -78,8 +78,8 @@ struct BreakDownSubgroupReduce final : OpRewritePattern<gpu::SubgroupReduceOp> {
       return rewriter.notifyMatchFailure(op, "nothing to break down");
 
     Location loc = op.getLoc();
-    Value res =
-        arith::ConstantOp::create(rewriter, loc, rewriter.getZeroAttr(vecTy));
+    Value res = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getZeroAttr(vecTy));
 
     for (unsigned i = 0; i != numNewReductions; ++i) {
       int64_t startIdx = i * elementsPerShuffle;
@@ -327,8 +327,8 @@ struct VectorSubgroupReduceToShuffles final
         static_cast<int64_t>(elementsPerShuffle), vecTy.getElementType());
     Value extendedInput = op.getValue();
     if (vecBitwidth < shuffleBitwidth) {
-      auto zero = arith::ConstantOp::create(
-          rewriter, loc, rewriter.getZeroAttr(extendedVecTy));
+      auto zero = rewriter.createOrFold<arith::ConstantOp>(
+          loc, rewriter.getZeroAttr(extendedVecTy));
       extendedInput = vector::InsertStridedSliceOp::create(
           rewriter, loc, extendedInput, zero, /*offsets=*/0, /*strides=*/1);
     }
@@ -451,8 +451,8 @@ createSubgroupDPPReduction(PatternRewriter &rewriter, gpu::SubgroupReduceOp op,
       }
     } else if (chipset.majorVersion <= 12) {
       // Use a permute lane to cross rows (row 1 <-> row 0, row 3 <-> row 2).
-      Value uint32Max = arith::ConstantOp::create(
-          rewriter, loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr(-1));
+      Value uint32Max = rewriter.createOrFold<arith::ConstantOp>(
+          loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr(-1));
       dpp = ROCDL::PermlaneX16Op::create(rewriter, loc, res.getType(), res, res,
                                          uint32Max, uint32Max,
                                          /*fi=*/true,
@@ -465,8 +465,8 @@ createSubgroupDPPReduction(PatternRewriter &rewriter, gpu::SubgroupReduceOp op,
               "this device.");
     }
     if (ci.subgroupSize == 32) {
-      Value lane31 = arith::ConstantOp::create(
-          rewriter, loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr(31));
+      Value lane31 = rewriter.createOrFold<arith::ConstantOp>(
+          loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr(31));
       res =
           ROCDL::ReadlaneOp::create(rewriter, loc, res.getType(), res, lane31);
     }
@@ -481,8 +481,8 @@ createSubgroupDPPReduction(PatternRewriter &rewriter, gpu::SubgroupReduceOp op,
       res = vector::makeArithReduction(
           rewriter, loc, gpu::convertReductionKind(mode), dpp, res);
       // Obtain reduction from last rows, the previous rows are polluted.
-      Value lane63 = arith::ConstantOp::create(
-          rewriter, loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr(63));
+      Value lane63 = rewriter.createOrFold<arith::ConstantOp>(
+          loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr(63));
       res =
           ROCDL::ReadlaneOp::create(rewriter, loc, res.getType(), res, lane63);
 
@@ -490,10 +490,10 @@ createSubgroupDPPReduction(PatternRewriter &rewriter, gpu::SubgroupReduceOp op,
       // Assume reduction across 32 lanes has been done.
       // Perform final reduction manually by summing values in lane 0 and
       // lane 32.
-      Value lane31 = arith::ConstantOp::create(
-          rewriter, loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr(31));
-      Value lane63 = arith::ConstantOp::create(
-          rewriter, loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr(63));
+      Value lane31 = rewriter.createOrFold<arith::ConstantOp>(
+          loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr(31));
+      Value lane63 = rewriter.createOrFold<arith::ConstantOp>(
+          loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr(63));
       lane31 =
           ROCDL::ReadlaneOp::create(rewriter, loc, res.getType(), res, lane31);
       lane63 =

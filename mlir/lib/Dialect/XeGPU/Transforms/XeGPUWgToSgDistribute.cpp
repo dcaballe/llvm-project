@@ -107,7 +107,7 @@ genOffsetsList(ConversionPatternRewriter &rewriter, OpType op,
     // adjust the sgId if necessary
     if (startOfRange > 0) {
       Value startOfRangeVal =
-          arith::ConstantIndexOp::create(rewriter, loc, startOfRange);
+          rewriter.createOrFold<arith::ConstantIndexOp>(loc, startOfRange);
       sgId = index::SubOp::create(rewriter, loc, sgId, startOfRangeVal);
     }
   }
@@ -673,15 +673,16 @@ struct WgToSgArithConstantOp : public OpConversionPattern<arith::ConstantOp> {
       auto sgAttr = DenseElementsAttr::get(newType, singleVal);
       SmallVector<Value> newConstOps;
       for (int i = 0; i < count; ++i) {
-        auto cstOp = arith::ConstantOp::create(rewriter, loc, newType, sgAttr);
+        auto cstOp =
+            rewriter.createOrFold<arith::ConstantOp>(loc, newType, sgAttr);
         newConstOps.push_back(cstOp);
       }
       rewriter.replaceOpWithMultiple(op, {newConstOps});
       return success();
     } else if (sgShape == wgShape) { // if the entire vector is shared by all
                                      // subgroups, don't distribute
-      auto newConstOp =
-          arith::ConstantOp::create(rewriter, op.getLoc(), vecType, vecAttr);
+      auto newConstOp = rewriter.createOrFold<arith::ConstantOp>(
+          op.getLoc(), vecType, vecAttr);
       rewriter.replaceOp(op, newConstOp);
       return success();
     } else {
@@ -749,7 +750,8 @@ struct WgToSgArithConstantOp : public OpConversionPattern<arith::ConstantOp> {
 
       auto tileAttr = DenseElementsAttr::get(VectorType::get(sgShape, eltType),
                                              baseTileValues);
-      auto baseConstVec = arith::ConstantOp::create(rewriter, loc, tileAttr);
+      auto baseConstVec =
+          rewriter.createOrFold<arith::ConstantOp>(loc, tileAttr);
 
       // Get subgroup id
       Value sgId =
@@ -761,16 +763,16 @@ struct WgToSgArithConstantOp : public OpConversionPattern<arith::ConstantOp> {
 
       SmallVector<Value, 2> strideConsts;
       strideConsts.push_back(
-          arith::ConstantIndexOp::create(rewriter, loc, colStride));
+          rewriter.createOrFold<arith::ConstantIndexOp>(loc, colStride));
       if (rows > 1)
         strideConsts.insert(
             strideConsts.begin(),
-            arith::ConstantIndexOp::create(rewriter, loc, rowStride));
+            rewriter.createOrFold<arith::ConstantIndexOp>(loc, rowStride));
 
       SmallVector<Value> newConstOps;
       for (auto offsets : *sgOffsets) {
         // Multiply offset with stride, broadcast it and add to baseConstVec
-        Value mulOffset = arith::ConstantIndexOp::create(rewriter, loc, 0);
+        Value mulOffset = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
         for (size_t i = 0; i < strideConsts.size(); ++i) {
           Value mul =
               arith::MulIOp::create(rewriter, loc, rewriter.getIndexType(),
@@ -1339,7 +1341,7 @@ struct WgToSgVectorMaskOp : public OpConversionPattern<MaskOpType> {
     if constexpr (std::is_same_v<MaskOpType, vector::ConstantMaskOp>) {
       for (int64_t maskSize : op.getMaskDimSizes()) {
         wgMaskDimSizes.push_back(
-            arith::ConstantIndexOp::create(rewriter, loc, maskSize));
+            rewriter.createOrFold<arith::ConstantIndexOp>(loc, maskSize));
       }
     } else if constexpr (std::is_same_v<MaskOpType, vector::CreateMaskOp>) {
       wgMaskDimSizes = llvm::to_vector(op.getOperands());
@@ -1363,11 +1365,11 @@ struct WgToSgVectorMaskOp : public OpConversionPattern<MaskOpType> {
 
       for (auto [i, wgMaskDimSize] : llvm::enumerate(wgMaskDimSizes)) {
         Value dimSizeVal =
-            arith::ConstantIndexOp::create(rewriter, loc, sgShape[i]);
+            rewriter.createOrFold<arith::ConstantIndexOp>(loc, sgShape[i]);
         Value offset = offsetSet[i];
         Value adjustedMaskSize =
             arith::SubIOp::create(rewriter, loc, wgMaskDimSize, offset);
-        Value zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
+        Value zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
         Value nonNegative =
             arith::MaxSIOp::create(rewriter, loc, adjustedMaskSize, zero);
         Value sgMaskSize =

@@ -459,8 +459,8 @@ Value xegpu::createVectorWithShapeFromValues(OpBuilder &builder, Location loc,
 
   VectorType resultTy = VectorType::get(shape, elemTy);
   auto zeroAttr = builder.getZeroAttr(elemTy);
-  Value result = arith::ConstantOp::create(
-      builder, loc, resultTy, DenseElementsAttr::get(resultTy, zeroAttr));
+  Value result = builder.createOrFold<arith::ConstantOp>(
+      loc, resultTy, DenseElementsAttr::get(resultTy, zeroAttr));
 
   for (auto [src, offsets] :
        llvm::zip_equal(values, StaticTileOffsetRange(shape, tileShape))) {
@@ -581,9 +581,8 @@ Value xegpu::lowerToVectorReductions(TypedValue<VectorType> src,
   int nSlices = (reductionDim == rowIdx) ? sourceW : sourceH;
   // Create a constant vector to hold the result of the reduction.
   TypedAttr zeroAttr = rewriter.getZeroAttr(sourceType.getElementType());
-  Value reductionResult = arith::ConstantOp::create(
-      rewriter, loc, acc.getType(),
-      DenseElementsAttr::get(acc.getType(), zeroAttr));
+  Value reductionResult = rewriter.createOrFold<arith::ConstantOp>(
+      loc, acc.getType(), DenseElementsAttr::get(acc.getType(), zeroAttr));
   auto srcLayout = xegpu::getTemporaryLayout(dyn_cast<OpResult>(src));
   auto accLayout = xegpu::getTemporaryLayout(dyn_cast<OpResult>(acc));
   // Reduction result should have the same layout as the accumulator.
@@ -657,9 +656,8 @@ Value xegpu::lowerCrossLaneReductionToShuffles(
 
   // Create a constant vector to hold the result of the reduction.
   TypedAttr zeroAttr = rewriter.getZeroAttr(sourceType.getElementType());
-  Value reductionResult = arith::ConstantOp::create(
-      rewriter, loc, acc.getType(),
-      DenseElementsAttr::get(acc.getType(), zeroAttr));
+  Value reductionResult = rewriter.createOrFold<arith::ConstantOp>(
+      loc, acc.getType(), DenseElementsAttr::get(acc.getType(), zeroAttr));
 
   // nSlices is the number of reduction operations needed to reduce the entire
   // source vector. For example, if reductionDim is the row dim, we are
@@ -715,9 +713,10 @@ Value xegpu::createReductionNeutralValue(OpBuilder &builder, Location loc,
   // Helper to create either a splat vector or scalar constant from an attr.
   auto makeConst = [&](Attribute scalarAttr) -> Value {
     if (vecTy)
-      return arith::ConstantOp::create(
-          builder, loc, vecTy, DenseElementsAttr::get(vecTy, scalarAttr));
-    return arith::ConstantOp::create(builder, loc, cast<TypedAttr>(scalarAttr));
+      return builder.createOrFold<arith::ConstantOp>(
+          loc, vecTy, DenseElementsAttr::get(vecTy, scalarAttr));
+    return builder.createOrFold<arith::ConstantOp>(loc,
+                                                   cast<TypedAttr>(scalarAttr));
   };
 
   switch (kind) {

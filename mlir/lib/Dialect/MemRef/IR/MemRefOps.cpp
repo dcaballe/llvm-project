@@ -906,7 +906,7 @@ void DimOp::getAsmResultNames(function_ref<void(Value, StringRef)> setNameFn) {
 void DimOp::build(OpBuilder &builder, OperationState &result, Value source,
                   int64_t index) {
   auto loc = result.location;
-  Value indexValue = arith::ConstantIndexOp::create(builder, loc, index);
+  Value indexValue = builder.createOrFold<arith::ConstantIndexOp>(loc, index);
   build(builder, result, source, indexValue);
 }
 
@@ -1516,9 +1516,8 @@ static bool replaceConstantUsesOf(OpBuilder &rewriter, Location loc,
     assert(isa<Attribute>(maybeConstant) &&
            "The constified value should be either unchanged (i.e., == result) "
            "or a constant");
-    Value constantVal = arith::ConstantIndexOp::create(
-        rewriter, loc,
-        llvm::cast<IntegerAttr>(cast<Attribute>(maybeConstant)).getInt());
+    Value constantVal = rewriter.createOrFold<arith::ConstantIndexOp>(
+        loc, llvm::cast<IntegerAttr>(cast<Attribute>(maybeConstant)).getInt());
     for (Operation *op : llvm::make_early_inc_range(result.getUsers())) {
       // modifyOpInPlace: lambda cannot capture structured bindings in C++17
       // yet.
@@ -3428,18 +3427,17 @@ SmallVector<Range, 8> mlir::getOrCreateRanges(OffsetSizeAndStrideOpInterface op,
   unsigned rank = ranks[0];
   res.reserve(rank);
   for (unsigned idx = 0; idx < rank; ++idx) {
-    Value offset =
-        op.isDynamicOffset(idx)
-            ? op.getDynamicOffset(idx)
-            : arith::ConstantIndexOp::create(b, loc, op.getStaticOffset(idx));
-    Value size =
-        op.isDynamicSize(idx)
-            ? op.getDynamicSize(idx)
-            : arith::ConstantIndexOp::create(b, loc, op.getStaticSize(idx));
-    Value stride =
-        op.isDynamicStride(idx)
-            ? op.getDynamicStride(idx)
-            : arith::ConstantIndexOp::create(b, loc, op.getStaticStride(idx));
+    Value offset = op.isDynamicOffset(idx)
+                       ? op.getDynamicOffset(idx)
+                       : b.createOrFold<arith::ConstantIndexOp>(
+                             loc, op.getStaticOffset(idx));
+    Value size = op.isDynamicSize(idx) ? op.getDynamicSize(idx)
+                                       : b.createOrFold<arith::ConstantIndexOp>(
+                                             loc, op.getStaticSize(idx));
+    Value stride = op.isDynamicStride(idx)
+                       ? op.getDynamicStride(idx)
+                       : b.createOrFold<arith::ConstantIndexOp>(
+                             loc, op.getStaticStride(idx));
     res.emplace_back(Range{offset, size, stride});
   }
   return res;

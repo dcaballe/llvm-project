@@ -3,9 +3,9 @@
 gpu.module @prefetch_check {
     // CHECK-LABEL: gpu.func @prefetch_matrix_a
     gpu.func @prefetch_matrix_a(%src: memref<16x128xi4, 1>) kernel {
-        // CHECK: %[[C64_I32:.*]] = arith.constant 64 : i32
-        // CHECK: %[[C8_I32:.*]] = arith.constant 8 : i32
-        // CHECK: %[[C16_I32:.*]] = arith.constant 16 : i32
+        // CHECK-DAG: %[[C64_I32:.*]] = arith.constant 64 : i32
+        // CHECK-DAG: %[[C8_I32:.*]] = arith.constant 8 : i32
+        // CHECK-DAG: %[[C16_I32:.*]] = arith.constant 16 : i32
         %srcce = memref.memory_space_cast %src : memref<16x128xi4, 1> to memref<16x128xi4>
 
         %src_tdesc = xegpu.create_nd_tdesc %srcce : memref<16x128xi4> -> !xegpu.tensor_desc<8x64xi4>

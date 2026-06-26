@@ -29,9 +29,8 @@ static mlir::Value resolveAndCastTileSize(mlir::Value tileSize,
   auto constVal = mlir::getConstantIntValue(tileSize);
   if (constVal && *constVal < 0) {
     // Create constant with the target type directly
-    return mlir::arith::ConstantOp::create(
-        rewriter, loc, targetType,
-        rewriter.getIntegerAttr(targetType, defaultTileSize));
+    return rewriter.createOrFold<mlir::arith::ConstantOp>(
+        loc, targetType, rewriter.getIntegerAttr(targetType, defaultTileSize));
   }
   return mlir::getValueOrCreateCastToIndexLike(rewriter, loc, targetType,
                                                tileSize);
@@ -207,8 +206,8 @@ mlir::acc::tileACCLoops(mlir::acc::LoopOp tileLoop,
     mlir::Value newUB = stepped;
     if (inclusiveUBs[i]) {
       // Inclusive UB: min(origUB, origIV + (scaledStep - 1)).
-      mlir::Value c1 = mlir::arith::ConstantOp::create(
-          rewriter, loc, scaledSteps[i].getType(),
+      mlir::Value c1 = rewriter.createOrFold<mlir::arith::ConstantOp>(
+          loc, scaledSteps[i].getType(),
           rewriter.getIntegerAttr(scaledSteps[i].getType(), 1));
       newUB = mlir::arith::SubIOp::create(rewriter, loc, stepped, c1);
     }

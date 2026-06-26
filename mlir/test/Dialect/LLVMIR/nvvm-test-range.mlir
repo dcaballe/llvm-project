@@ -28,8 +28,8 @@ gpu.module @module{
 }
 
 // CHECK-LABEL: gpu.func @kernel_1
-// CHECK: %[[false:.+]] = arith.constant false
 // CHECK: %[[c64_i32:.+]] = arith.constant 64 : i32
+// CHECK: %[[false:.+]] = arith.constant false
 // CHECK: %[[S0:.+]] = nvvm.read.ptx.sreg.tid.y range <i32, 0, 128> : i32
 // CHECK: scf.if %[[false]] {
 // CHECK: gpu.printf "threadidx"

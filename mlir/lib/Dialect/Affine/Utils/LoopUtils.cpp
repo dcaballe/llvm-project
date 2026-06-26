@@ -136,8 +136,8 @@ LogicalResult mlir::affine::promoteIfSingleIteration(AffineForOp forOp) {
         builder.setInsertionPointToStart(&func.getFunctionBody().front());
       else
         builder.setInsertionPoint(forOp);
-      auto constOp = arith::ConstantIndexOp::create(
-          builder, forOp.getLoc(), forOp.getConstantLowerBound());
+      auto constOp = builder.createOrFold<arith::ConstantIndexOp>(
+          forOp.getLoc(), forOp.getConstantLowerBound());
       iv.replaceAllUsesWith(constOp);
     } else {
       auto lbOperands = forOp.getLowerBoundOperands();
@@ -1962,7 +1962,8 @@ static LogicalResult generateCopy(
 
   auto f = begin->getParentOfType<FunctionOpInterface>();
   OpBuilder topBuilder(f.getFunctionBody());
-  Value zeroIndex = arith::ConstantIndexOp::create(topBuilder, f.getLoc(), 0);
+  Value zeroIndex =
+      topBuilder.createOrFold<arith::ConstantIndexOp>(f.getLoc(), 0);
 
   *sizeInBytes = 0;
 
@@ -2071,7 +2072,7 @@ static LogicalResult generateCopy(
         memIndices.push_back(zeroIndex);
       } else {
         memIndices.push_back(
-            arith::ConstantIndexOp::create(top, loc, indexVal).getResult());
+            top.createOrFold<arith::ConstantIndexOp>(loc, indexVal));
       }
     } else {
       // The coordinate for the start location is just the lower bound along the
@@ -2127,7 +2128,8 @@ static LogicalResult generateCopy(
     fastMemRef = fastBufferMap[memref];
   }
 
-  auto numElementsSSA = arith::ConstantIndexOp::create(top, loc, *numElements);
+  auto numElementsSSA =
+      top.createOrFold<arith::ConstantIndexOp>(loc, *numElements);
 
   Value dmaStride;
   Value numEltPerDmaStride;
@@ -2143,10 +2145,10 @@ static LogicalResult generateCopy(
     }
 
     if (!dmaStrideInfos.empty()) {
-      dmaStride =
-          arith::ConstantIndexOp::create(top, loc, dmaStrideInfos[0].stride);
-      numEltPerDmaStride = arith::ConstantIndexOp::create(
-          top, loc, dmaStrideInfos[0].numEltPerStride);
+      dmaStride = top.createOrFold<arith::ConstantIndexOp>(
+          loc, dmaStrideInfos[0].stride);
+      numEltPerDmaStride = top.createOrFold<arith::ConstantIndexOp>(
+          loc, dmaStrideInfos[0].numEltPerStride);
     }
   }
 

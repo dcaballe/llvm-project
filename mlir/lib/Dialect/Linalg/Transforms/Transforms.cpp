@@ -277,8 +277,8 @@ FailureOr<LowerPackResult> linalg::lowerPack(RewriterBase &rewriter,
       packingMetadata.reassociations);
   Value paddingValue = packOp.getPaddingValue();
   if (!paddingValue) {
-    paddingValue = arith::ConstantOp::create(
-        rewriter, loc, rewriter.getZeroAttr(getElementTypeOrSelf(collapsed)));
+    paddingValue = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getZeroAttr(getElementTypeOrSelf(collapsed)));
   }
   auto padOp =
       tensor::PadOp::create(rewriter, loc, collapsed, packOp.getSource(), lows,
@@ -565,7 +565,7 @@ FailureOr<PackResult> linalg::pack(RewriterBase &rewriter,
         // consumers.
         auto zeroAttr =
             rewriter.getZeroAttr(getElementTypeOrSelf(dest.getType()));
-        Value zero = arith::ConstantOp::create(rewriter, loc, zeroAttr);
+        Value zero = rewriter.createOrFold<arith::ConstantOp>(loc, zeroAttr);
         packOps.push_back(linalg::PackOp::create(
             rewriter, loc, operand, dest, innerPos, innerPackSizes, zero));
       }
@@ -907,7 +907,7 @@ mlir::linalg::LinalgTilingOptions::setTileSizes(ArrayRef<int64_t> ts) {
     b.setInsertionPointToStart(
         &op->getParentOfType<func::FuncOp>().getBody().front());
     return llvm::map_to_vector<4>(tileSizes, [&](int64_t s) {
-      Value v = arith::ConstantIndexOp::create(b, op->getLoc(), s);
+      Value v = b.createOrFold<arith::ConstantIndexOp>(op->getLoc(), s);
       return v;
     });
   };
@@ -948,10 +948,8 @@ DecomposePadOpPattern::matchAndRewrite(tensor::PadOp padOp,
   auto getIdxValue = [&](OpFoldResult ofr) {
     if (auto val = llvm::dyn_cast_if_present<Value>(ofr))
       return val;
-    return arith::ConstantIndexOp::create(
-               rewriter, padOp.getLoc(),
-               cast<IntegerAttr>(cast<Attribute>(ofr)).getInt())
-        .getResult();
+    return rewriter.createOrFold<arith::ConstantIndexOp>(
+        padOp.getLoc(), cast<IntegerAttr>(cast<Attribute>(ofr)).getInt());
   };
 
   auto resultType = padOp.getResultType();

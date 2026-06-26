@@ -87,7 +87,7 @@ SmallVector<Value, 2> addConstantScalableOffset(OpBuilder &builder,
       llvm::zip_equal(indices, scalableOffsets), [&](auto pair) -> Value {
         auto [index, base] = pair;
         auto offset = arith::MulIOp::create(
-            builder, loc, arith::ConstantIndexOp::create(builder, loc, base),
+            builder, loc, builder.createOrFold<arith::ConstantIndexOp>(loc, base),
             vscale);
         return arith::AddIOp::create(builder, loc, index, offset);
       });
@@ -191,8 +191,8 @@ struct LegalizeArithConstantOpsByDecomposition
 
     auto smeTileType = getSMETileTypeForElement(vectorType.getElementType());
     auto tileCount = getNumberOfSMETilesForVectorType(vectorType);
-    auto tileSplat = arith::ConstantOp::create(
-        rewriter, constantOp.getLoc(), denseAttr.resizeSplat(smeTileType));
+    Value tileSplat = rewriter.createOrFold<arith::ConstantOp>(
+        constantOp.getLoc(), denseAttr.resizeSplat(smeTileType));
     SmallVector<Value> repl(tileCount, tileSplat);
     rewriter.replaceOpWithMultiple(constantOp, {repl});
 
@@ -457,9 +457,9 @@ struct LegalizeMultiTileTransferWriteAsStoreLoop
         VectorType::get(minTileSlices, rewriter.getI1Type(), true);
 
     // Create loop over all tile slices.
-    auto lowerBound = arith::ConstantIndexOp::create(rewriter, loc, 0);
+    auto lowerBound = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
     auto upperBound = createVscaleMultiple(minTileSlices);
-    auto step = arith::ConstantIndexOp::create(rewriter, loc, 1);
+    auto step = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
     auto storeLoop =
         scf::ForOp::create(rewriter, loc, lowerBound, upperBound, step);
     rewriter.setInsertionPointToStart(storeLoop.getBody());
@@ -569,7 +569,7 @@ struct FoldExtractFromVectorOfSMELikeCreateMasks
           extractOp,
           "constant vector.create_masks dims should be folded elsewhere");
 
-    auto zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
+    auto zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
     auto extractionIndex = getValueOrCreateConstantIndexOp(
         rewriter, loc, extractOp.getMixedPosition()[0]);
     auto extractionInTrueRegion = arith::CmpIOp::create(
@@ -663,8 +663,8 @@ struct LiftIllegalVectorTransposeToMemory
           illegalRead, "expected read to have identity permutation map");
 
     auto loc = transposeOp.getLoc();
-    auto zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
-    auto one = arith::ConstantIndexOp::create(rewriter, loc, 1);
+    auto zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
+    auto one = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
 
     // Create a subview that matches the size of the illegal read vector type.
     auto readType = illegalRead.getVectorType();
@@ -672,7 +672,7 @@ struct LiftIllegalVectorTransposeToMemory
         llvm::zip_equal(readType.getShape(), readType.getScalableDims()),
         [&](auto dim) -> Value {
           auto [size, isScalable] = dim;
-          auto dimSize = arith::ConstantIndexOp::create(rewriter, loc, size);
+          auto dimSize = rewriter.createOrFold<arith::ConstantIndexOp>(loc, size);
           if (!isScalable)
             return dimSize;
           auto vscale = vector::VectorScaleOp::create(rewriter, loc);
@@ -805,7 +805,7 @@ struct LowerIllegalTransposeStoreViaZA
     auto numSlicesPerTile =
         std::min(sourceType.getDimSize(0), smeTileType.getDimSize(0));
     auto numSlices =
-        arith::ConstantIndexOp::create(rewriter, loc, numSlicesPerTile);
+        rewriter.createOrFold<arith::ConstantIndexOp>(loc, numSlicesPerTile);
     for (auto [index, smeTile] : llvm::enumerate(
              decomposeToSMETiles(rewriter, sourceType, smeTileType))) {
       // 1. _Deliberately_ drop a scalable dimension and insert a fixed number
@@ -827,7 +827,7 @@ struct LowerIllegalTransposeStoreViaZA
       // 2. Transpose the tile position.
       auto transposedRow = createVscaleMultiple(smeTile.col);
       auto transposedCol =
-          arith::ConstantIndexOp::create(rewriter, loc, smeTile.row);
+          rewriter.createOrFold<arith::ConstantIndexOp>(loc, smeTile.row);
 
       // 3. Compute mask for tile store.
       Value maskRows;
@@ -937,13 +937,13 @@ struct LowerColumnTransferReadToLoops
 
     // Create a loop over all rows and load one element at a time.
     auto loc = readOp.getLoc();
-    auto lowerBound = arith::ConstantIndexOp::create(rewriter, loc, 0);
+    auto lowerBound = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
     auto createVscaleMultiple =
         vector::makeVscaleConstantBuilder(rewriter, loc);
     auto upperBound = createVscaleMultiple(numRows);
-    auto step = arith::ConstantIndexOp::create(rewriter, loc, 1);
-    Value init = arith::ConstantOp::create(
-        rewriter, loc, newResType,
+    auto step = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
+    Value init = rewriter.createOrFold<arith::ConstantOp>(
+        loc, newResType,
         DenseElementsAttr::get(newResType,
                                rewriter.getZeroAttr(resType.getElementType())));
 

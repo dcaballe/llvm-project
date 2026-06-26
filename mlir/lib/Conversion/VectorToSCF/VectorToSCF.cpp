@@ -771,10 +771,10 @@ struct DecomposePrintOpConversion : public VectorToSCFPattern<vector::PrintOp> {
     SmallVector<Value, 8> loopIndices;
     for (unsigned d = 0; d < shape.size(); d++) {
       // Setup loop bounds and step.
-      Value lowerBound = arith::ConstantIndexOp::create(rewriter, loc, 0);
+      Value lowerBound = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
       Value upperBound =
-          arith::ConstantIndexOp::create(rewriter, loc, shape[d]);
-      Value step = arith::ConstantIndexOp::create(rewriter, loc, 1);
+          rewriter.createOrFold<arith::ConstantIndexOp>(loc, shape[d]);
+      Value step = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
       if (!scalableDimensions.empty() && scalableDimensions[d]) {
         auto vscale = vector::VectorScaleOp::create(rewriter, loc,
                                                     rewriter.getIndexType());
@@ -814,7 +814,7 @@ struct DecomposePrintOpConversion : public VectorToSCFPattern<vector::PrintOp> {
     auto currentStride = 1;
     for (int d = shape.size() - 1; d >= 0; d--) {
       auto stride =
-          arith::ConstantIndexOp::create(rewriter, loc, currentStride);
+          rewriter.createOrFold<arith::ConstantIndexOp>(loc, currentStride);
       auto index = arith::MulIOp::create(rewriter, loc, stride, loopIndices[d]);
       if (flatIndex)
         flatIndex = arith::AddIOp::create(rewriter, loc, flatIndex, index);
@@ -944,10 +944,10 @@ struct TransferOpConversion : public VectorToSCFPattern<OpTy> {
     }
 
     // Loop bounds and step.
-    auto lb = arith::ConstantIndexOp::create(locB, 0);
-    auto ub = arith::ConstantIndexOp::create(
-        locB, castedDataType->getDimSize(castedDataType->getRank() - 1));
-    auto step = arith::ConstantIndexOp::create(locB, 1);
+    auto lb = locB.createOrFold<arith::ConstantIndexOp>(0);
+    auto ub = locB.createOrFold<arith::ConstantIndexOp>(
+        castedDataType->getDimSize(castedDataType->getRank() - 1));
+    auto step = locB.createOrFold<arith::ConstantIndexOp>(1);
     // TransferWriteOps that operate on tensors return the modified tensor and
     // require a loop state.
     auto loopState = Strategy<OpTy>::initialLoopState(xferOp);
@@ -1127,12 +1127,12 @@ struct ScalableTransposeTransferWriteConversion
         });
 
     // Loop bounds and step.
-    auto lb = arith::ConstantIndexOp::create(rewriter, loc, 0);
+    auto lb = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
     auto ub =
         maskDims->empty()
             ? Value(createVscaleMultiple(vectorType.getDimSize(0)))
             : vector::getAsValues(rewriter, loc, maskDims->front()).front();
-    auto step = arith::ConstantIndexOp::create(rewriter, loc, 1);
+    auto step = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
 
     // Generate a new mask for the slice.
     VectorType sliceType = VectorType::Builder(vectorType).dropDim(0);
@@ -1321,7 +1321,7 @@ struct UnrollTransferReadConversion
     // Generate fully unrolled loop of transfer ops.
     Location loc = xferOp.getLoc();
     for (int64_t i = 0; i < dimSize; ++i) {
-      Value iv = arith::ConstantIndexOp::create(rewriter, loc, i);
+      Value iv = rewriter.createOrFold<arith::ConstantIndexOp>(loc, i);
 
       // FIXME: Rename this lambda - it does much more than just
       // in-bounds-check generation.
@@ -1464,7 +1464,7 @@ struct UnrollTransferWriteConversion
     // Generate fully unrolled loop of transfer ops.
     Location loc = xferOp.getLoc();
     for (int64_t i = 0; i < dimSize; ++i) {
-      Value iv = arith::ConstantIndexOp::create(rewriter, loc, i);
+      Value iv = rewriter.createOrFold<arith::ConstantIndexOp>(loc, i);
 
       auto updatedSource = generateInBoundsCheck(
           rewriter, xferOp, iv, unpackedDim(xferOp),
@@ -1669,15 +1669,15 @@ struct TransferOp1dConversion : public VectorToSCFPattern<OpTy> {
     // Loop bounds, step, state...
     Location loc = xferOp.getLoc();
     auto vecType = xferOp.getVectorType();
-    auto lb = arith::ConstantIndexOp::create(rewriter, loc, 0);
+    auto lb = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
     Value ub =
-        arith::ConstantIndexOp::create(rewriter, loc, vecType.getDimSize(0));
+        rewriter.createOrFold<arith::ConstantIndexOp>(loc, vecType.getDimSize(0));
     if (vecType.isScalable()) {
       Value vscale =
           vector::VectorScaleOp::create(rewriter, loc, rewriter.getIndexType());
       ub = arith::MulIOp::create(rewriter, loc, ub, vscale);
     }
-    auto step = arith::ConstantIndexOp::create(rewriter, loc, 1);
+    auto step = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
     auto loopState = Strategy1d<OpTy>::initialLoopState(rewriter, xferOp);
 
     // Generate for loop.

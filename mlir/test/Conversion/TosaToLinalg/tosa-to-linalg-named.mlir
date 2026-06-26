@@ -20,10 +20,10 @@ func.func @matmul(%arg0: tensor<1x5x3xf32>, %arg1: tensor<1x3x6xf32>) -> (tensor
 // CHECK-LABEL: @matmul_quantized
 func.func @matmul_quantized(%arg0: tensor<1x5x3xi8>, %arg1: tensor<1x3x6xi8>) -> (tensor<1x5x6xi32>) {
   // CHECK: [[C0:%.+]] = arith.constant 0
-  // CHECK: [[INIT:%.+]] = tensor.empty()
-  // CHECK: [[FILLED:%.+]] = linalg.fill ins([[C0]] : i32) outs([[INIT]] : tensor<1x5x6xi32>) -> tensor<1x5x6xi32>
   // CHECK: [[ONE:%.+]] = arith.constant 1
   // CHECK: [[TWO:%.+]] = arith.constant 2
+  // CHECK: [[INIT:%.+]] = tensor.empty()
+  // CHECK: [[FILLED:%.+]] = linalg.fill ins([[C0]] : i32) outs([[INIT]] : tensor<1x5x6xi32>) -> tensor<1x5x6xi32>
   // CHECK: linalg.quantized_batch_matmul ins(%arg0, %arg1, [[ONE]], [[TWO]] : tensor<1x5x3xi8>, tensor<1x3x6xi8>, i32, i32) outs([[FILLED]] : tensor<1x5x6xi32>) -> tensor<1x5x6xi32>
   %a_zp = "tosa.const"() <{values = dense<1> : tensor<1xi8>}> : () -> tensor<1xi8>
   %b_zp = "tosa.const"() <{values = dense<2> : tensor<1xi8>}> : () -> tensor<1xi8>
@@ -36,8 +36,8 @@ func.func @matmul_quantized(%arg0: tensor<1x5x3xi8>, %arg1: tensor<1x3x6xi8>) ->
 // CHECK-LABEL: @matmul_dyn_batch
 func.func @matmul_dyn_batch(%arg0: tensor<?x5x3xf32>, %arg1: tensor<?x3x6xf32>) -> (tensor<?x5x6xf32>) {
   // CHECK: %[[C0:.+]] = arith.constant 0
-  // CHECK: %[[DIM:.+]] = tensor.dim %arg0, %[[C0]]
   // CHECK: %[[C0_0:.+]] = arith.constant 0
+  // CHECK: %[[DIM:.+]] = tensor.dim %arg0, %[[C0]]
   // CHECK: %[[INIT:.+]] = tensor.empty(%[[DIM]])
   // CHECK: %[[FILLED:.+]] = linalg.fill ins(%[[C0_0]] : f32) outs(%[[INIT]] : tensor<?x5x6xf32>) -> tensor<?x5x6xf32>
   // CHECK: linalg.batch_matmul ins(%arg0, %arg1 : tensor<?x5x3xf32>, tensor<?x3x6xf32>) outs(%[[FILLED]] : tensor<?x5x6xf32>) -> tensor<?x5x6xf32>
@@ -52,8 +52,8 @@ func.func @matmul_dyn_batch(%arg0: tensor<?x5x3xf32>, %arg1: tensor<?x3x6xf32>) 
 // CHECK-LABEL: @matmul_dyn_independent_dim
 func.func @matmul_dyn_independent_dim(%arg0: tensor<1x5x3xf32>, %arg1: tensor<1x3x?xf32>) -> (tensor<1x5x?xf32>) {
   // CHECK: %[[C2:.+]] = arith.constant 2
-  // CHECK: %[[DIM:.+]] = tensor.dim %arg1, %[[C2]]
   // CHECK: %[[C0:.+]] = arith.constant 0
+  // CHECK: %[[DIM:.+]] = tensor.dim %arg1, %[[C2]]
   // CHECK: %[[INIT:.+]] = tensor.empty(%[[DIM]])
   // CHECK: %[[FILLED:.+]] = linalg.fill ins(%[[C0]] : f32) outs(%[[INIT]] : tensor<1x5x?xf32>) -> tensor<1x5x?xf32>
   // CHECK: linalg.batch_matmul ins(%arg0, %arg1 : tensor<1x5x3xf32>, tensor<1x3x?xf32>) outs(%[[FILLED]] : tensor<1x5x?xf32>) -> tensor<1x5x?xf32>
@@ -82,8 +82,8 @@ func.func @matmul_dyn_independent_dim(%arg0: tensor<1x5x?xf32>, %arg1: tensor<1x
 // CHECK-LABEL: @matmul_dyn_output
 func.func @matmul_dyn_output(%arg0: tensor<1x1x8xf32>, %arg1: tensor<1x8x1xf32>) -> tensor<?x1x1xf32> {
   // CHECK: %[[C0:.+]] = arith.constant 0 : index
-  // CHECK: %[[DIM0:.+]] = tensor.dim %arg0, %[[C0]] : tensor<1x1x8xf32>
   // CHECK: %[[CST:.+]] = arith.constant 0.000000e+00 : f32
+  // CHECK: %[[DIM0:.+]] = tensor.dim %arg0, %[[C0]] : tensor<1x1x8xf32>
   // CHECK: %[[INIT:.+]] = tensor.empty(%[[DIM0]]) : tensor<?x1x1xf32>
   // CHECK: %[[FILLED:.+]] = linalg.fill ins(%[[CST]] : f32) outs(%[[INIT]] : tensor<?x1x1xf32>) -> tensor<?x1x1xf32>
   // CHECK: linalg.batch_matmul ins(%arg0, %arg1 : tensor<1x1x8xf32>, tensor<1x8x1xf32>) outs(%[[FILLED]] : tensor<?x1x1xf32>) -> tensor<?x1x1xf32>
@@ -111,9 +111,8 @@ func.func @max_pool_padded(%arg0: tensor<1x6x34x62xf32>) -> () {
   // CHECK-DAG: [[CONST:%.+]] = arith.constant -3.40282347E+38 : f32
   // CHECK-DAG: [[PAD:%.+]] = tensor.pad %arg0 low[0, 0, 0, 0] high[0, 0, 1, 0]
   // CHECK-DAG:   tensor.yield [[CONST]]
-  // CHECK-DAG: [[INITVAL:%.+]] = arith.constant -3.40282347E+38 : f32
   // CHECK-DAG: [[INIT:%.+]] = tensor.empty()
-  // CHECK-DAG: [[FILL:%.+]] = linalg.fill ins([[INITVAL]]{{.*}}outs([[INIT]]
+  // CHECK-DAG: [[FILL:%.+]] = linalg.fill ins([[CONST]]{{.*}}outs([[INIT]]
   // CHECK-DAG: [[KERNEL:%.+]] = tensor.empty()
   // CHECK: linalg.pooling_nhwc_max {dilations = dense<1> : vector<2xi64>, strides = dense<1> : vector<2xi64>} ins([[PAD]], [[KERNEL]] : tensor<1x6x35x62xf32>, tensor<3x3xf32>) outs([[FILL]] : tensor<1x4x33x62xf32>)
   %0 = tosa.max_pool2d %arg0 {pad = array<i64: 0, 0, 0, 1>, kernel = array<i64: 3, 3>, stride = array<i64: 1, 1>} : (tensor<1x6x34x62xf32>) -> tensor<1x4x33x62xf32>
@@ -123,8 +122,8 @@ func.func @max_pool_padded(%arg0: tensor<1x6x34x62xf32>) -> () {
 // CHECK-LABEL: @max_pool_dyn
 func.func @max_pool_dyn(%arg0: tensor<?x6x34x62xf32>) -> () {
   // CHECK: %[[C0:.+]] = arith.constant 0
-  // CHECK: %[[BATCH:.+]] = tensor.dim %arg0, %[[C0]]
   // CHECK: %[[CONST:.+]] = arith.constant -3.40282347E+38
+  // CHECK: %[[BATCH:.+]] = tensor.dim %arg0, %[[C0]]
   // CHECK: %[[INIT:.+]] = tensor.empty(%[[BATCH]])
   // CHECK: %[[FILL:.+]] = linalg.fill ins(%[[CONST]]{{.*}}outs(%[[INIT]]
   // CHECK: %[[KERNEL:.+]] = tensor.empty()
@@ -143,8 +142,8 @@ func.func @max_pool_i8(%arg0: tensor<1x6x34x62xi8>) -> () {
 
 // CHECK-LABEL: @max_pool_ui8
 func.func @max_pool_ui8(%arg0: tensor<1x6x34x62xui8>) -> tensor<1x4x32x62xui8> {
-  // CHECK: builtin.unrealized_conversion_cast {{.*}} : tensor<1x6x34x62xui8> to tensor<1x6x34x62xi8>
   // CHECK: arith.constant 0
+  // CHECK: builtin.unrealized_conversion_cast {{.*}} : tensor<1x6x34x62xui8> to tensor<1x6x34x62xi8>
   // CHECK: linalg.pooling_nhwc_max_unsigned
   // CHECK-SAME: ins({{.*}} : tensor<1x6x34x62xi8>, tensor<3x3xi8>)
   // CHECK-SAME: outs({{.*}} : tensor<1x4x32x62xi8>)
@@ -172,14 +171,18 @@ func.func @max_pool_i32(%arg0: tensor<1x6x34x62xi32>) -> () {
 
 // CHECK-CSE-LABEL: @max_pool_all_dynamic
 func.func @max_pool_all_dynamic(%arg0: tensor<?x?x?x?xf32>) -> tensor<?x?x?x?xf32> {
-  // Batch size
   // CHECK-CSE: %[[C0:.+]] = arith.constant 0 : index
+  // CHECK-CSE: %[[C1:.+]] = arith.constant 1 : index
+  // CHECK-CSE: %[[C2:.+]] = arith.constant 2 : index
+  // CHECK-CSE: %[[C5:.+]] = arith.constant 5 : index
+  // CHECK-CSE: %[[C3:.+]] = arith.constant 3 : index
+  // CHECK-CSE: %[[FLOAT_MIN:.+]] = arith.constant -3.40282347E+38 : f32
+
+  // Batch size
   // CHECK-CSE: %[[BATCH:.+]] = tensor.dim %arg0, %[[C0]] : tensor<?x?x?x?xf32>
 
   // Compute output height
-  // CHECK-CSE: %[[C1:.+]] = arith.constant 1 : index
   // CHECK-CSE: %[[IH:.+]] = tensor.dim %arg0, %[[C1]] : tensor<?x?x?x?xf32>
-  // CHECK-CSE: %[[C2:.+]] = arith.constant 2 : index
   // CHECK-CSE: %[[PADDED_BEFORE:.+]] = arith.addi %[[IH]], %[[C0]] : index
   // CHECK-CSE: %[[PADDED_AFTER:.+]] = arith.addi %[[PADDED_BEFORE]], %[[C0]] : index
   // CHECK-CSE: %[[SUB_ONE:.+]] = arith.subi %[[C2]], %[[C1]] : index
@@ -191,7 +194,6 @@ func.func @max_pool_all_dynamic(%arg0: tensor<?x?x?x?xf32>) -> tensor<?x?x?x?xf3
 
   // Compute output width
   // CHECK-CSE: %[[IW:.+]] = tensor.dim %arg0, %[[C2]] : tensor<?x?x?x?xf32>
-  // CHECK-CSE: %[[C5:.+]] = arith.constant 5 : index
   // CHECK-CSE: %[[PADDED_BEFORE:.+]] = arith.addi %[[IW]], %[[C2]] : index
   // CHECK-CSE: %[[PADDED_AFTER:.+]] = arith.addi %[[PADDED_BEFORE]], %[[C2]] : index
   // CHECK-CSE: %[[SUB_ONE:.+]] = arith.subi %[[C5]], %[[C1]] : index
@@ -202,11 +204,9 @@ func.func @max_pool_all_dynamic(%arg0: tensor<?x?x?x?xf32>) -> tensor<?x?x?x?xf3
   // CHECK-CSE: %[[WIDTH:.+]] = arith.addi %14, %[[C1]] : index
 
   // Channel size
-  // CHECK-CSE: %[[C3:.+]] = arith.constant 3 : index
   // CHECK-CSE: %[[CHANNEL:.+]] = tensor.dim %arg0, %[[C3]] : tensor<?x?x?x?xf32>
 
   // Pad the input
-  // CHECK-CSE: %[[FLOAT_MIN:.+]] = arith.constant -3.40282347E+38 : f32
   // CHECK-CSE: %[[PADDED:.+]] = tensor.pad %arg0 low[0, 0, 2, 0] high[0, 0, 2, 0] {
   // CHECK-CSE:   tensor.yield %[[FLOAT_MIN]] : f32
 
@@ -229,11 +229,12 @@ func.func @max_pool_all_dynamic(%arg0: tensor<?x?x?x?xf32>) -> tensor<?x?x?x?xf3
 func.func @avg_pool_f32(%arg0: tensor<1x6x34x62xf32>) -> (tensor<1x5x33x62xf32>) {
   // Apply padding to the input:
   // CHECK: %[[F0:.+]] = arith.constant 0.000000e+00 : f32
+  // CHECK: %[[I1:.+]] = arith.constant 1 : index
+  // CHECK: %[[I2:.+]] = arith.constant 2 : index
   // CHECK: %[[PAD:.+]] = tensor.pad %arg0 low[0, 1, 1, 0] high[0, 1, 1, 0]
   // CHECK:   tensor.yield %[[F0]] : f32
 
   // Fill the pooling target:
-  // CHECK: %[[F0:.+]] = arith.constant 0.000000e+00 : f32
   // CHECK: %[[EMPTY:.+]] = tensor.empty() : tensor<1x5x33x62xf32>
   // CHECK: %[[FILL:.+]] = linalg.fill ins(%[[F0]] : f32) outs(%[[EMPTY]] : tensor<1x5x33x62xf32>)
 
@@ -245,13 +246,10 @@ func.func @avg_pool_f32(%arg0: tensor<1x6x34x62xf32>) -> (tensor<1x5x33x62xf32>)
   // CHECK-SAME: outs(%[[FILL]] : tensor<1x5x33x62xf32>)
 
   // Compute dimension based constants:
-  // CHECK: %[[I1:.+]] = arith.constant 1 : index
   // CHECK: %[[DIM1:.+]] = tensor.dim %[[POOL]], %[[I1]]
-  // CHECK: %[[I2:.+]] = arith.constant 2 : index
   // CHECK: %[[DIM2:.+]] = tensor.dim %[[POOL]], %[[I2]]
-  // CHECK: %[[ONE:.+]] = arith.constant 1 : index
-  // CHECK: %[[HEIGHT:.+]] = arith.subi %[[DIM1]], %[[ONE]] : index
-  // CHECK: %[[WIDTH:.+]] = arith.subi %[[DIM2]], %[[ONE]] : index
+  // CHECK: %[[HEIGHT:.+]] = arith.subi %[[DIM1]], %[[I1]] : index
+  // CHECK: %[[WIDTH:.+]] = arith.subi %[[DIM2]], %[[I1]] : index
 
   // Divide the sum pooling by the number of summed values.
   // CHECK: %[[EMPTY:.+]] = tensor.empty() : tensor<1x5x33x62xf32>
@@ -277,7 +275,7 @@ func.func @avg_pool_f32(%arg0: tensor<1x6x34x62xf32>) -> (tensor<1x5x33x62xf32>)
   // CHECK:   %[[END_SUB:.+]] = arith.subi %[[SRC_END]], %[[PAD_END]]
   // CHECK:   %[[OFFSET:.+]] = arith.minsi %[[END_SUB]], %[[ZERO]]
   // CHECK:   %[[END_OFFSET:.+]] = arith.addi %[[START_OFFSET]], %[[OFFSET]]
-  // CHECK:   %[[KHEIGHT:.+]] = arith.maxsi %[[ONE]], %[[END_OFFSET]]
+  // CHECK:   %[[KHEIGHT:.+]] = arith.maxsi %[[I1]], %[[END_OFFSET]]
 
   // Compute how much of the width does not include padding:
   // CHECK:   %[[STRIDE:.+]] = arith.constant 1
@@ -294,7 +292,7 @@ func.func @avg_pool_f32(%arg0: tensor<1x6x34x62xf32>) -> (tensor<1x5x33x62xf32>)
   // CHECK:   %[[END_SUB:.+]] = arith.subi %[[SRC_END]], %[[PAD_END]]
   // CHECK:   %[[OFFSET:.+]] = arith.minsi %[[END_SUB]], %[[ZERO]]
   // CHECK:   %[[END_OFFSET:.+]] = arith.addi %[[START_OFFSET]], %[[OFFSET]]
-  // CHECK:   %[[KWIDTH:.+]] = arith.maxsi %[[ONE]], %[[END_OFFSET]]
+  // CHECK:   %[[KWIDTH:.+]] = arith.maxsi %[[I1]], %[[END_OFFSET]]
 
   // Divide the summed value by the number of values summed.
   // CHECK:   %[[COUNT:.+]] = arith.muli %[[KHEIGHT]], %[[KWIDTH]]
@@ -315,13 +313,15 @@ func.func @avg_pool_f32(%arg0: tensor<1x6x34x62xf32>) -> (tensor<1x5x33x62xf32>)
 func.func @avg_pool_f16_f32acc(%arg0: tensor<1x6x34x62xf16>) -> (tensor<1x5x33x62xf16>) {
   // Apply padding to the input:
   // CHECK: %[[F0:.+]] = arith.constant 0.000000e+00 : f16
+  // CHECK: %[[F0_ACC:.+]] = arith.constant 0.000000e+00 : f32
+  // CHECK: %[[I1:.+]] = arith.constant 1 : index
+  // CHECK: %[[I2:.+]] = arith.constant 2 : index
   // CHECK: %[[PAD:.+]] = tensor.pad %arg0 low[0, 1, 1, 0] high[0, 1, 1, 0]
   // CHECK:   tensor.yield %[[F0]] : f16
 
   // Fill the pooling target:
-  // CHECK: %[[F0:.+]] = arith.constant 0.000000e+00 : f32
   // CHECK: %[[EMPTY:.+]] = tensor.empty() : tensor<1x5x33x62xf32>
-  // CHECK: %[[FILL:.+]] = linalg.fill ins(%[[F0]] : f32) outs(%[[EMPTY]] : tensor<1x5x33x62xf32>)
+  // CHECK: %[[FILL:.+]] = linalg.fill ins(%[[F0_ACC]] : f32) outs(%[[EMPTY]] : tensor<1x5x33x62xf32>)
 
   // Compute the sum padding:
   // CHECK: %[[KERNEL:.+]] = tensor.empty() : tensor<4x4xf32>
@@ -331,13 +331,10 @@ func.func @avg_pool_f16_f32acc(%arg0: tensor<1x6x34x62xf16>) -> (tensor<1x5x33x6
   // CHECK-SAME: outs(%[[FILL]] : tensor<1x5x33x62xf32>)
 
   // Compute dimension based constants:
-  // CHECK: %[[I1:.+]] = arith.constant 1 : index
   // CHECK: %[[DIM1:.+]] = tensor.dim %[[POOL]], %[[I1]]
-  // CHECK: %[[I2:.+]] = arith.constant 2 : index
   // CHECK: %[[DIM2:.+]] = tensor.dim %[[POOL]], %[[I2]]
-  // CHECK: %[[ONE:.+]] = arith.constant 1 : index
-  // CHECK: %[[HEIGHT:.+]] = arith.subi %[[DIM1]], %[[ONE]] : index
-  // CHECK: %[[WIDTH:.+]] = arith.subi %[[DIM2]], %[[ONE]] : index
+  // CHECK: %[[HEIGHT:.+]] = arith.subi %[[DIM1]], %[[I1]] : index
+  // CHECK: %[[WIDTH:.+]] = arith.subi %[[DIM2]], %[[I1]] : index
 
   // Divide the sum pooling by the number of summed values.
   // CHECK: %[[EMPTY:.+]] = tensor.empty() : tensor<1x5x33x62xf16>
@@ -363,7 +360,7 @@ func.func @avg_pool_f16_f32acc(%arg0: tensor<1x6x34x62xf16>) -> (tensor<1x5x33x6
   // CHECK:   %[[END_SUB:.+]] = arith.subi %[[SRC_END]], %[[PAD_END]]
   // CHECK:   %[[OFFSET:.+]] = arith.minsi %[[END_SUB]], %[[ZERO]]
   // CHECK:   %[[END_OFFSET:.+]] = arith.addi %[[START_OFFSET]], %[[OFFSET]]
-  // CHECK:   %[[KHEIGHT:.+]] = arith.maxsi %[[ONE]], %[[END_OFFSET]]
+  // CHECK:   %[[KHEIGHT:.+]] = arith.maxsi %[[I1]], %[[END_OFFSET]]
 
   // Compute how much of the width does not include padding:
   // CHECK:   %[[STRIDE:.+]] = arith.constant 1
@@ -380,7 +377,7 @@ func.func @avg_pool_f16_f32acc(%arg0: tensor<1x6x34x62xf16>) -> (tensor<1x5x33x6
   // CHECK:   %[[END_SUB:.+]] = arith.subi %[[SRC_END]], %[[PAD_END]]
   // CHECK:   %[[OFFSET:.+]] = arith.minsi %[[END_SUB]], %[[ZERO]]
   // CHECK:   %[[END_OFFSET:.+]] = arith.addi %[[START_OFFSET]], %[[OFFSET]]
-  // CHECK:   %[[KWIDTH:.+]] = arith.maxsi %[[ONE]], %[[END_OFFSET]]
+  // CHECK:   %[[KWIDTH:.+]] = arith.maxsi %[[I1]], %[[END_OFFSET]]
 
   // Divide the summed value by the number of values summed.
   // CHECK:   %[[COUNT:.+]] = arith.muli %[[KHEIGHT]], %[[KWIDTH]]
@@ -443,11 +440,10 @@ func.func @avg_pool_i8(%arg0: tensor<1x6x34x62xi8>) -> (tensor<1x5x33x62xi8>) {
 // CHECK-LABEL: @avg_pool_dyn
 func.func @avg_pool_dyn(%arg0: tensor<?x6x34x62xf32>) -> (tensor<?x5x33x62xf32>) {
   // CHECK: %[[C0:.+]] = arith.constant 0 : index
-  // CHECK: %[[BATCH:.+]] = tensor.dim %arg0, %[[C0]]
   // CHECK: %[[F0:.+]] = arith.constant 0.000000e+00 : f32
+  // CHECK: %[[BATCH:.+]] = tensor.dim %arg0, %[[C0]]
   // CHECK: %[[PADDED:.+]] = tensor.pad %arg0 low[0, 1, 1, 0] high[0, 1, 1, 0]
   // CHECK:   tensor.yield %[[F0]]
-  // CHECK: %[[F0:.+]] = arith.constant 0.000000e+00 : f32
   // CHECK: %[[EMPTY:.+]] = tensor.empty(%[[BATCH]]) : tensor<?x5x33x62xf32>
   // CHECK: %[[FILL:.+]] = linalg.fill ins(%[[F0]] : f32) outs(%[[EMPTY]] : tensor<?x5x33x62xf32>)
   // CHECK: %[[KERNEL:.+]] = tensor.empty() : tensor<4x4xf32>
@@ -550,43 +546,33 @@ func.func @conv2d_dyn(%input: tensor<?x49x42x27xf32>, %weights: tensor<28x3x3x27
 
 // CHECK-LABEL: @conv2d_dyn_w_h
 func.func @conv2d_dyn_w_h(%input: tensor<1x?x?x27xf32>, %weights: tensor<28x3x3x27xf32>, %bias: tensor<28xf32>) -> () {
-  // Computing output height
   // CHECK: %[[C1:.+]] = arith.constant 1
-  // CHECK: %[[H:.+]] = tensor.dim %arg0, %[[C1]]
-  // CHECK: %[[C1_0:.+]] = arith.constant 1
-  // CHECK: %[[KH:.+]] = tensor.dim %arg1, %[[C1_0]]
-  // CHECK: %[[ONE:.+]] = arith.constant 1 : index
   // CHECK: %[[PAD_0:.+]] = arith.constant 0 : index
+  // CHECK: %[[C2:.+]] = arith.constant 2
+
+  // Computing output height
+  // CHECK: %[[H:.+]] = tensor.dim %arg0, %[[C1]]
+  // CHECK: %[[KH:.+]] = tensor.dim %arg1, %[[C1]]
   // CHECK: %[[ADD_PAD_0:.+]] = arith.addi %[[H]], %[[PAD_0]] : index
-  // CHECK: %[[PAD_1:.+]] = arith.constant 0 : index
-  // CHECK: %[[ADD_PAD_1:.+]] = arith.addi %[[ADD_PAD_0]], %[[PAD_1]] : index
-  // CHECK: %[[SUB_ONE:.+]] = arith.subi %[[KH]], %[[ONE]] : index
-  // CHECK: %[[DIL_H:.+]] = arith.constant 2 : index
-  // CHECK: %[[DILATED:.+]] = arith.muli %[[DIL_H]], %[[SUB_ONE]] : index
-  // CHECK: %[[ADD_ONE:.+]] = arith.addi %[[DILATED]], %[[ONE]] : index
+  // CHECK: %[[ADD_PAD_1:.+]] = arith.addi %[[ADD_PAD_0]], %[[PAD_0]] : index
+  // CHECK: %[[SUB_ONE:.+]] = arith.subi %[[KH]], %[[C1]] : index
+  // CHECK: %[[DILATED:.+]] = arith.muli %[[C2]], %[[SUB_ONE]] : index
+  // CHECK: %[[ADD_ONE:.+]] = arith.addi %[[DILATED]], %[[C1]] : index
   // CHECK: %[[SUBTRACTED:.+]] = arith.subi %[[ADD_PAD_1]], %[[ADD_ONE]] : index
-  // CHECK: %[[STRIDE_H:.+]] = arith.constant 1 : index
-  // CHECK: %[[DIVIDED:.+]] = arith.divui %[[SUBTRACTED]], %[[STRIDE_H]] : index
-  // CHECK: %[[H_OUT:.+]] = arith.addi %[[DIVIDED]], %[[ONE]] : index
+  // CHECK: %[[DIVIDED:.+]] = arith.divui %[[SUBTRACTED]], %[[C1]] : index
+  // CHECK: %[[H_OUT:.+]] = arith.addi %[[DIVIDED]], %[[C1]] : index
 
   // Computing output width
-  // CHECK: %[[C2:.+]] = arith.constant 2
   // CHECK: %[[W:.+]] = tensor.dim %arg0, %[[C2]]
-  // CHECK: %[[C2_0:.+]] = arith.constant 2
-  // CHECK: %[[KW:.+]] = tensor.dim %arg1, %[[C2_0]]
-  // CHECK: %[[ONE_0:.+]] = arith.constant 1 : index
-  // CHECK: %[[PAD_2:.+]] = arith.constant 0 : index
-  // CHECK: %[[ADD_PAD_2:.+]] = arith.addi %[[W]], %[[PAD_2]] : index
-  // CHECK: %[[PAD_3:.+]] = arith.constant 0 : index
-  // CHECK: %[[ADD_PAD_3:.+]] = arith.addi %[[ADD_PAD_2]], %[[PAD_3]] : index
-  // CHECK: %[[SUB_ONE_0:.+]] = arith.subi %[[KW]], %[[ONE_0]] : index
-  // CHECK: %[[DIL_W:.+]] = arith.constant 1 : index
-  // CHECK: %[[DILATED_0:.+]] = arith.muli %[[DIL_W]], %[[SUB_ONE_0]] : index
-  // CHECK: %[[ADD_ONE_0:.+]] = arith.addi %[[DILATED_0]], %[[ONE_0]] : index
+  // CHECK: %[[KW:.+]] = tensor.dim %arg1, %[[C2]]
+  // CHECK: %[[ADD_PAD_2:.+]] = arith.addi %[[W]], %[[PAD_0]] : index
+  // CHECK: %[[ADD_PAD_3:.+]] = arith.addi %[[ADD_PAD_2]], %[[PAD_0]] : index
+  // CHECK: %[[SUB_ONE_0:.+]] = arith.subi %[[KW]], %[[C1]] : index
+  // CHECK: %[[DILATED_0:.+]] = arith.muli %[[C1]], %[[SUB_ONE_0]] : index
+  // CHECK: %[[ADD_ONE_0:.+]] = arith.addi %[[DILATED_0]], %[[C1]] : index
   // CHECK: %[[SUBTRACTED_0:.+]] = arith.subi %[[ADD_PAD_3]], %[[ADD_ONE_0]] : index
-  // CHECK: %[[STRIDE_W:.+]] = arith.constant 1 : index
-  // CHECK: %[[DIVIDED_0:.+]] = arith.divui %[[SUBTRACTED_0]], %[[STRIDE_W]] : index
-  // CHECK: %[[W_OUT:.+]] = arith.addi %[[DIVIDED_0]], %[[ONE_0]] : index
+  // CHECK: %[[DIVIDED_0:.+]] = arith.divui %[[SUBTRACTED_0]], %[[C1]] : index
+  // CHECK: %[[W_OUT:.+]] = arith.addi %[[DIVIDED_0]], %[[C1]] : index
 
   // Running convolution
   // CHECK: %[[INIT:.+]] = tensor.empty(%[[H_OUT]], %[[W_OUT]]) : tensor<1x?x?x28xf32>
@@ -688,8 +674,8 @@ func.func @conv2d_f8_f32_acc(%input: tensor<1x49x42x27xf8E5M2>, %weights: tensor
 
 // CHECK-LABEL: @depthwise_conv
 func.func @depthwise_conv(%arg0 : tensor<1x7x5x3xf32>, %arg1 : tensor<3x1x3x11xf32>, %arg2 : tensor<33xf32>) -> () {
-  // CHECK: [[INIT:%.+]] = tensor.empty()
   // CHECK: [[CST0:%.+]] = arith.constant 0
+  // CHECK: [[INIT:%.+]] = tensor.empty()
   // CHECK: [[FILL:%.+]] = linalg.fill ins([[CST0]]{{.*}}outs([[INIT]]
   // CHECK: [[OUT:%.+]] = tensor.empty()
   // CHECK: [[DEPTH:%.+]] = linalg.depthwise_conv_2d_nhwc_hwcm {dilations = dense<1> : tensor<2xi64>, strides = dense<1> : tensor<2xi64>} ins(%arg0, %arg1 : tensor<1x7x5x3xf32>, tensor<3x1x3x11xf32>) outs([[FILL]] : tensor<1x5x5x3x11xf32>)
@@ -731,9 +717,9 @@ func.func @depthwise_conv_scalar_bias(%arg0 : tensor<1x7x5x3xf32>, %arg1 : tenso
 // CHECK-LABEL: @depthwise_conv_dyn
 func.func @depthwise_conv_dyn(%arg0 : tensor<?x7x5x3xf32>, %arg1 : tensor<3x1x3x11xf32>, %arg2 : tensor<33xf32>) -> () {
   // CHECK: %[[C0:.+]] = arith.constant 0
+  // CHECK: %[[CST0:.+]] = arith.constant 0
   // CHECK: %[[BATCH:.+]] = tensor.dim %arg0, %[[C0]]
   // CHECK: %[[INIT:.+]] = tensor.empty(%[[BATCH]])
-  // CHECK: %[[CST0:.+]] = arith.constant 0
   // CHECK: %[[FILL:.+]] = linalg.fill
   // CHECK: %[[OUT:.+]] = tensor.empty(%[[BATCH]])
   // CHECK: %[[DEPTH:.+]] = linalg.depthwise_conv_2d_nhwc_hwcm {dilations = dense<1> : tensor<2xi64>, strides = dense<1> : tensor<2xi64>} ins(%arg0, %arg1 : tensor<?x7x5x3xf32>, tensor<3x1x3x11xf32>) outs(%[[FILL]] : tensor<?x5x5x3x11xf32>)
@@ -756,8 +742,8 @@ func.func @depthwise_conv_dyn(%arg0 : tensor<?x7x5x3xf32>, %arg1 : tensor<3x1x3x
 
 // CHECK-LABEL: @depthwise_conv_strides
 func.func @depthwise_conv_strides(%arg0 : tensor<1x11x9x3xf32>, %arg1 : tensor<3x1x3x11xf32>, %arg2 : tensor<33xf32>) -> () {
-  // CHECK: [[INIT:%.+]] = tensor.empty()
   // CHECK: [[CST0:%.+]] = arith.constant 0
+  // CHECK: [[INIT:%.+]] = tensor.empty()
   // CHECK: [[FILL:%.+]] = linalg.fill ins([[CST0]]{{.*}}outs([[INIT]]
   // CHECK: [[OUT:%.+]] = tensor.empty()
   // CHECK: [[DEPTH:%.+]] = linalg.depthwise_conv_2d_nhwc_hwcm {dilations = dense<1> : tensor<2xi64>, strides = dense<2> : tensor<2xi64>} ins(%arg0, %arg1 : tensor<1x11x9x3xf32>, tensor<3x1x3x11xf32>) outs([[FILL]] : tensor<1x5x5x3x11xf32>)
@@ -781,15 +767,15 @@ func.func @depthwise_conv_strides(%arg0 : tensor<1x11x9x3xf32>, %arg1 : tensor<3
 // CHECK-LABEL: @depthwise_conv_quant
 func.func @depthwise_conv_quant(%arg0 : tensor<1x12x12x4xi8>, %arg1 : tensor<3x3x4x128xi8>, %arg2 : tensor<512xi32>) -> () {
   // CHECK: [[PADV:%.+]] = arith.constant -128
+  // CHECK: [[CST0:%.+]] = arith.constant 0
+  // CHECK: [[C128:%.+]] = arith.constant -128
+  // CHECK: [[C42:%.+]] = arith.constant 42
   // CHECK: [[PAD:%.+]] = tensor.pad %arg0 low[0, 1, 1, 0] high[0, 1, 1, 0]
   // CHECK:   tensor.yield [[PADV]]
 
   // CHECK: [[INIT:%.+]] = tensor.empty()
-  // CHECK: [[CST0:%.+]] = arith.constant 0
   // CHECK: [[FILL:%.+]] = linalg.fill ins([[CST0]]{{.*}}outs([[INIT]]
   // CHECK: [[OUT:%.+]] = tensor.empty()
-  // CHECK: [[C128:%.+]] = arith.constant -128
-  // CHECK: [[C42:%.+]] = arith.constant 42
   // CHECK: [[DEPTH:%.+]] = linalg.depthwise_conv_2d_nhwc_hwcm_q {dilations = dense<1> : tensor<2xi64>, strides = dense<1> : tensor<2xi64>} ins([[PAD]], %arg1, [[C128]], [[C42]] : tensor<1x14x14x4xi8>, tensor<3x3x4x128xi8>, i32, i32) outs([[FILL]] : tensor<1x12x12x4x128xi32>)
   // CHECK: [[COLLAPSED:%.+]] = tensor.collapse_shape [[DEPTH]] {{\[}}[0], [1], [2], [3, 4]]
   // CHECK: [[BIAS:%.+]] = linalg.generic {indexing_maps = [#[[$MAP0]], #[[$MAP1]], #[[$MAP1]]], iterator_types = ["parallel", "parallel", "parallel", "parallel"]} ins(%arg2, [[COLLAPSED]] : tensor<512xi32>, tensor<1x12x12x512xi32>) outs([[OUT]] : tensor<1x12x12x512xi32>) {
@@ -810,12 +796,12 @@ func.func @depthwise_conv_quant(%arg0 : tensor<1x12x12x4xi8>, %arg1 : tensor<3x3
 
 // CHECK-LABEL: @depthwise_conv_quant_dilations
 func.func @depthwise_conv_quant_dilations(%arg0 : tensor<1x14x14x4xi8>, %arg1 : tensor<3x3x4x128xi8>, %arg2 : tensor<512xi32>) -> () {
-  // CHECK: [[INIT:%.+]] = tensor.empty()
   // CHECK: [[CST0:%.+]] = arith.constant 0
-  // CHECK: [[FILL:%.+]] = linalg.fill ins([[CST0]]{{.*}}outs([[INIT]]
-  // CHECK: [[OUT:%.+]] = tensor.empty()
   // CHECK: [[C128:%.+]] = arith.constant -128
   // CHECK: [[C42:%.+]] = arith.constant 42
+  // CHECK: [[INIT:%.+]] = tensor.empty()
+  // CHECK: [[FILL:%.+]] = linalg.fill ins([[CST0]]{{.*}}outs([[INIT]]
+  // CHECK: [[OUT:%.+]] = tensor.empty()
   // CHECK: [[DEPTH:%.+]] = linalg.depthwise_conv_2d_nhwc_hwcm_q {dilations = dense<2> : tensor<2xi64>, strides = dense<1> : tensor<2xi64>} ins(%arg0, %arg1, [[C128]], [[C42]] : tensor<1x14x14x4xi8>, tensor<3x3x4x128xi8>, i32, i32) outs([[FILL]] : tensor<1x10x10x4x128xi32>)
   // CHECK: [[COLLAPSED:%.+]] = tensor.collapse_shape [[DEPTH]] {{\[}}[0], [1], [2], [3, 4]]
   // CHECK: [[BIAS:%.+]] = linalg.generic {indexing_maps = [#[[$MAP0]], #[[$MAP1]], #[[$MAP1]]], iterator_types = ["parallel", "parallel", "parallel", "parallel"]} ins(%arg2, [[COLLAPSED]] : tensor<512xi32>, tensor<1x10x10x512xi32>) outs([[OUT]] : tensor<1x10x10x512xi32>) {
@@ -854,8 +840,8 @@ func.func @depthwise_conv2d_dyn_w_h(%arg0: tensor<2x?x?x3xf32>, %arg1: tensor<3x
 
 // CHECK-LABEL: @depthwise_int_conv_zero_zp
 func.func @depthwise_int_conv_zero_zp(%arg0 : tensor<1x7x5x3xi8>, %arg1 : tensor<3x1x3x11xi8>, %arg2 : tensor<33xi32>) -> () {
-  // CHECK: [[INIT:%.+]] = tensor.empty()
   // CHECK: [[CST0:%.+]] = arith.constant 0
+  // CHECK: [[INIT:%.+]] = tensor.empty()
   // CHECK: [[FILL:%.+]] = linalg.fill ins([[CST0]]{{.*}}outs([[INIT]]
   // CHECK: [[OUT:%.+]] = tensor.empty()
   // CHECK: [[DEPTH:%.+]] = linalg.depthwise_conv_2d_nhwc_hwcm {dilations = dense<1> : tensor<2xi64>, strides = dense<1> : tensor<2xi64>} ins(%arg0, %arg1 : tensor<1x7x5x3xi8>, tensor<3x1x3x11xi8>) outs([[FILL]] : tensor<1x5x5x3x11xi32>)
@@ -942,6 +928,8 @@ func.func @conv3d_scalar_bias_f32(%input: tensor<1x49x48x47x27xf32>, %weights: t
 
 // CHECK-LABEL: @conv3d_i8
 func.func @conv3d_i8(%input: tensor<1x49x48x47x27xi8>, %weights: tensor<43x3x4x5x27xi8>, %bias: tensor<43xi32>) -> () {
+  // CHECK-DAG:  %[[IZP:.+]] = arith.constant -128 : i32
+  // CHECK-DAG:  %[[FZP:.+]] = arith.constant 42 : i32
   // CHECK-DAG:  %[[TRANSPOSE:.+]] = linalg.transpose ins(%arg1 : tensor<43x3x4x5x27xi8>) outs(%[[TRANSPOSEDINIT:.+]] : tensor<3x4x5x27x43xi8>) permutation = [1, 2, 3, 4, 0]
   // CHECK-DAG:  %[[INIT:.+]] = tensor.empty() : tensor<1x47x45x43x43xi32>
   // CHECK:      %[[BROADCAST:.+]] = linalg.generic
@@ -951,8 +939,6 @@ func.func @conv3d_i8(%input: tensor<1x49x48x47x27xi8>, %weights: tensor<43x3x4x5
   // CHECK:      ^bb0(%[[IN:.+]]: i32, %[[OUT:.+]]: i32):
   // CHECK:        linalg.yield %[[IN]] : i32
   // CHECK:      } -> tensor<1x47x45x43x43xi32>
-  // CHECK:      %[[IZP:.+]] = arith.constant -128 : i32
-  // CHECK:      %[[FZP:.+]] = arith.constant 42 : i32
   // CHECK:      linalg.conv_3d_ndhwc_dhwcf_q
   // CHECK-SAME: {dilations = dense<1> : tensor<3xi64>, strides = dense<1> : tensor<3xi64>}
   // CHECK-SAME: ins(%arg0, %[[TRANSPOSE]], %[[IZP]], %[[FZP]] : tensor<1x49x48x47x27xi8>, tensor<3x4x5x27x43xi8>, i32, i32)

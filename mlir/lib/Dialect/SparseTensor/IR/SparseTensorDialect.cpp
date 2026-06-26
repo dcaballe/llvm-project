@@ -1519,7 +1519,8 @@ LogicalResult CrdTranslateOp::fold(FoldAdaptor adaptor,
 
 void LvlOp::build(OpBuilder &builder, OperationState &state, Value source,
                   int64_t index) {
-  Value val = arith::ConstantIndexOp::create(builder, state.location, index);
+  Value val =
+      builder.createOrFold<arith::ConstantIndexOp>(state.location, index);
   return build(builder, state, source, val);
 }
 

@@ -167,16 +167,16 @@ wasmssa.func @func_3() -> i32 {
 //// ============= Branch instructions etc ==========
 
 // CHECK-LABEL:   func.func @branch_if_taken() -> i32 {
+// CHECK:           %[[VAL_0:.*]] = arith.constant 0 : i32
 // CHECK:           cf.br ^bb1
 // CHECK:         ^bb1:
-// CHECK:           %[[VAL_0:.*]] = arith.constant 1 : i32
-// CHECK:           %[[VAL_1:.*]] = arith.constant 2 : i32
-// CHECK:           %[[VAL_2:.*]] = arith.constant 0 : i32
-// CHECK:           %[[VAL_3:.*]] = arith.cmpi ne, %[[VAL_1]], %[[VAL_2]] : i32
-// CHECK:           cf.cond_br %[[VAL_3]], ^bb3(%[[VAL_0]] : i32), ^bb2
+// CHECK:           %[[VAL_1:.*]] = arith.constant 1 : i32
+// CHECK:           %[[VAL_2:.*]] = arith.constant 2 : i32
+// CHECK:           %[[VAL_3:.*]] = arith.cmpi ne, %[[VAL_2]], %[[VAL_0]] : i32
+// CHECK:           cf.cond_br %[[VAL_3]], ^bb3(%[[VAL_1]] : i32), ^bb2
 // CHECK:         ^bb2:
 // CHECK:           %[[VAL_4:.*]] = arith.constant 16 : i32
-// CHECK:           %[[VAL_5:.*]] = arith.addi %[[VAL_0]], %[[VAL_4]] : i32
+// CHECK:           %[[VAL_5:.*]] = arith.addi %[[VAL_1]], %[[VAL_4]] : i32
 // CHECK:           cf.br ^bb3(%[[VAL_5]] : i32)
 // CHECK:         ^bb3(%[[VAL_6:.*]]: i32):
 // CHECK:           return %[[VAL_6]] : i32
@@ -200,16 +200,16 @@ wasmssa.func @branch_if_taken() -> i32 {
 }
 
 // CHECK-LABEL:   func.func @branch_if_continue() -> i32 {
+// CHECK:           %[[VAL_0:.*]] = arith.constant 0 : i32
 // CHECK:           cf.br ^bb1
 // CHECK:         ^bb1:
-// CHECK:           %[[VAL_0:.*]] = arith.constant 1 : i32
-// CHECK:           %[[VAL_1:.*]] = arith.constant 0 : i32
+// CHECK:           %[[VAL_1:.*]] = arith.constant 1 : i32
 // CHECK:           %[[VAL_2:.*]] = arith.constant 0 : i32
-// CHECK:           %[[VAL_3:.*]] = arith.cmpi ne, %[[VAL_1]], %[[VAL_2]] : i32
-// CHECK:           cf.cond_br %[[VAL_3]], ^bb3(%[[VAL_0]] : i32), ^bb2
+// CHECK:           %[[VAL_3:.*]] = arith.cmpi ne, %[[VAL_2]], %[[VAL_0]] : i32
+// CHECK:           cf.cond_br %[[VAL_3]], ^bb3(%[[VAL_1]] : i32), ^bb2
 // CHECK:         ^bb2:
 // CHECK:           %[[VAL_4:.*]] = arith.constant 16 : i32
-// CHECK:           %[[VAL_5:.*]] = arith.addi %[[VAL_0]], %[[VAL_4]] : i32
+// CHECK:           %[[VAL_5:.*]] = arith.addi %[[VAL_1]], %[[VAL_4]] : i32
 // CHECK:           cf.br ^bb3(%[[VAL_5]] : i32)
 // CHECK:         ^bb3(%[[VAL_6:.*]]: i32):
 // CHECK:           return %[[VAL_6]] : i32
@@ -236,11 +236,11 @@ wasmssa.func @branch_if_continue() -> i32 {
 // CHECK-SAME:                  %[[ARG0:.*]]: i32) -> i32 {
 // CHECK:           %[[VAL_0:.*]] = memref.alloca() : memref<i32>
 // CHECK:           memref.store %[[ARG0]], %[[VAL_0]][] : memref<i32>
-// CHECK:           %[[VAL_1:.*]] = memref.load %[[VAL_0]][] : memref<i32>
-// CHECK:           %[[VAL_2:.*]] = arith.constant 1 : i32
-// CHECK:           %[[VAL_3:.*]] = arith.andi %[[VAL_1]], %[[VAL_2]] : i32
-// CHECK:           %[[VAL_4:.*]] = arith.constant 0 : i32
-// CHECK:           %[[VAL_5:.*]] = arith.cmpi ne, %[[VAL_3]], %[[VAL_4]] : i32
+// CHECK:           %[[VAL_1:.*]] = arith.constant 0 : i32
+// CHECK:           %[[VAL_2:.*]] = memref.load %[[VAL_0]][] : memref<i32>
+// CHECK:           %[[VAL_3:.*]] = arith.constant 1 : i32
+// CHECK:           %[[VAL_4:.*]] = arith.andi %[[VAL_2]], %[[VAL_3]] : i32
+// CHECK:           %[[VAL_5:.*]] = arith.cmpi ne, %[[VAL_4]], %[[VAL_1]] : i32
 // CHECK:           cf.cond_br %[[VAL_5]], ^bb1, ^bb2
 // CHECK:         ^bb1:
 // CHECK:           %[[VAL_6:.*]] = memref.load %[[VAL_0]][] : memref<i32>
@@ -281,13 +281,13 @@ wasmssa.func @if(%arg0: !wasmssa<local ref to i32>) -> i32 {
 // CHECK-SAME:      %[[ARG0:.*]]: i32) -> i32 {
 // CHECK:           %[[VAL_0:.*]] = memref.alloca() : memref<i32>
 // CHECK:           memref.store %[[ARG0]], %[[VAL_0]][] : memref<i32>
-// CHECK:           %[[VAL_1:.*]] = memref.load %[[VAL_0]][] : memref<i32>
+// CHECK:           %[[VAL_1:.*]] = arith.constant 0 : i32
 // CHECK:           %[[VAL_2:.*]] = memref.load %[[VAL_0]][] : memref<i32>
-// CHECK:           %[[VAL_3:.*]] = arith.constant 1 : i32
-// CHECK:           %[[VAL_4:.*]] = arith.andi %[[VAL_2]], %[[VAL_3]] : i32
-// CHECK:           %[[VAL_5:.*]] = arith.constant 0 : i32
-// CHECK:           %[[VAL_6:.*]] = arith.cmpi ne, %[[VAL_4]], %[[VAL_5]] : i32
-// CHECK:           cf.cond_br %[[VAL_6]], ^bb1(%[[VAL_1]] : i32), ^bb2(%[[VAL_1]] : i32)
+// CHECK:           %[[VAL_3:.*]] = memref.load %[[VAL_0]][] : memref<i32>
+// CHECK:           %[[VAL_4:.*]] = arith.constant 1 : i32
+// CHECK:           %[[VAL_5:.*]] = arith.andi %[[VAL_3]], %[[VAL_4]] : i32
+// CHECK:           %[[VAL_6:.*]] = arith.cmpi ne, %[[VAL_5]], %[[VAL_1]] : i32
+// CHECK:           cf.cond_br %[[VAL_6]], ^bb1(%[[VAL_2]] : i32), ^bb2(%[[VAL_2]] : i32)
 // CHECK:         ^bb1(%[[VAL_7:.*]]: i32):
 // CHECK:           %[[VAL_8:.*]] = arith.constant 1 : i32
 // CHECK:           %[[VAL_9:.*]] = arith.addi %[[VAL_7]], %[[VAL_8]] : i32
@@ -314,10 +314,10 @@ wasmssa.func @if_else(%arg0: !wasmssa<local ref to i32>) -> i32 {
 // CHECK-SAME:                     %[[ARG0:.*]]: i32) -> i32 {
 // CHECK:           %[[VAL_0:.*]] = memref.alloca() : memref<i32>
 // CHECK:           memref.store %[[ARG0]], %[[VAL_0]][] : memref<i32>
-// CHECK:           %[[VAL_1:.*]] = memref.load %[[VAL_0]][] : memref<i32>
-// CHECK:           %[[VAL_2:.*]] = math.cttz %[[VAL_1]] : i32
-// CHECK:           %[[VAL_3:.*]] = arith.constant 0 : i32
-// CHECK:           %[[VAL_4:.*]] = arith.cmpi ne, %[[VAL_2]], %[[VAL_3]] : i32
+// CHECK:           %[[VAL_1:.*]] = arith.constant 0 : i32
+// CHECK:           %[[VAL_2:.*]] = memref.load %[[VAL_0]][] : memref<i32>
+// CHECK:           %[[VAL_3:.*]] = math.cttz %[[VAL_2]] : i32
+// CHECK:           %[[VAL_4:.*]] = arith.cmpi ne, %[[VAL_3]], %[[VAL_1]] : i32
 // CHECK:           cf.cond_br %[[VAL_4]], ^bb1, ^bb4
 // CHECK:         ^bb1:
 // CHECK:           %[[VAL_5:.*]] = arith.constant 2 : i32
@@ -325,20 +325,19 @@ wasmssa.func @if_else(%arg0: !wasmssa<local ref to i32>) -> i32 {
 // CHECK:           %[[VAL_7:.*]] = arith.constant 1 : i32
 // CHECK:           %[[VAL_8:.*]] = arith.shrui %[[VAL_6]], %[[VAL_7]] : i32
 // CHECK:           %[[VAL_9:.*]] = math.cttz %[[VAL_8]] : i32
-// CHECK:           %[[VAL_10:.*]] = arith.constant 0 : i32
-// CHECK:           %[[VAL_11:.*]] = arith.cmpi ne, %[[VAL_9]], %[[VAL_10]] : i32
-// CHECK:           cf.cond_br %[[VAL_11]], ^bb2(%[[VAL_5]] : i32), ^bb3(%[[VAL_5]] : i32)
-// CHECK:         ^bb2(%[[VAL_12:.*]]: i32):
-// CHECK:           %[[VAL_13:.*]] = arith.constant 2 : i32
-// CHECK:           %[[VAL_14:.*]] = arith.addi %[[VAL_12]], %[[VAL_13]] : i32
-// CHECK:           cf.br ^bb3(%[[VAL_14]] : i32)
-// CHECK:         ^bb3(%[[VAL_15:.*]]: i32):
-// CHECK:           cf.br ^bb5(%[[VAL_15]] : i32)
+// CHECK:           %[[VAL_10:.*]] = arith.cmpi ne, %[[VAL_9]], %[[VAL_1]] : i32
+// CHECK:           cf.cond_br %[[VAL_10]], ^bb2(%[[VAL_5]] : i32), ^bb3(%[[VAL_5]] : i32)
+// CHECK:         ^bb2(%[[VAL_11:.*]]: i32):
+// CHECK:           %[[VAL_12:.*]] = arith.constant 2 : i32
+// CHECK:           %[[VAL_13:.*]] = arith.addi %[[VAL_11]], %[[VAL_12]] : i32
+// CHECK:           cf.br ^bb3(%[[VAL_13]] : i32)
+// CHECK:         ^bb3(%[[VAL_14:.*]]: i32):
+// CHECK:           cf.br ^bb5(%[[VAL_14]] : i32)
 // CHECK:         ^bb4:
-// CHECK:           %[[VAL_16:.*]] = arith.constant 1 : i32
-// CHECK:           cf.br ^bb5(%[[VAL_16]] : i32)
-// CHECK:         ^bb5(%[[VAL_17:.*]]: i32):
-// CHECK:           return %[[VAL_17]] : i32
+// CHECK:           %[[VAL_15:.*]] = arith.constant 1 : i32
+// CHECK:           cf.br ^bb5(%[[VAL_15]] : i32)
+// CHECK:         ^bb5(%[[VAL_16:.*]]: i32):
+// CHECK:           return %[[VAL_16]] : i32
 wasmssa.func @if_if(%arg0: !wasmssa<local ref to i32>) -> i32 {
   %1 = wasmssa.local_get %arg0 : ref to i32
   %2 = wasmssa.ctz %1 : i32

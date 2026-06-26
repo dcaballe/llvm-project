@@ -187,9 +187,9 @@ static SmallVector<Value> reifyOrComputeDynamicSizes(OpBuilder &b,
   SmallVector<Value> dynSizes;
   for (int64_t i = 0; i < tensorType.getRank(); ++i) {
     if (tensorType.isDynamicDim(i))
-      dynSizes.push_back(
-          DimOp::create(b, value.getLoc(), value,
-                        arith::ConstantIndexOp::create(b, value.getLoc(), i)));
+      dynSizes.push_back(DimOp::create(
+          b, value.getLoc(), value,
+          b.createOrFold<arith::ConstantIndexOp>(value.getLoc(), i)));
   }
   return dynSizes;
 }
@@ -379,7 +379,7 @@ FailureOr<Operation *> mlir::linalg::rewriteInDestinationPassingStyle(
   SmallVector<Value, 2> constants;
   constants.reserve(maxDim);
   for (int i = 0; i < maxDim; ++i)
-    constants.push_back(arith::ConstantIndexOp::create(rewriter, loc, i));
+    constants.push_back(rewriter.createOrFold<arith::ConstantIndexOp>(loc, i));
 
   // Traverse all elements and create tensor.insert ops.
   auto elementIt = fromElementsOp.getElements().begin();

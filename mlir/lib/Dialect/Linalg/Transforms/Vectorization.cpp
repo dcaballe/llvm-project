@@ -351,8 +351,9 @@ VectorizationState::precomputeIterSpaceValueSizes(RewriterBase &rewriter,
   for (int vecDim = 0, end = canonicalVecShape.size(); vecDim < end; ++vecDim) {
     if (ShapedType::isStatic(iterSpaceStaticSizes[vecDim])) {
       // Create constant index op for static dimensions.
-      iterSpaceValueSizes.push_back(arith::ConstantIndexOp::create(
-          rewriter, linalgOp.getLoc(), iterSpaceStaticSizes[vecDim]));
+      iterSpaceValueSizes.push_back(
+          rewriter.createOrFold<arith::ConstantIndexOp>(
+              linalgOp.getLoc(), iterSpaceStaticSizes[vecDim]));
       continue;
     }
 
@@ -748,8 +749,9 @@ static Value buildVectorWrite(RewriterBase &rewriter, Value value,
   auto vectorType = state.getCanonicalVecType(
       getElementTypeOrSelf(outputOperand->get().getType()), vectorTypeMap);
 
-  SmallVector<Value> indices(linalgOp.getRank(outputOperand),
-                             arith::ConstantIndexOp::create(rewriter, loc, 0));
+  SmallVector<Value> indices(
+      linalgOp.getRank(outputOperand),
+      rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0));
 
   Operation *write;
   if (vectorType.getRank() > 0) {
@@ -917,7 +919,7 @@ static Value calculateGatherOffset(RewriterBase &rewriter,
 
   const size_t numIndices = extractOp.getIndices().size();
   for (size_t i = 1; i < numIndices; i++) {
-    Value dimIdx = arith::ConstantIndexOp::create(rewriter, loc, i);
+    Value dimIdx = rewriter.createOrFold<arith::ConstantIndexOp>(loc, i);
 
     auto dimSize = broadcastIfNeeded(
         rewriter,
@@ -1179,18 +1181,18 @@ vectorizeTensorExtract(RewriterBase &rewriter, VectorizationState &state,
 
   // Compute the static loop sizes of the extract op.
   auto resultType = state.getCanonicalVecType(extractOp.getResult().getType());
-  auto maskConstantOp = arith::ConstantOp::create(
-      rewriter, loc,
+  Value maskConstantOp = rewriter.createOrFold<arith::ConstantOp>(
+      loc,
       DenseIntElementsAttr::get(state.getCanonicalVecType(rewriter.getI1Type()),
                                 /*value=*/true));
-  auto passThruConstantOp = arith::ConstantOp::create(
-      rewriter, loc, rewriter.getZeroAttr(resultType));
+  Value passThruConstantOp = rewriter.createOrFold<arith::ConstantOp>(
+      loc, rewriter.getZeroAttr(resultType));
 
   // Base indices are currently set to 0. We will need to re-visit if more
   // generic scenarios are to be supported.
   SmallVector<Value> baseIndices(
       extractOp.getIndices().size(),
-      arith::ConstantIndexOp::create(rewriter, loc, 0));
+      rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0));
 
   VectorMemoryAccessKind memAccessKind =
       getTensorExtractMemoryAccessPattern(extractOp, linalgOp, resultType);
@@ -1489,7 +1491,7 @@ vectorizeAsLinalgGeneric(RewriterBase &rewriter, VectorizationState &state,
 
   // 3. Turn all BBArgs into vector.transfer_read / load.
   Location loc = linalgOp.getLoc();
-  Value zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
+  Value zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
   for (OpOperand *opOperand : linalgOp.getOpOperandsMatchingBBargs()) {
     BlockArgument bbarg = linalgOp.getMatchingBlockArgument(opOperand);
     if (linalgOp.isScalar(opOperand)) {
@@ -2650,7 +2652,7 @@ LogicalResult mlir::linalg::vectorizeCopy(RewriterBase &rewriter,
   auto writeType = VectorType::get(dstType.getShape(), dstElementType);
 
   Location loc = copyOp->getLoc();
-  Value zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
+  Value zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
   SmallVector<Value> indices(srcType.getRank(), zero);
 
   Value readValue = vector::TransferReadOp::create(
@@ -2974,7 +2976,7 @@ vectorizeAsInsertSliceOp(RewriterBase &rewriter, tensor::InsertSliceOp sliceOp,
 
   if (!padValue) {
     auto elemType = sourceType.getElementType();
-    padValue = arith::ConstantOp::create(rewriter, sliceOp.getLoc(), elemType,
+    padValue = rewriter.createOrFold<arith::ConstantOp>(sliceOp.getLoc(), elemType,
                                          rewriter.getZeroAttr(elemType));
   }
 
@@ -3006,7 +3008,7 @@ vectorizeAsInsertSliceOp(RewriterBase &rewriter, tensor::InsertSliceOp sliceOp,
 
   // Create read
   SmallVector<Value> readIndices(
-      vecType.getRank(), arith::ConstantIndexOp::create(rewriter, loc, 0));
+      vecType.getRank(), rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0));
   Value read = mlir::vector::createReadOrMaskedRead(
       rewriter, loc, source, vecType, padValue,
       /*useInBoundsInsteadOfMasking=*/inputVectorSizes.empty());
@@ -3093,7 +3095,7 @@ struct PadOpVectorizationWithInsertSlicePattern
     // Generate TransferReadOp: Read entire source tensor and add high
     // padding.
     SmallVector<Value> readIndices(
-        vecRank, arith::ConstantIndexOp::create(rewriter, padOp.getLoc(), 0));
+        vecRank, rewriter.createOrFold<arith::ConstantIndexOp>(padOp.getLoc(), 0));
     auto read = vector::TransferReadOp::create(rewriter, padOp.getLoc(),
                                                vecType, padOp.getSource(),
                                                readIndices, padValue);
@@ -3526,7 +3528,7 @@ public:
     }
 
     vector::TransferWriteOp write;
-    Value zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
+    Value zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
 
     // w is unrolled (i.e. wSizeStep == 1) iff strideW > 1.
     // When strideW == 1, we can batch the contiguous loads and avoid
@@ -3758,7 +3760,7 @@ public:
     bindShapeDims(resShapedType, nSize, wSize);
 
     vector::TransferWriteOp write;
-    Value zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
+    Value zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
 
     // w is unrolled (i.e. wSizeStep == 1) iff strideW > 1.
     // When strideW == 1, we can batch the contiguous loads and avoid

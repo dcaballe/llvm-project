@@ -175,8 +175,8 @@ func.func @pow_0_75_fast(%arg0: f32, %arg1 : vector<4xf32>) -> (f32, vector<4xf3
 // CHECK-SAME: %[[ARG1:.+]]: vector<4xi32>
 // CHECK-SAME: -> (i32, vector<4xi32>) {
 func.func @ipowi_zero_exp(%arg0: i32, %arg1: vector<4xi32>) -> (i32, vector<4xi32>) {
-  // CHECK: %[[CST_S:.*]] = arith.constant 1 : i32
   // CHECK: %[[CST_V:.*]] = arith.constant dense<1> : vector<4xi32>
+  // CHECK: %[[CST_S:.*]] = arith.constant 1 : i32
   // CHECK: return %[[CST_S]], %[[CST_V]]
   %c = arith.constant 0 : i32
   %v = arith.constant dense <0> : vector<4xi32>
@@ -265,8 +265,8 @@ func.func @ipowi_exp_three(%arg0: i32, %arg1: vector<4xi32>) -> (i32, vector<4xi
 // CHECK-SAME: %[[ARG1:.+]]: vector<4xf32>
 // CHECK-SAME: -> (f32, vector<4xf32>) {
 func.func @fpowi_zero_exp(%arg0: f32, %arg1: vector<4xf32>) -> (f32, vector<4xf32>) {
-  // CHECK: %[[CST_S:.*]] = arith.constant 1.000000e+00 : f32
   // CHECK: %[[CST_V:.*]] = arith.constant dense<1.000000e+00> : vector<4xf32>
+  // CHECK: %[[CST_S:.*]] = arith.constant 1.000000e+00 : f32
   // CHECK: return %[[CST_S]], %[[CST_V]]
   %c = arith.constant 0 : i32
   %v = arith.constant dense <0> : vector<4xi32>

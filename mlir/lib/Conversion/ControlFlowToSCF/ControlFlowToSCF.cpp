@@ -115,8 +115,8 @@ ControlFlowToSCFTransformation::createStructuredDoWhileLoopOp(
 Value ControlFlowToSCFTransformation::getCFGSwitchValue(Location loc,
                                                         OpBuilder &builder,
                                                         unsigned int value) {
-  return arith::ConstantOp::create(builder, loc,
-                                   builder.getI32IntegerAttr(value));
+  return builder.createOrFold<arith::ConstantOp>(
+      loc, builder.getI32IntegerAttr(value));
 }
 
 void ControlFlowToSCFTransformation::createCFGSwitchOp(

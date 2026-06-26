@@ -460,7 +460,7 @@ transform::PromoteTensorOp::apply(transform::TransformRewriter &rewriter,
       if (!ShapedType::isDynamic(dim))
         continue;
       Value cst =
-          arith::ConstantIndexOp::create(rewriter, tensor.getLoc(), pos);
+          rewriter.createOrFold<arith::ConstantIndexOp>(tensor.getLoc(), pos);
       auto dimOp =
           tensor::DimOp::create(rewriter, tensor.getLoc(), tensor, cst);
       preservedOps.insert(dimOp);
@@ -3669,8 +3669,8 @@ transform::TileUsingForOp::apply(transform::TransformRewriter &rewriter,
         for (auto [ofrIdx, ofr] : llvm::enumerate(getMixedSizes())) {
           if (auto attr = llvm::dyn_cast_if_present<Attribute>(ofr)) {
             if (scalableSizes[ofrIdx]) {
-              auto val = arith::ConstantIndexOp::create(
-                  b, getLoc(), cast<IntegerAttr>(attr).getInt());
+              auto val = b.createOrFold<arith::ConstantIndexOp>(
+                  getLoc(), cast<IntegerAttr>(attr).getInt());
               Value vscale =
                   vector::VectorScaleOp::create(b, getLoc(), b.getIndexType());
               sizes.push_back(

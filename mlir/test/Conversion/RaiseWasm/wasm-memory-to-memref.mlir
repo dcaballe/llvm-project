@@ -5,10 +5,10 @@
 // CHECK-LABEL:   memref.global "nested" @mem_0 : memref<1xmemref<?xi8>>
 
 // CHECK-LABEL:   func.func @"mem_0::initializer"() attributes {initializer} {
-// CHECK:           %[[VAL_0:.*]] = memref.get_global @mem_0 : memref<1xmemref<?xi8>>
-// CHECK:           %[[VAL_1:.*]] = memref.alloc() : memref<17xi8>
-// CHECK:           %[[VAL_2:.*]] = memref.cast %[[VAL_1]] : memref<17xi8> to memref<?xi8>
-// CHECK:           %[[VAL_3:.*]] = arith.constant 0 : index
-// CHECK:           memref.store %[[VAL_2]], %[[VAL_0]]{{\[}}%[[VAL_3]]] : memref<1xmemref<?xi8>>
+// CHECK:           %[[VAL_0:.*]] = arith.constant 0 : index
+// CHECK:           %[[VAL_1:.*]] = memref.get_global @mem_0 : memref<1xmemref<?xi8>>
+// CHECK:           %[[VAL_2:.*]] = memref.alloc() : memref<17xi8>
+// CHECK:           %[[VAL_3:.*]] = memref.cast %[[VAL_2]] : memref<17xi8> to memref<?xi8>
+// CHECK:           memref.store %[[VAL_3]], %[[VAL_1]]{{\[}}%[[VAL_0]]] : memref<1xmemref<?xi8>>
 // CHECK:           return
 // CHECK:         func.call @"mem_0::initializer"() : () -> ()

@@ -38,13 +38,13 @@ module attributes {transform.with_named_sequence} {
 // CHECK-SAME:      %[[OUTPUT:.*]]: tensor<1x8x?xi8>) -> tensor<1x8x?xi8> {
 
 // CHECK:           %[[C1:.*]] = arith.constant 1 : index
+// CHECK:           %[[C8:.*]] = arith.constant 8 : index
 // CHECK:           %[[C0:.*]] = arith.constant 0 : index
 // CHECK:           %[[PAD:.*]] = arith.constant 0 : i8
 
 /// Create a mask for the input tensor
 // CHECK:           %[[C2:.*]] = arith.constant 2 : index
 // CHECK:           %[[CH_DIM_IN:.*]] = tensor.dim %[[INPUT]], %[[C2]] : tensor<1x8x?xi8>
-// CHECK:           %[[C8:.*]] = arith.constant 8 : index
 // CHECK:           %[[MASK_IN:.*]] = vector.create_mask %[[C1]], %[[C8]], %[[CH_DIM_IN]] : vector<1x8x4xi1>
 /// Read the input tensor
 // CHECK:           %[[VEC_IN:.*]] = vector.mask %[[MASK_IN]] { vector.transfer_read %[[INPUT]]{{\[}}%[[C0]], %[[C0]], %[[C0]]], %[[PAD]] {in_bounds = [true, true, true]} : tensor<1x8x?xi8>, vector<1x8x4xi8> } : vector<1x8x4xi1> -> vector<1x8x4xi8>
@@ -99,13 +99,13 @@ module attributes {transform.with_named_sequence} {
 // CHECK-SAME:      %[[OUTPUT:.*]]: tensor<1x8x?xi8>) -> tensor<1x8x?xi8> {
 
 // CHECK:           %[[C1:.*]] = arith.constant 1 : index
+// CHECK:           %[[C8:.*]] = arith.constant 8 : index
 // CHECK:           %[[C0:.*]] = arith.constant 0 : index
 // CHECK:           %[[PAD:.*]] = arith.constant 0 : i8
 
 /// Create a mask for the input tensor
 // CHECK:           %[[C2:.*]] = arith.constant 2 : index
 // CHECK:           %[[CH_DIM_IN:.*]] = tensor.dim %[[INPUT]], %[[C2]] : tensor<1x8x?xi8>
-// CHECK:           %[[C8:.*]] = arith.constant 8 : index
 // CHECK:           %[[MASK_IN:.*]] = vector.create_mask %[[C1]], %[[C8]], %[[CH_DIM_IN]] : vector<1x8x[4]xi1>
 /// Read the input tensor
 // CHECK:           %[[VEC_IN:.*]] = vector.mask %[[MASK_IN]] { vector.transfer_read %[[INPUT]]{{\[}}%[[C0]], %[[C0]], %[[C0]]], %[[PAD]] {in_bounds = [true, true, true]} : tensor<1x8x?xi8>, vector<1x8x[4]xi8> } : vector<1x8x[4]xi1> -> vector<1x8x[4]xi8>
@@ -159,15 +159,15 @@ module attributes {transform.with_named_sequence} {
 // CHECK-SAME:      %[[FILTER:.*]]: memref<2x?xf32>,
 // CHECK-SAME:      %[[OUTPUT:.*]]: memref<3x2x?xf32>) {
 
+// CHECK:           %[[C3:.*]] = arith.constant 3 : index
+// CHECK:           %[[C2:.*]] = arith.constant 2 : index
 // CHECK:           %[[C1:.*]] = arith.constant 1 : index
 // CHECK:           %[[C0:.*]] = arith.constant 0 : index
 // CHECK:           %[[PAD:.*]] = arith.constant 0.000000e+00 : f32
-// CHECK:           %[[C2:.*]] = arith.constant 2 : index
+// CHECK:           %[[C5:.*]] = arith.constant 5 : index
 
 /// Create a mask for the input tensor
 // CHECK:           %[[CH_DIM_IN:.*]] = memref.dim %[[INPUT]], %[[C2]] : memref<3x5x?xf32>
-// CHECK:           %[[C3:.*]] = arith.constant 3 : index
-// CHECK:           %[[C5:.*]] = arith.constant 5 : index
 // CHECK:           %[[MASK_IN:.*]] = vector.create_mask %[[C3]], %[[C5]], %[[CH_DIM_IN]] : vector<3x4x[4]xi1>
 /// Read the input tensor
 // CHECK:           %[[VEC_IN:.*]] = vector.mask %[[MASK_IN]] { vector.transfer_read %[[INPUT]]{{\[}}%[[C0]], %[[C0]], %[[C0]]], %[[PAD]] {in_bounds = [true, true, true]} : memref<3x5x?xf32>, vector<3x4x[4]xf32> } : vector<3x4x[4]xi1> -> vector<3x4x[4]xf32>

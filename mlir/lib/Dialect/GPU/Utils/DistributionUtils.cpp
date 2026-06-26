@@ -127,7 +127,7 @@ bool WarpDistributionPattern::delinearizeLaneId(
 
   int64_t usedThreads = 1;
 
-  Value zero = arith::ConstantIndexOp::create(builder, loc, 0);
+  Value zero = builder.createOrFold<arith::ConstantIndexOp>(loc, 0);
   delinearizedIds.assign(sizes.size(), zero);
 
   for (int i = sizes.size() - 1; i >= 0; --i) {

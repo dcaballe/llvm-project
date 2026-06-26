@@ -3,9 +3,9 @@
 gpu.module @prefetch_nd_check {
     // CHECK-LABEL: gpu.func @prefetch_nd
     gpu.func @prefetch_nd(%src: memref<8x16xf32, 1>, %dst: memref<8x16xf32, 1>) kernel {
-        // CHECK: %[[BASE_WIDTH_PITCH_BYTES:.*]] = arith.constant 64 : i32
-        // CHECK: %[[OFFSET_ZERO:.*]] = arith.constant 0 : i32
-        // CHECK: %[[BASE_H:.*]] = arith.constant 8 : i32
+        // CHECK-DAG: %[[BASE_WIDTH_PITCH_BYTES:.*]] = arith.constant 64 : i32
+        // CHECK-DAG: %[[OFFSET_ZERO:.*]] = arith.constant 0 : i32
+        // CHECK-DAG: %[[BASE_H:.*]] = arith.constant 8 : i32
         %srcce = memref.memory_space_cast %src : memref<8x16xf32, 1> to memref<8x16xf32>
         %src_tdesc = xegpu.create_nd_tdesc %srcce : memref<8x16xf32> -> !xegpu.tensor_desc<8x16xf32,
             #xegpu.block_tdesc_attr<memory_space = global>, #xegpu.layout<lane_layout = [1, 16], lane_data = [1, 1]>>

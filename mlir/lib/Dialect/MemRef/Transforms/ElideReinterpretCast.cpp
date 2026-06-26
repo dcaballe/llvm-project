@@ -332,10 +332,10 @@ public:
       if (value == 0 || value == 1) {
         Value &cached = cachedIndexConstants[value];
         if (!cached)
-          cached = arith::ConstantIndexOp::create(rewriter, loc, value);
+          cached = rewriter.createOrFold<arith::ConstantIndexOp>(loc, value);
         return cached;
       }
-      return arith::ConstantIndexOp::create(rewriter, loc, value);
+      return rewriter.createOrFold<arith::ConstantIndexOp>(loc, value);
     };
 
     auto getZeroIdxs = [&](int64_t rank) {
@@ -607,7 +607,7 @@ public:
       }
     }
     if (!zeroIndex)
-      zeroIndex = arith::ConstantIndexOp::create(rewriter, op.getLoc(), 0);
+      zeroIndex = rewriter.createOrFold<arith::ConstantIndexOp>(op.getLoc(), 0);
 
     // Initialize new load indices to all 0s.
     SmallVector<Value> rcInputIdxs(rcInputRank, zeroIndex);

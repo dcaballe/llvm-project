@@ -51,8 +51,8 @@ struct CastOpInterface
     if (isa<UnrankedTensorType>(srcType)) {
       // Check rank.
       Value srcRank = RankOp::create(builder, loc, castOp.getSource());
-      Value resultRank =
-          arith::ConstantIndexOp::create(builder, loc, resultType.getRank());
+      Value resultRank = builder.createOrFold<arith::ConstantIndexOp>(
+          loc, resultType.getRank());
       Value isSameRank = arith::CmpIOp::create(
           builder, loc, arith::CmpIPredicate::eq, srcRank, resultRank);
       cf::AssertOp::create(builder, loc, isSameRank,
@@ -73,7 +73,7 @@ struct CastOpInterface
       Value srcDimSz =
           DimOp::create(builder, loc, castOp.getSource(), it.index());
       Value resultDimSz =
-          arith::ConstantIndexOp::create(builder, loc, it.value());
+          builder.createOrFold<arith::ConstantIndexOp>(loc, it.value());
       Value isSameSz = arith::CmpIOp::create(
           builder, loc, arith::CmpIPredicate::eq, srcDimSz, resultDimSz);
       cf::AssertOp::create(
@@ -93,7 +93,7 @@ struct DimOpInterface
                                   generateErrorMessage) const {
     auto dimOp = cast<DimOp>(op);
     Value rank = RankOp::create(builder, loc, dimOp.getSource());
-    Value zero = arith::ConstantIndexOp::create(builder, loc, 0);
+    Value zero = builder.createOrFold<arith::ConstantIndexOp>(loc, 0);
     cf::AssertOp::create(
         builder, loc,
         generateInBoundsCheck(builder, loc, dimOp.getIndex(), zero, rank),
@@ -129,7 +129,7 @@ struct ExtractInsertOpInterface
     }
 
     auto indices = extractInsertOp.getIndices();
-    auto zero = arith::ConstantIndexOp::create(builder, loc, 0);
+    auto zero = builder.createOrFold<arith::ConstantIndexOp>(loc, 0);
     Value assertCond;
     for (auto i : llvm::seq<int64_t>(0, rank)) {
       Value dimOp = builder.createOrFold<tensor::DimOp>(loc, tensor, i);
@@ -159,8 +159,8 @@ struct ExtractSliceOpInterface
     // For non-empty slices (size > 0): 0 <= offset < dim_size
     //                                  0 <= offset + (size - 1) * stride <
     //                                  dim_size
-    Value zero = arith::ConstantIndexOp::create(builder, loc, 0);
-    Value one = arith::ConstantIndexOp::create(builder, loc, 1);
+    Value zero = builder.createOrFold<arith::ConstantIndexOp>(loc, 0);
+    Value one = builder.createOrFold<arith::ConstantIndexOp>(loc, 1);
 
     for (int64_t i : llvm::seq<int64_t>(0, sourceType.getRank())) {
 
@@ -224,7 +224,7 @@ struct ExtractSliceOpInterface
           },
           [&](OpBuilder &b, Location loc) {
             Value trueVal =
-                arith::ConstantOp::create(b, loc, b.getBoolAttr(true));
+                b.createOrFold<arith::ConstantOp>(loc, b.getBoolAttr(true));
             scf::YieldOp::create(b, loc, trueVal);
           });
 

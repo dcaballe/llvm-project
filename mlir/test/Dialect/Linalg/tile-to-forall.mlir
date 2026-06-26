@@ -461,8 +461,8 @@ module attributes {transform.with_named_sequence} {
 //  CHECK-SAME:   %[[B:[0-9a-z]+]]: tensor<?x?xf32>
 //  CHECK-SAME:   %[[C:[0-9a-z]+]]: tensor<?x?xf32>
 func.func @matmul_tile_size_dynamic(%A: tensor<?x?xf32>, %B: tensor<?x?xf32>, %C: tensor<?x?xf32>) -> tensor<?x?xf32> {
-  //      CHECK: %[[c1:.*]] = arith.constant 1 : index
   //      CHECK: %[[c0:.*]] = arith.constant 0 : index
+  //      CHECK: %[[c1:.*]] = arith.constant 1 : index
   //  CHECK-DAG: %[[M:.+]] = tensor.dim %[[A]], %[[c0]] :
   //  CHECK-DAG: %[[N:.+]] = tensor.dim %[[B]], %[[c1]] :
   //  CHECK-DAG: %[[NT0:.+]] = affine.apply #map()[%[[M]]]
@@ -529,8 +529,8 @@ module attributes {transform.with_named_sequence} {
 //  CHECK-SAME:   %[[B:[0-9a-z]+]]: tensor<?x?xf32>
 //  CHECK-SAME:   %[[C:[0-9a-z]+]]: tensor<?x?xf32>
 func.func @matmul_tile_size_dynamic(%A: tensor<?x?xf32>, %B: tensor<?x?xf32>, %C: tensor<?x?xf32>) -> tensor<?x?xf32> {
-  //      CHECK: %[[c1:.*]] = arith.constant 1 : index
   //      CHECK: %[[c0:.*]] = arith.constant 0 : index
+  //      CHECK: %[[c1:.*]] = arith.constant 1 : index
   //  CHECK-DAG: %[[M:.+]] = tensor.dim %[[A]], %[[c0]] :
   //  CHECK-DAG: %[[N:.+]] = tensor.dim %[[B]], %[[c1]] :
   //  CHECK-DAG: %[[NT0:.+]] = affine.apply #map()[%[[M]]]

@@ -32,8 +32,8 @@ static void insertCopyLoops(ImplicitLocOpBuilder &b, Value from, Value to) {
   auto rank = memRefType.getRank();
 
   SmallVector<Value, 4> lbs, ubs, steps;
-  Value zero = arith::ConstantIndexOp::create(b, 0);
-  Value one = arith::ConstantIndexOp::create(b, 1);
+  Value zero = b.createOrFold<arith::ConstantIndexOp>(0);
+  Value one = b.createOrFold<arith::ConstantIndexOp>(1);
 
   // Make sure we have enough loops to use all thread dimensions, these trivial
   // loops should be outermost and therefore inserted first.

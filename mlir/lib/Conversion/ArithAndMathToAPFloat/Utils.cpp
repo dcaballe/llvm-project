@@ -21,8 +21,8 @@ using namespace mlir;
 Value mlir::getAPFloatSemanticsValue(OpBuilder &b, Location loc,
                                      FloatType floatTy) {
   int32_t sem = llvm::APFloatBase::SemanticsToEnum(floatTy.getFloatSemantics());
-  return arith::ConstantOp::create(b, loc, b.getI32Type(),
-                                   b.getIntegerAttr(b.getI32Type(), sem));
+  return b.createOrFold<arith::ConstantOp>(
+      loc, b.getI32Type(), b.getIntegerAttr(b.getI32Type(), sem));
 }
 
 Value mlir::forEachScalarValue(

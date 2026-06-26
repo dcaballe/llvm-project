@@ -535,11 +535,11 @@ func.func @sparse_compression_1d(%tensor: tensor<100xf64, #SV>,
 //  CHECK-SAME:     %[[A6:.*6]]: memref<?xindex>,
 //  CHECK-SAME:     %[[A7:.*7]]: index,
 //  CHECK-SAME:     %[[A8:.*8]]: index) -> (memref<?xi32>, memref<?xi64>, memref<?xf64>, !sparse_tensor.storage_specifier
-//       CHECK:     %[[A9:.*]] = arith.constant 0 : i32
-//       CHECK:     %[[A10:.*]] = arith.constant false
-//       CHECK:     %[[A11:.*]] = arith.constant 0.000000e+00 : f64
-//       CHECK:     %[[A12:.*]] = arith.constant 1 : index
 //       CHECK:     %[[A13:.*]] = arith.constant 0 : index
+//       CHECK:     %[[A12:.*]] = arith.constant 1 : index
+//       CHECK:     %[[A11:.*]] = arith.constant 0.000000e+00 : f64
+//       CHECK:     %[[A10:.*]] = arith.constant false
+//       CHECK:     %[[A9:.*]] = arith.constant 0 : i32
 //       CHECK:     sparse_tensor.sort hybrid_quick_sort %[[A7]], %[[A6]]
 //       CHECK:     %[[A14:.*]]:4 = scf.for %[[A15:.*]] = %[[A13]] to %[[A7]] step %[[A12]] iter_args(%[[A16:.*]] = %[[A0]], %[[A17:.*]] = %[[A1]], %[[A18:.*]] = %[[A2]], %[[A19:.*]] = %[[A3]]) -> (memref<?xi32>, memref<?xi64>, memref<?xf64>, !sparse_tensor.storage_specifier
 //       CHECK:       %[[A20:.*]] = memref.load %[[A6]]{{\[}}%[[A15]]] : memref<?xindex>
@@ -595,10 +595,10 @@ func.func @sparse_compression(%tensor: tensor<8x8xf64, #CSR>,
 //  CHECK-SAME:     %[[A6:.*6]]: memref<?xindex>,
 //  CHECK-SAME:     %[[A7:.*7]]: index,
 //  CHECK-SAME:     %[[A8:.*8]]: index) -> (memref<?xindex>, memref<?xindex>, memref<?xf64>, !sparse_tensor.storage_specifier
-//       CHECK:     %[[A9:.*]] = arith.constant false
-//       CHECK:     %[[A10:.*]] = arith.constant 0.000000e+00 : f64
 //       CHECK:     %[[A11:.*]] = arith.constant 0 : index
 //       CHECK:     %[[A12:.*]] = arith.constant 1 : index
+//       CHECK:     %[[A10:.*]] = arith.constant 0.000000e+00 : f64
+//       CHECK:     %[[A9:.*]] = arith.constant false
 //       CHECK:     %[[A13:.*]]:4 = scf.for %[[A14:.*]] = %[[A11]] to %[[A7]] step %[[A12]] iter_args(%[[A15:.*]] = %[[A0]], %[[A16:.*]] = %[[A1]], %[[A17:.*]] = %[[A2]], %[[A18:.*]] = %[[A3]]) -> (memref<?xindex>, memref<?xindex>, memref<?xf64>, !sparse_tensor.storage_specifier
 //       CHECK:       %[[A19:.*]] = memref.load %[[A6]]{{\[}}%[[A14]]] : memref<?xindex>
 //       CHECK:       %[[A20:.*]] = memref.load %[[A4]]{{\[}}%[[A19]]] : memref<?xf64>

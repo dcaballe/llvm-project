@@ -1394,7 +1394,7 @@ public:
 
     auto loc = op.getLoc();
     auto elemType = vType.getElementType();
-    Value zero = arith::ConstantOp::create(rewriter, loc, elemType,
+    Value zero = rewriter.createOrFold<arith::ConstantOp>(loc, elemType,
                                            rewriter.getZeroAttr(elemType));
     Value desc = vector::BroadcastOp::create(rewriter, loc, vType, zero);
     for (int64_t i = 0, e = vType.getShape().front(); i != e; ++i) {
@@ -1547,7 +1547,7 @@ public:
     // an all-true mask after the comparison.
     if (force32BitVectorIndices) {
       Value maxBound =
-          arith::ConstantIndexOp::create(rewriter, loc, (1LL << 31) - 1);
+          rewriter.createOrFold<arith::ConstantIndexOp>(loc, (1LL << 31) - 1);
       maskBound = arith::MinSIOp::create(rewriter, loc, maskBound, maxBound);
     }
     auto bound =

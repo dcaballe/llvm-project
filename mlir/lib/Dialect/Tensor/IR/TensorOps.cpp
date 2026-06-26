@@ -914,7 +914,7 @@ void DimOp::getAsmResultNames(function_ref<void(Value, StringRef)> setNameFn) {
 void DimOp::build(OpBuilder &builder, OperationState &result, Value source,
                   int64_t index) {
   auto loc = result.location;
-  Value indexValue = arith::ConstantIndexOp::create(builder, loc, index);
+  Value indexValue = builder.createOrFold<arith::ConstantIndexOp>(loc, index);
   build(builder, result, source, indexValue);
 }
 
@@ -3886,7 +3886,7 @@ PadOp::reifyResultShapes(OpBuilder &b,
     }
     Location loc = getLoc();
     Value dim = b.createOrFold<tensor::DimOp>(
-        loc, getSource(), arith::ConstantIndexOp::create(b, loc, i));
+        loc, getSource(), b.createOrFold<arith::ConstantIndexOp>(loc, i));
 
     AffineExpr d0, d1, d2;
     bindDims(b.getContext(), d0, d1, d2);

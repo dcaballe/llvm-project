@@ -271,7 +271,7 @@ static void rewriteAllocations(MutableArrayRef<AllocationCandidate> candidates,
     MemRefType originalType = candidate.alloc.getType();
 
     Value offsetIndex =
-        arith::ConstantIndexOp::create(builder, loc, candidate.offset);
+        builder.createOrFold<arith::ConstantIndexOp>(loc, candidate.offset);
     auto view = memref::ViewOp::create(builder, loc, originalType, arenaValue,
                                        offsetIndex, SmallVector<Value>{});
     candidate.alloc.getResult().replaceAllUsesWith(view.getResult());

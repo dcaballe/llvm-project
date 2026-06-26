@@ -568,8 +568,8 @@ LogicalResult GPUShuffleConversion::matchAndRewrite(
     auto i32Type = rewriter.getIntegerType(32);
     validVal = arith::CmpIOp::create(
         rewriter, loc, arith::CmpIPredicate::sge, resultLaneId,
-        arith::ConstantOp::create(rewriter, loc, i32Type,
-                                  rewriter.getIntegerAttr(i32Type, 0)));
+        rewriter.createOrFold<arith::ConstantOp>(
+            loc, i32Type, rewriter.getIntegerAttr(i32Type, 0)));
     break;
   }
   }
@@ -597,9 +597,9 @@ LogicalResult GPURotateConversion::matchAndRewrite(
   Location loc = rotateOp.getLoc();
   auto scope = rewriter.getAttr<spirv::ScopeAttr>(spirv::Scope::Subgroup);
   Value offsetVal =
-      arith::ConstantOp::create(rewriter, loc, adaptor.getOffsetAttr());
+      rewriter.createOrFold<arith::ConstantOp>(loc, adaptor.getOffsetAttr());
   Value widthVal =
-      arith::ConstantOp::create(rewriter, loc, adaptor.getWidthAttr());
+      rewriter.createOrFold<arith::ConstantOp>(loc, adaptor.getWidthAttr());
   Value rotateResult = spirv::GroupNonUniformRotateKHROp::create(
       rewriter, loc, scope, adaptor.getValue(), offsetVal, widthVal);
   Value validVal;

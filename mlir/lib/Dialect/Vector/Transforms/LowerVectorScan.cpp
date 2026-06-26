@@ -127,7 +127,7 @@ struct ScanToArithOps : public OpRewritePattern<vector::ScanOp> {
           scanOp, "Trying to reduce scalable dimension - not yet supported!");
 
     VectorType resType = destType;
-    Value result = arith::ConstantOp::create(rewriter, loc, resType,
+    Value result = rewriter.createOrFold<arith::ConstantOp>(loc, resType,
                                              rewriter.getZeroAttr(resType));
 
     // The reduction dimension, after reducing, becomes 1. It's a fixed-width

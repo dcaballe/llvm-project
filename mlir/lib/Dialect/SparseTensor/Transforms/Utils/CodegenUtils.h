@@ -312,7 +312,8 @@ inline Value constantZero(OpBuilder &builder, Location loc, Type tp) {
     auto zeroa = builder.getArrayAttr({zeroe, zeroe});
     return complex::ConstantOp::create(builder, loc, tp, zeroa);
   }
-  return arith::ConstantOp::create(builder, loc, tp, builder.getZeroAttr(tp));
+  return builder.createOrFold<arith::ConstantOp>(loc, tp,
+                                                 builder.getZeroAttr(tp));
 }
 
 /// Generates a 1-valued constant of the given type.  This supports all
@@ -324,37 +325,38 @@ inline Value constantOne(OpBuilder &builder, Location loc, Type tp) {
     auto zeroa = builder.getArrayAttr({onee, zeroe});
     return complex::ConstantOp::create(builder, loc, tp, zeroa);
   }
-  return arith::ConstantOp::create(builder, loc, tp, getOneAttr(builder, tp));
+  return builder.createOrFold<arith::ConstantOp>(loc, tp,
+                                                 getOneAttr(builder, tp));
 }
 
 /// Generates a constant of `index` type.
 inline Value constantIndex(OpBuilder &builder, Location loc, int64_t i) {
-  return arith::ConstantIndexOp::create(builder, loc, i);
+  return builder.createOrFold<arith::ConstantIndexOp>(loc, i);
 }
 
 /// Generates a constant of `i64` type.
 inline Value constantI64(OpBuilder &builder, Location loc, int64_t i) {
-  return arith::ConstantIntOp::create(builder, loc, i, 64);
+  return builder.createOrFold<arith::ConstantIntOp>(loc, i, 64);
 }
 
 /// Generates a constant of `i32` type.
 inline Value constantI32(OpBuilder &builder, Location loc, int32_t i) {
-  return arith::ConstantIntOp::create(builder, loc, i, 32);
+  return builder.createOrFold<arith::ConstantIntOp>(loc, i, 32);
 }
 
 /// Generates a constant of `i16` type.
 inline Value constantI16(OpBuilder &builder, Location loc, int16_t i) {
-  return arith::ConstantIntOp::create(builder, loc, i, 16);
+  return builder.createOrFold<arith::ConstantIntOp>(loc, i, 16);
 }
 
 /// Generates a constant of `i8` type.
 inline Value constantI8(OpBuilder &builder, Location loc, int8_t i) {
-  return arith::ConstantIntOp::create(builder, loc, i, 8);
+  return builder.createOrFold<arith::ConstantIntOp>(loc, i, 8);
 }
 
 /// Generates a constant of `i1` type.
 inline Value constantI1(OpBuilder &builder, Location loc, bool b) {
-  return arith::ConstantIntOp::create(builder, loc, b, 1);
+  return builder.createOrFold<arith::ConstantIntOp>(loc, b, 1);
 }
 
 /// Generates a constant of the given `Action`.
@@ -405,7 +407,7 @@ inline Value genValFromAttr(OpBuilder &builder, Location loc, Attribute attr) {
         builder.getArrayAttr({FloatAttr::get(tp, complexAttr.getReal()),
                               FloatAttr::get(tp, complexAttr.getImag())}));
   }
-  return arith::ConstantOp::create(builder, loc, cast<TypedAttr>(attr));
+  return builder.createOrFold<arith::ConstantOp>(loc, cast<TypedAttr>(attr));
 }
 
 // TODO: is this at the right place?

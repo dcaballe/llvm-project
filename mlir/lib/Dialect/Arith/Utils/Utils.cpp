@@ -69,8 +69,8 @@ mlir::inferExpandShapeOutputShape(OpBuilder &b, Location loc,
     // Call get<Value>() under the assumption that we're not casting
     // dynamism.
     Value indexGroupSize = cast<Value>(inputShape[inputIndex]);
-    Value indexGroupStaticSizesProduct =
-        arith::ConstantIndexOp::create(b, loc, indexGroupStaticSizesProductInt);
+    Value indexGroupStaticSizesProduct = b.createOrFold<arith::ConstantIndexOp>(
+        loc, indexGroupStaticSizesProductInt);
     Value dynamicDimSize = b.createOrFold<arith::DivSIOp>(
         loc, indexGroupSize, indexGroupStaticSizesProduct);
     outputShapeValues.push_back(dynamicDimSize);
@@ -107,8 +107,8 @@ Value mlir::getValueOrCreateConstantIntOp(OpBuilder &b, Location loc,
   if (auto value = dyn_cast_if_present<Value>(ofr))
     return value;
   auto attr = cast<IntegerAttr>(cast<Attribute>(ofr));
-  return arith::ConstantOp::create(
-      b, loc, b.getIntegerAttr(attr.getType(), attr.getValue().getSExtValue()));
+  return b.createOrFold<arith::ConstantOp>(
+      loc, b.getIntegerAttr(attr.getType(), attr.getValue().getSExtValue()));
 }
 
 Value mlir::getValueOrCreateConstantIndexOp(OpBuilder &b, Location loc,
@@ -116,7 +116,8 @@ Value mlir::getValueOrCreateConstantIndexOp(OpBuilder &b, Location loc,
   if (auto value = dyn_cast_if_present<Value>(ofr))
     return value;
   auto attr = cast<IntegerAttr>(cast<Attribute>(ofr));
-  return arith::ConstantIndexOp::create(b, loc, attr.getValue().getSExtValue());
+  return b.createOrFold<arith::ConstantIndexOp>(loc,
+                                                attr.getValue().getSExtValue());
 }
 
 Value mlir::getValueOrCreateCastToIndexLike(OpBuilder &b, Location loc,
@@ -217,8 +218,8 @@ static Value convertScalarToComplexDtype(ImplicitLocOpBuilder &b, Value operand,
     if (from.getType().getIntOrFloatBitWidth() > toBitwidth) {
       from = arith::TruncFOp::create(b, toFpTy, from);
     }
-    Value zero = mlir::arith::ConstantFloatOp::create(
-        b, toFpTy, mlir::APFloat(toFpTy.getFloatSemantics(), 0));
+    Value zero = b.createOrFold<mlir::arith::ConstantFloatOp>(
+        toFpTy, mlir::APFloat(toFpTy.getFloatSemantics(), 0));
     return complex::CreateOp::create(b, targetType, from, zero);
   }
 
@@ -230,8 +231,8 @@ static Value convertScalarToComplexDtype(ImplicitLocOpBuilder &b, Value operand,
     } else {
       from = arith::SIToFPOp::create(b, toFpTy, from);
     }
-    Value zero = mlir::arith::ConstantFloatOp::create(
-        b, toFpTy, mlir::APFloat(toFpTy.getFloatSemantics(), 0));
+    Value zero = b.createOrFold<mlir::arith::ConstantFloatOp>(
+        toFpTy, mlir::APFloat(toFpTy.getFloatSemantics(), 0));
     return complex::CreateOp::create(b, targetType, from, zero);
   }
 
@@ -280,7 +281,7 @@ Value mlir::createScalarOrSplatConstant(OpBuilder &builder, Location loc,
     attr = SplatElementsAttr::get(vecTy, value);
   }
 
-  return arith::ConstantOp::create(builder, loc, attr);
+  return builder.createOrFold<arith::ConstantOp>(loc, attr);
 }
 
 Value mlir::createScalarOrSplatConstant(OpBuilder &builder, Location loc,

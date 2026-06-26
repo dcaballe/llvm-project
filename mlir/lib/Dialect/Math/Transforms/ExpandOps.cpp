@@ -46,11 +46,11 @@ static Value createFloatConst(Location loc, Type type, APFloat value,
   auto attr = b.getFloatAttr(eltType, value);
   if (auto shapedTy = dyn_cast<ShapedType>(type)) {
     if (shapedTy.hasStaticShape())
-      return arith::ConstantOp::create(b, loc,
-                                       DenseElementsAttr::get(shapedTy, attr));
+      return b.createOrFold<arith::ConstantOp>(
+          loc, DenseElementsAttr::get(shapedTy, attr));
 
     // Dynamic shape: create scalar constant and splat to the target shape.
-    Value scalar = arith::ConstantOp::create(b, loc, eltType, attr);
+    Value scalar = b.createOrFold<arith::ConstantOp>(loc, eltType, attr);
     SmallVector<Value> dynamicSizes;
     for (int64_t i = 0; i < shapedTy.getRank(); ++i) {
       if (shapedTy.isDynamicDim(i))
@@ -60,7 +60,7 @@ static Value createFloatConst(Location loc, Type type, APFloat value,
     return tensor::SplatOp::create(b, loc, type, scalar, dynamicSizes);
   }
 
-  return arith::ConstantOp::create(b, loc, attr);
+  return b.createOrFold<arith::ConstantOp>(loc, attr);
 }
 
 static Value createFloatConst(Location loc, Type type, double value,
@@ -77,11 +77,11 @@ static Value createIntConst(Location loc, Type type, int64_t value,
   auto attr = b.getIntegerAttr(eltType, value);
   if (auto shapedTy = dyn_cast<ShapedType>(type)) {
     if (shapedTy.hasStaticShape())
-      return arith::ConstantOp::create(b, loc,
-                                       DenseElementsAttr::get(shapedTy, attr));
+      return b.createOrFold<arith::ConstantOp>(
+          loc, DenseElementsAttr::get(shapedTy, attr));
 
     // Dynamic shape: create scalar constant and splat to the target shape.
-    Value scalar = arith::ConstantOp::create(b, loc, eltType, attr);
+    Value scalar = b.createOrFold<arith::ConstantOp>(loc, eltType, attr);
     SmallVector<Value> dynamicSizes;
     for (int64_t i = 0; i < shapedTy.getRank(); ++i) {
       if (shapedTy.isDynamicDim(i))
@@ -91,7 +91,7 @@ static Value createIntConst(Location loc, Type type, int64_t value,
     return tensor::SplatOp::create(b, loc, type, scalar, dynamicSizes);
   }
 
-  return arith::ConstantOp::create(b, loc, attr);
+  return b.createOrFold<arith::ConstantOp>(loc, attr);
 }
 
 static Value createTruncatedFPValue(Value operand, ImplicitLocOpBuilder &b) {

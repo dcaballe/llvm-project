@@ -529,7 +529,8 @@ struct FromElementsOpInterface
     SmallVector<Value, 2> constants;
     constants.reserve(maxDim);
     for (int i = 0; i < maxDim; ++i)
-      constants.push_back(arith::ConstantIndexOp::create(rewriter, loc, i));
+      constants.push_back(
+          rewriter.createOrFold<arith::ConstantIndexOp>(loc, i));
 
     // Traverse all `elements` and create `memref.store` ops.
     auto elementIt = fromElementsOp.getElements().begin();
@@ -785,9 +786,8 @@ struct PadOpInterface
     auto toValue = [&](OpFoldResult ofr) {
       if (auto value = dyn_cast<Value>(ofr))
         return value;
-      return arith::ConstantIndexOp::create(rewriter, loc,
-                                            *getConstantIntValue(ofr))
-          .getResult();
+      return rewriter.createOrFold<arith::ConstantIndexOp>(
+          loc, *getConstantIntValue(ofr));
     };
 
     // Compute dynamic result dimensions.

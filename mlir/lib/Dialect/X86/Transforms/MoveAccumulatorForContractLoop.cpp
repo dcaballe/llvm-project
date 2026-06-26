@@ -82,9 +82,8 @@ struct MoveAccumulatorForContractLoop
     Location loc = accReadOp->getLoc();
     Type elemTy = vecTy.getElementType();
 
-    Value zeroVec = arith::ConstantOp::create(
-        rewriter, loc,
-        DenseElementsAttr::get(vecTy, rewriter.getZeroAttr(elemTy)));
+    Value zeroVec = rewriter.createOrFold<arith::ConstantOp>(
+        loc, DenseElementsAttr::get(vecTy, rewriter.getZeroAttr(elemTy)));
 
     accValue.replaceAllUsesWith(zeroVec);
 

@@ -119,8 +119,8 @@ VecOpToScalarOp<Op>::matchAndRewrite(Op op, PatternRewriter &rewriter) const {
     initValueAttr = FloatAttr::get(resultElementType, 0.0);
   else
     initValueAttr = IntegerAttr::get(resultElementType, 0);
-  Value result = arith::ConstantOp::create(
-      rewriter, loc, DenseElementsAttr::get(vecType, initValueAttr));
+  Value result = rewriter.createOrFold<arith::ConstantOp>(
+      loc, DenseElementsAttr::get(vecType, initValueAttr));
   SmallVector<int64_t> strides = computeStrides(shape);
   for (int64_t linearIndex = 0; linearIndex < numElements; ++linearIndex) {
     SmallVector<int64_t> positions = delinearize(linearIndex, strides);
@@ -206,12 +206,12 @@ static func::FuncOp createElementIPowIFunc(ModuleOp *module, Type elementType) {
   Value bArg = funcOp.getArgument(0);
   Value pArg = funcOp.getArgument(1);
   builder.setInsertionPointToEnd(entryBlock);
-  Value zeroValue = arith::ConstantOp::create(
-      builder, elementType, builder.getIntegerAttr(elementType, 0));
-  Value oneValue = arith::ConstantOp::create(
-      builder, elementType, builder.getIntegerAttr(elementType, 1));
-  Value minusOneValue = arith::ConstantOp::create(
-      builder, elementType,
+  Value zeroValue = builder.createOrFold<arith::ConstantOp>(
+      elementType, builder.getIntegerAttr(elementType, 0));
+  Value oneValue = builder.createOrFold<arith::ConstantOp>(
+      elementType, builder.getIntegerAttr(elementType, 1));
+  Value minusOneValue = builder.createOrFold<arith::ConstantOp>(
+      elementType,
       builder.getIntegerAttr(elementType,
                              APInt(elementType.getIntOrFloatBitWidth(), -1ULL,
                                    /*isSigned=*/true)));
@@ -433,20 +433,18 @@ static func::FuncOp createElementFPowIFunc(ModuleOp *module,
   Value bArg = funcOp.getArgument(0);
   Value pArg = funcOp.getArgument(1);
   builder.setInsertionPointToEnd(entryBlock);
-  Value oneBValue = arith::ConstantOp::create(
-      builder, baseType, builder.getFloatAttr(baseType, 1.0));
-  Value zeroPValue = arith::ConstantOp::create(
-      builder, powType, builder.getIntegerAttr(powType, 0));
-  Value onePValue = arith::ConstantOp::create(
-      builder, powType, builder.getIntegerAttr(powType, 1));
-  Value minPValue = arith::ConstantOp::create(
-      builder, powType,
-      builder.getIntegerAttr(
-          powType, llvm::APInt::getSignedMinValue(powType.getWidth())));
-  Value maxPValue = arith::ConstantOp::create(
-      builder, powType,
-      builder.getIntegerAttr(
-          powType, llvm::APInt::getSignedMaxValue(powType.getWidth())));
+  Value oneBValue = builder.createOrFold<arith::ConstantOp>(
+      baseType, builder.getFloatAttr(baseType, 1.0));
+  Value zeroPValue = builder.createOrFold<arith::ConstantOp>(
+      powType, builder.getIntegerAttr(powType, 0));
+  Value onePValue = builder.createOrFold<arith::ConstantOp>(
+      powType, builder.getIntegerAttr(powType, 1));
+  Value minPValue = builder.createOrFold<arith::ConstantOp>(
+      powType, builder.getIntegerAttr(powType, llvm::APInt::getSignedMinValue(
+                                                   powType.getWidth())));
+  Value maxPValue = builder.createOrFold<arith::ConstantOp>(
+      powType, builder.getIntegerAttr(powType, llvm::APInt::getSignedMaxValue(
+                                                   powType.getWidth())));
 
   // if (p == Tp{0})
   //   return Tb{1};
@@ -683,10 +681,10 @@ static func::FuncOp createCtlzFunc(ModuleOp *module, Type elementType) {
 
   Value arg = funcOp.getArgument(0);
   Type indexType = builder.getIndexType();
-  Value bitWidthValue = arith::ConstantOp::create(
-      builder, elementType, builder.getIntegerAttr(elementType, bitWidth));
-  Value zeroValue = arith::ConstantOp::create(
-      builder, elementType, builder.getIntegerAttr(elementType, 0));
+  Value bitWidthValue = builder.createOrFold<arith::ConstantOp>(
+      elementType, builder.getIntegerAttr(elementType, bitWidth));
+  Value zeroValue = builder.createOrFold<arith::ConstantOp>(
+      elementType, builder.getIntegerAttr(elementType, 0));
 
   Value inputEqZero =
       arith::CmpIOp::create(builder, arith::CmpIPredicate::eq, arg, zeroValue);
@@ -701,14 +699,14 @@ static func::FuncOp createCtlzFunc(ModuleOp *module, Type elementType) {
   auto elseBuilder =
       ImplicitLocOpBuilder::atBlockEnd(loc, &ifOp.getElseRegion().front());
 
-  Value oneIndex = arith::ConstantOp::create(elseBuilder, indexType,
-                                             elseBuilder.getIndexAttr(1));
-  Value oneValue = arith::ConstantOp::create(
-      elseBuilder, elementType, elseBuilder.getIntegerAttr(elementType, 1));
-  Value bitWidthIndex = arith::ConstantOp::create(
-      elseBuilder, indexType, elseBuilder.getIndexAttr(bitWidth));
-  Value nValue = arith::ConstantOp::create(
-      elseBuilder, elementType, elseBuilder.getIntegerAttr(elementType, 0));
+  Value oneIndex = elseBuilder.createOrFold<arith::ConstantOp>(
+      indexType, elseBuilder.getIndexAttr(1));
+  Value oneValue = elseBuilder.createOrFold<arith::ConstantOp>(
+      elementType, elseBuilder.getIntegerAttr(elementType, 1));
+  Value bitWidthIndex = elseBuilder.createOrFold<arith::ConstantOp>(
+      indexType, elseBuilder.getIndexAttr(bitWidth));
+  Value nValue = elseBuilder.createOrFold<arith::ConstantOp>(
+      elementType, elseBuilder.getIntegerAttr(elementType, 0));
 
   auto loop = scf::ForOp::create(
       elseBuilder, oneIndex, bitWidthIndex, oneIndex,

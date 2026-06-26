@@ -357,8 +357,8 @@ gpu.module @xevm_module{
 
 // -----
 // CHECK-LABEL: gpu.func @load_store_matrix_1({{.*}}) {
-// CHECK: %[[C2:.*]] = arith.constant 2 : index
-// CHECK: %[[C8:.*]] = arith.constant 8 : index
+// CHECK-DAG: %[[C2:.*]] = arith.constant 2 : index
+// CHECK-DAG: %[[C8:.*]] = arith.constant 8 : index
 // CHECK: %[[LANE_ID:.*]] = gpu.lane_id
 // CHECK: %[[REMU1:.*]] = arith.remui %[[LANE_ID]], %[[C8]]
 // CHECK: %[[DIVU:.*]] = arith.divui %[[LANE_ID]], %[[C8]]
@@ -378,10 +378,10 @@ gpu.module @xevm_module{
 
 // -----
 // CHECK-LABEL: gpu.func @load_store_matrix_2({{.*}}) {
-// CHECK: %[[C8:.*]] = arith.constant 8 : index
-// CHECK: %[[C2:.*]] = arith.constant 2 : index
-// CHECK: %[[C4:.*]] = arith.constant 4 : index
-// CHECK: %[[C1:.*]] = arith.constant 1 : index
+// CHECK-DAG: %[[C8:.*]] = arith.constant 8 : index
+// CHECK-DAG: %[[C2:.*]] = arith.constant 2 : index
+// CHECK-DAG: %[[C4:.*]] = arith.constant 4 : index
+// CHECK-DAG: %[[C1:.*]] = arith.constant 1 : index
 // CHECK: %[[LANE_ID:.*]] = gpu.lane_id
 // CHECK: %[[REMU1:.*]] = arith.remui %[[LANE_ID]], %[[C4]]
 // CHECK: %[[DIVU:.*]] = arith.divui %[[LANE_ID]], %[[C4]]

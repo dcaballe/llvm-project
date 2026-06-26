@@ -225,9 +225,8 @@ public:
 
     // Initial accumulator for the final result. This is the un-tiled result if
     // tiling is done.
-    Value result =
-        arith::ConstantOp::create(rewriter, loc, op.getResultType(),
-                                  rewriter.getZeroAttr(op.getResultType()));
+    Value result = rewriter.createOrFold<arith::ConstantOp>(
+        loc, op.getResultType(), rewriter.getZeroAttr(op.getResultType()));
 
     SmallVector<int64_t, 3> loopOrder = {0, 1};
     if (iterationBounds.size() == 3)
@@ -263,9 +262,8 @@ public:
       if (dimM == 1) {
         auto expandRowVector = [&](Value tiledOperand,
                                    VectorType expandedTypeType) {
-          auto emptyOperand =
-              arith::ConstantOp::create(rewriter, loc, expandedTypeType,
-                                        rewriter.getZeroAttr(expandedTypeType));
+          auto emptyOperand = rewriter.createOrFold<arith::ConstantOp>(
+              loc, expandedTypeType, rewriter.getZeroAttr(expandedTypeType));
           SmallVector<int64_t> offsets(
               cast<ShapedType>(emptyOperand.getType()).getRank(), 0);
           SmallVector<int64_t> strides(

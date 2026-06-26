@@ -129,7 +129,7 @@ static Value createDestinationPassingStyleInitOperand(
     ImplicitLocOpBuilder &builder) {
   Value processLinearIndexInReductionGroup = shard::createProcessLinearIndex(
       builder, gridOp.getSymName(), reductionGridAxes);
-  Value zero = arith::ConstantIndexOp::create(builder, 0);
+  Value zero = builder.createOrFold<arith::ConstantIndexOp>(0);
   Value isLeadProcess = arith::CmpIOp::create(
       builder, builder.getI1Type(), arith::CmpIPredicate::eq,
       processLinearIndexInReductionGroup, zero);
@@ -158,7 +158,7 @@ static Value createDestinationPassingStyleInitOperand(
     Value init = tensor::EmptyOp::create(builder, op.getLoc(), shape,
                                          neutralEl.value().getType());
     Value constant =
-        arith::ConstantOp::create(builder, op.getLoc(), neutralEl.value());
+        builder.createOrFold<arith::ConstantOp>(op.getLoc(), neutralEl.value());
     Value fill = linalg::FillOp::create(builder, op.getLoc(), constant, init)
                      .getResult(0);
 

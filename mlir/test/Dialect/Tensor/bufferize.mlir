@@ -541,10 +541,10 @@ func.func @tensor.reshape(%t1: tensor<?x10xf32>) -> tensor<2x2x5xf32> {
   // CHECK: %[[five:.*]] = arith.constant 5 : i64
   %five = arith.constant 5 : i64
 
-  // CHECK: %[[alloc:.*]] = memref.alloc() {alignment = 64 : i64} : memref<3xi64>
   // CHECK: %[[zero_idx:.*]] = arith.constant 0 : index
   // CHECK: %[[one_idx:.*]] = arith.constant 1 : index
   // CHECK: %[[two_idx:.*]] = arith.constant 2 : index
+  // CHECK: %[[alloc:.*]] = memref.alloc() {alignment = 64 : i64} : memref<3xi64>
   // CHECK: memref.store %[[two]], %[[alloc]][%[[zero_idx]]] : memref<3xi64>
   // CHECK: memref.store %[[two]], %[[alloc]][%[[one_idx]]] : memref<3xi64>
   // CHECK: memref.store %[[five]], %[[alloc]][%[[two_idx]]] : memref<3xi64>

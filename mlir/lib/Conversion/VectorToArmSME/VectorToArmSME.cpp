@@ -311,10 +311,10 @@ struct TransposeOpToArmSMELowering
     // Allocate buffer to store input tile to.
     Value vscale =
         vector::VectorScaleOp::create(rewriter, loc, rewriter.getIndexType());
-    Value minTileSlices = arith::ConstantOp::create(
-        rewriter, loc, rewriter.getIndexAttr(tileType.getDimSize(0)));
+    Value minTileSlices = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getIndexAttr(tileType.getDimSize(0)));
     Value c0 =
-        arith::ConstantOp::create(rewriter, loc, rewriter.getIndexAttr(0));
+        rewriter.createOrFold<arith::ConstantOp>(loc, rewriter.getIndexAttr(0));
     Value numTileSlices =
         arith::MulIOp::create(rewriter, loc, vscale, minTileSlices);
     auto bufferType =
@@ -584,10 +584,10 @@ struct VectorPrintToArmSMELowering : public OpRewritePattern<vector::PrintOp> {
     // Create a loop over the rows of the tile.
     auto vscale = vector::VectorScaleOp::create(rewriter, loc);
     auto minTileRows =
-        arith::ConstantIndexOp::create(rewriter, loc, vectorType.getDimSize(0));
-    auto lowerBound = arith::ConstantIndexOp::create(rewriter, loc, 0);
+        rewriter.createOrFold<arith::ConstantIndexOp>(loc, vectorType.getDimSize(0));
+    auto lowerBound = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
     auto upperBound = arith::MulIOp::create(rewriter, loc, minTileRows, vscale);
-    auto step = arith::ConstantIndexOp::create(rewriter, loc, 1);
+    auto step = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
     auto forOp =
         scf::ForOp::create(rewriter, loc, lowerBound, upperBound, step);
     {
@@ -648,7 +648,7 @@ struct FoldTransferWriteOfExtractTileSlice
     Value mask = writeOp.getMask();
     if (!mask) {
       auto maskType = writeOp.getVectorType().clone(rewriter.getI1Type());
-      mask = arith::ConstantOp::create(rewriter, writeOp.getLoc(), maskType,
+      mask = rewriter.createOrFold<arith::ConstantOp>(writeOp.getLoc(), maskType,
                                        DenseElementsAttr::get(maskType, true));
     }
 

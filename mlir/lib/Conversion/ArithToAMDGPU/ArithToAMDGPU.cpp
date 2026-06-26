@@ -142,8 +142,8 @@ ExtFOnFloat8RewritePattern::matchAndRewrite(arith::ExtFOp op,
   }
   int64_t numElements = inVecType.getNumElements();
 
-  Value zero = arith::ConstantOp::create(
-      rewriter, loc, outElemType, rewriter.getFloatAttr(outElemType, 0.0));
+  Value zero = rewriter.createOrFold<arith::ConstantOp>(
+      loc, outElemType, rewriter.getFloatAttr(outElemType, 0.0));
   VectorType outType = cast<VectorType>(op.getOut().getType());
 
   if (inVecType.getShape().empty()) {
@@ -296,8 +296,8 @@ TruncFToFloat8RewritePattern::matchAndRewrite(arith::TruncFOp op,
   }
 
   int64_t numElements = outVecType.getNumElements();
-  Value zero = arith::ConstantOp::create(
-      rewriter, loc, outElemType, rewriter.getFloatAttr(outElemType, 0.0));
+  Value zero = rewriter.createOrFold<arith::ConstantOp>(
+      loc, outElemType, rewriter.getFloatAttr(outElemType, 0.0));
   if (outVecType.getShape().empty()) {
     Value scalarIn =
         vector::ExtractOp::create(rewriter, loc, in, ArrayRef<int64_t>{});
@@ -509,8 +509,8 @@ ScalingExtFRewritePattern::matchAndRewrite(arith::ScalingExtFOp op,
 
   int64_t blockSize = computeProduct(ratio);
 
-  Value zero = arith::ConstantOp::create(rewriter, loc, outType,
-                                         rewriter.getFloatAttr(outType, 0.0));
+  Value zero = rewriter.createOrFold<arith::ConstantOp>(
+      loc, outType, rewriter.getFloatAttr(outType, 0.0));
   Value result =
       rewriter.createOrFold<vector::BroadcastOp>(loc, outVecType, zero);
 
@@ -594,8 +594,8 @@ ScalingTruncFRewritePattern::matchAndRewrite(arith::ScalingTruncFOp op,
   else if (scaleType.getIntOrFloatBitWidth() > 32)
     scale = arith::TruncFOp::create(rewriter, loc, scaleF32Type, scale);
 
-  Value zero = arith::ConstantOp::create(rewriter, loc, outType,
-                                         rewriter.getFloatAttr(outType, 0.0));
+  Value zero = rewriter.createOrFold<arith::ConstantOp>(
+      loc, outType, rewriter.getFloatAttr(outType, 0.0));
   int64_t opOutWidth = 32 / outType.getIntOrFloatBitWidth();
   VectorType truncScaleResultType = VectorType::get(opOutWidth, outType);
 

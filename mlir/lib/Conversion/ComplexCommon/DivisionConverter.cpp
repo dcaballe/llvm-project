@@ -319,8 +319,8 @@ void mlir::complex::convertDivToStandardUsingRangeReduction(
 
   // Consider corner cases.
   // Case 1. Zero denominator, numerator contains at most one NaN value.
-  Value zero = arith::ConstantOp::create(rewriter, loc, elementType,
-                                         rewriter.getZeroAttr(elementType));
+  Value zero = rewriter.createOrFold<arith::ConstantOp>(
+      loc, elementType, rewriter.getZeroAttr(elementType));
   Value rhsRealAbs = math::AbsFOp::create(rewriter, loc, rhsRe, fmf);
   Value rhsRealIsZero = arith::CmpFOp::create(
       rewriter, loc, arith::CmpFPredicate::OEQ, rhsRealAbs, zero);
@@ -336,8 +336,8 @@ void mlir::complex::convertDivToStandardUsingRangeReduction(
   Value resultIsInfinity = arith::AndIOp::create(
       rewriter, loc, lhsContainsNotNaNValue,
       arith::AndIOp::create(rewriter, loc, rhsRealIsZero, rhsImagIsZero));
-  Value inf = arith::ConstantOp::create(
-      rewriter, loc, elementType,
+  Value inf = rewriter.createOrFold<arith::ConstantOp>(
+      loc, elementType,
       rewriter.getFloatAttr(elementType,
                             APFloat::getInf(elementType.getFloatSemantics())));
   Value infWithSignOfRhsReal =
@@ -364,8 +364,8 @@ void mlir::complex::convertDivToStandardUsingRangeReduction(
       arith::OrIOp::create(rewriter, loc, lhsRealInfinite, lhsImagInfinite);
   Value infNumFiniteDenom =
       arith::AndIOp::create(rewriter, loc, lhsInfinite, rhsFinite);
-  Value one = arith::ConstantOp::create(rewriter, loc, elementType,
-                                        rewriter.getFloatAttr(elementType, 1));
+  Value one = rewriter.createOrFold<arith::ConstantOp>(
+      loc, elementType, rewriter.getFloatAttr(elementType, 1));
   Value lhsRealIsInfWithSign = math::CopySignOp::create(
       rewriter, loc,
       arith::SelectOp::create(rewriter, loc, lhsRealInfinite, one, zero),

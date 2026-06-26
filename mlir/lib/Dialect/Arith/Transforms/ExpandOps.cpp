@@ -28,10 +28,10 @@ static Value createConst(Location loc, Type type, int value,
                          PatternRewriter &rewriter) {
   auto attr = rewriter.getIntegerAttr(getElementTypeOrSelf(type), value);
   if (auto shapedTy = dyn_cast<ShapedType>(type)) {
-    return arith::ConstantOp::create(rewriter, loc,
-                                     DenseElementsAttr::get(shapedTy, attr));
+    return rewriter.createOrFold<arith::ConstantOp>(
+        loc, DenseElementsAttr::get(shapedTy, attr));
   }
-  return arith::ConstantOp::create(rewriter, loc, attr);
+  return rewriter.createOrFold<arith::ConstantOp>(loc, attr);
 }
 
 /// Create an integer constant from an APInt.
@@ -39,10 +39,10 @@ static Value createAPIntConst(Location loc, Type type, const APInt &value,
                               PatternRewriter &rewriter) {
   auto attr = IntegerAttr::get(getElementTypeOrSelf(type), value);
   if (auto shapedTy = dyn_cast<ShapedType>(type)) {
-    return arith::ConstantOp::create(rewriter, loc,
-                                     DenseElementsAttr::get(shapedTy, attr));
+    return rewriter.createOrFold<arith::ConstantOp>(
+        loc, DenseElementsAttr::get(shapedTy, attr));
   }
-  return arith::ConstantOp::create(rewriter, loc, attr);
+  return rewriter.createOrFold<arith::ConstantOp>(loc, attr);
 }
 
 /// Create a float constant.
@@ -50,11 +50,11 @@ static Value createFloatConst(Location loc, Type type, const APFloat &value,
                               PatternRewriter &rewriter) {
   auto attr = rewriter.getFloatAttr(getElementTypeOrSelf(type), value);
   if (auto shapedTy = dyn_cast<ShapedType>(type)) {
-    return arith::ConstantOp::create(rewriter, loc,
-                                     DenseElementsAttr::get(shapedTy, attr));
+    return rewriter.createOrFold<arith::ConstantOp>(
+        loc, DenseElementsAttr::get(shapedTy, attr));
   }
 
-  return arith::ConstantOp::create(rewriter, loc, attr);
+  return rewriter.createOrFold<arith::ConstantOp>(loc, attr);
 }
 
 /// Creates shapedType using shape from cloneFrom and base type from cloneTo

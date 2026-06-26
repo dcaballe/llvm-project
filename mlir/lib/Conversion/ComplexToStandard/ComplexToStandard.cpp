@@ -30,8 +30,8 @@ enum class AbsFn { abs, sqrt, rsqrt };
 // Returns the absolute value, its square root or its reciprocal square root.
 Value computeAbs(Value real, Value imag, arith::FastMathFlags fmf,
                  ImplicitLocOpBuilder &b, AbsFn fn = AbsFn::abs) {
-  Value one = arith::ConstantOp::create(b, real.getType(),
-                                        b.getFloatAttr(real.getType(), 1.0));
+  Value one = b.createOrFold<arith::ConstantOp>(
+      real.getType(), b.getFloatAttr(real.getType(), 1.0));
 
   Value absReal = math::AbsFOp::create(b, real, fmf);
   Value absImag = math::AbsFOp::create(b, imag, fmf);
@@ -54,8 +54,8 @@ Value computeAbs(Value real, Value imag, arith::FastMathFlags fmf,
   }
 
   if (fn == AbsFn::sqrt) {
-    Value quarter = arith::ConstantOp::create(
-        b, real.getType(), b.getFloatAttr(real.getType(), 0.25));
+    Value quarter = b.createOrFold<arith::ConstantOp>(
+        real.getType(), b.getFloatAttr(real.getType(), 0.25));
     // sqrt(sqrt(a*b)) would avoid the pow, but will overflow more easily.
     Value sqrt = math::SqrtOp::create(b, max, fmfWithNaNInf);
     Value p025 =
@@ -112,10 +112,10 @@ struct Atan2OpConversion : public OpConversionPattern<complex::Atan2Op> {
     Value sqrtOfRhsSquaredPlusLhsSquared =
         complex::SqrtOp::create(b, type, rhsSquaredPlusLhsSquared, fmf);
 
-    Value zero =
-        arith::ConstantOp::create(b, elementType, b.getZeroAttr(elementType));
-    Value one = arith::ConstantOp::create(b, elementType,
-                                          b.getFloatAttr(elementType, 1));
+    Value zero = b.createOrFold<arith::ConstantOp>(elementType,
+                                                   b.getZeroAttr(elementType));
+    Value one = b.createOrFold<arith::ConstantOp>(
+        elementType, b.getFloatAttr(elementType, 1));
     Value i = complex::CreateOp::create(b, type, zero, one);
     Value iTimesLhs = complex::MulOp::create(b, i, lhs, fmf);
     Value rhsPlusILhs = complex::AddOp::create(b, rhs, iTimesLhs, fmf);
@@ -124,8 +124,8 @@ struct Atan2OpConversion : public OpConversionPattern<complex::Atan2Op> {
         b, rhsPlusILhs, sqrtOfRhsSquaredPlusLhsSquared, fmf);
     Value logResult = complex::LogOp::create(b, divResult, fmf);
 
-    Value negativeOne = arith::ConstantOp::create(
-        b, elementType, b.getFloatAttr(elementType, -1));
+    Value negativeOne = b.createOrFold<arith::ConstantOp>(
+        elementType, b.getFloatAttr(elementType, -1));
     Value negativeI = complex::CreateOp::create(b, type, zero, negativeOne);
 
     rewriter.replaceOpWithNewOp<complex::MulOp>(op, negativeI, logResult, fmf);
@@ -216,8 +216,8 @@ struct TrigonometricOpConversion : public OpConversionPattern<TrigonometricOp> {
     // Trigonometric ops use a set of common building blocks to convert to real
     // ops. Here we create these building blocks and call into an op-specific
     // implementation in the subclass to combine them.
-    Value half = arith::ConstantOp::create(
-        rewriter, loc, elementType, rewriter.getFloatAttr(elementType, 0.5));
+    Value half = rewriter.createOrFold<arith::ConstantOp>(
+        loc, elementType, rewriter.getFloatAttr(elementType, 0.5));
     Value exp = math::ExpOp::create(rewriter, loc, imag, fmf);
     Value scaledExp = arith::MulFOp::create(rewriter, loc, half, exp, fmf);
     Value reciprocalExp = arith::DivFOp::create(rewriter, loc, half, exp, fmf);
@@ -329,10 +329,10 @@ struct ExpOpConversion : public OpConversionPattern<complex::ExpOp> {
 
     Value x = complex::ReOp::create(b, ET, adaptor.getComplex());
     Value y = complex::ImOp::create(b, ET, adaptor.getComplex());
-    Value zero = arith::ConstantOp::create(b, ET, b.getZeroAttr(ET));
-    Value half = arith::ConstantOp::create(b, ET, b.getFloatAttr(ET, 0.5));
-    Value inf = arith::ConstantOp::create(
-        b, ET, b.getFloatAttr(ET, APFloat::getInf(floatSemantics)));
+    Value zero = b.createOrFold<arith::ConstantOp>(ET, b.getZeroAttr(ET));
+    Value half = b.createOrFold<arith::ConstantOp>(ET, b.getFloatAttr(ET, 0.5));
+    Value inf = b.createOrFold<arith::ConstantOp>(
+        ET, b.getFloatAttr(ET, APFloat::getInf(floatSemantics)));
 
     Value exp = math::ExpOp::create(b, x, fmf);
     Value xHalf = arith::MulFOp::create(b, x, half, fmf);
@@ -371,13 +371,13 @@ Value evaluatePolynomial(ImplicitLocOpBuilder &b, Value arg,
                          ArrayRef<double> coefficients,
                          arith::FastMathFlagsAttr fmf) {
   auto argType = mlir::cast<FloatType>(arg.getType());
-  Value poly =
-      arith::ConstantOp::create(b, b.getFloatAttr(argType, coefficients[0]));
+  Value poly = b.createOrFold<arith::ConstantOp>(
+      b.getFloatAttr(argType, coefficients[0]));
   for (unsigned i = 1; i < coefficients.size(); ++i) {
-    poly = math::FmaOp::create(
-        b, poly, arg,
-        arith::ConstantOp::create(b, b.getFloatAttr(argType, coefficients[i])),
-        fmf);
+    poly = math::FmaOp::create(b, poly, arg,
+                               b.createOrFold<arith::ConstantOp>(
+                                   b.getFloatAttr(argType, coefficients[i])),
+                               fmf);
   }
   return poly;
 }
@@ -400,8 +400,10 @@ struct Expm1OpConversion : public OpConversionPattern<complex::Expm1Op> {
     Value real = complex::ReOp::create(b, adaptor.getComplex());
     Value imag = complex::ImOp::create(b, adaptor.getComplex());
 
-    Value zero = arith::ConstantOp::create(b, b.getFloatAttr(elemType, 0.0));
-    Value one = arith::ConstantOp::create(b, b.getFloatAttr(elemType, 1.0));
+    Value zero =
+        b.createOrFold<arith::ConstantOp>(b.getFloatAttr(elemType, 0.0));
+    Value one =
+        b.createOrFold<arith::ConstantOp>(b.getFloatAttr(elemType, 1.0));
 
     Value expm1Real = math::ExpM1Op::create(b, real, fmf);
     Value expReal = arith::AddFOp::create(b, expm1Real, one, fmf);
@@ -427,8 +429,10 @@ private:
   Value emitCosm1(Value arg, arith::FastMathFlagsAttr fmf,
                   ImplicitLocOpBuilder &b) const {
     auto argType = mlir::cast<FloatType>(arg.getType());
-    auto negHalf = arith::ConstantOp::create(b, b.getFloatAttr(argType, -0.5));
-    auto negOne = arith::ConstantOp::create(b, b.getFloatAttr(argType, -1.0));
+    auto negHalf =
+        b.createOrFold<arith::ConstantOp>(b.getFloatAttr(argType, -0.5));
+    auto negOne =
+        b.createOrFold<arith::ConstantOp>(b.getFloatAttr(argType, -1.0));
 
     // Algorithm copied from cephes cosm1.
     SmallVector<double, 7> kCoeffs{
@@ -450,7 +454,7 @@ private:
 
     // (pi/4)^2 is approximately 0.61685
     Value piOver4Pow2 =
-        arith::ConstantOp::create(b, b.getFloatAttr(argType, 0.61685));
+        b.createOrFold<arith::ConstantOp>(b.getFloatAttr(argType, 0.61685));
     Value cond = arith::CmpFOp::create(b, arith::CmpFPredicate::OGE, argPow2,
                                        piOver4Pow2, fmf.getValue());
     return arith::SelectOp::create(b, cond, forLargeArg, forSmallArg);
@@ -495,10 +499,10 @@ struct Log1pOpConversion : public OpConversionPattern<complex::Log1pOp> {
     Value real = complex::ReOp::create(b, adaptor.getComplex());
     Value imag = complex::ImOp::create(b, adaptor.getComplex());
 
-    Value half = arith::ConstantOp::create(b, elementType,
-                                           b.getFloatAttr(elementType, 0.5));
-    Value one = arith::ConstantOp::create(b, elementType,
-                                          b.getFloatAttr(elementType, 1));
+    Value half = b.createOrFold<arith::ConstantOp>(
+        elementType, b.getFloatAttr(elementType, 0.5));
+    Value one = b.createOrFold<arith::ConstantOp>(
+        elementType, b.getFloatAttr(elementType, 1));
     Value realPlusOne = arith::AddFOp::create(b, real, one, fmf);
     Value absRealPlusOne = math::AbsFOp::create(b, realPlusOne, fmf);
     Value absImag = math::AbsFOp::create(b, imag, fmf);
@@ -644,13 +648,13 @@ struct SqrtOpConversion : public OpConversionPattern<complex::SqrtOp> {
     arith::FastMathFlags fmf = op.getFastMathFlagsAttr().getValue();
 
     auto cst = [&](APFloat v) {
-      return arith::ConstantOp::create(b, elementType,
-                                       b.getFloatAttr(elementType, v));
+      return b.createOrFold<arith::ConstantOp>(elementType,
+                                               b.getFloatAttr(elementType, v));
     };
     const auto &floatSemantics = elementType.getFloatSemantics();
     Value zero = cst(APFloat::getZero(floatSemantics));
-    Value half = arith::ConstantOp::create(b, elementType,
-                                           b.getFloatAttr(elementType, 0.5));
+    Value half = b.createOrFold<arith::ConstantOp>(
+        elementType, b.getFloatAttr(elementType, 0.5));
 
     Value real = complex::ReOp::create(b, elementType, adaptor.getComplex());
     Value imag = complex::ImOp::create(b, elementType, adaptor.getComplex());
@@ -723,8 +727,8 @@ struct SignOpConversion : public OpConversionPattern<complex::SignOp> {
 
     Value real = complex::ReOp::create(b, elementType, adaptor.getComplex());
     Value imag = complex::ImOp::create(b, elementType, adaptor.getComplex());
-    Value zero =
-        arith::ConstantOp::create(b, elementType, b.getZeroAttr(elementType));
+    Value zero = b.createOrFold<arith::ConstantOp>(elementType,
+                                                   b.getZeroAttr(elementType));
     Value realIsZero =
         arith::CmpFOp::create(b, arith::CmpFPredicate::OEQ, real, zero);
     Value imagIsZero =
@@ -759,8 +763,8 @@ struct TanTanhOpConversion : public OpConversionPattern<Op> {
         complex::ReOp::create(b, loc, elementType, adaptor.getComplex());
     Value imag =
         complex::ImOp::create(b, loc, elementType, adaptor.getComplex());
-    Value negOne = arith::ConstantOp::create(b, elementType,
-                                             b.getFloatAttr(elementType, -1.0));
+    Value negOne = b.createOrFold<arith::ConstantOp>(
+        elementType, b.getFloatAttr(elementType, -1.0));
 
     if constexpr (std::is_same_v<Op, complex::TanOp>) {
       // tan(x+yi) = -i*tanh(-y + xi)
@@ -769,12 +773,12 @@ struct TanTanhOpConversion : public OpConversionPattern<Op> {
     }
 
     auto cst = [&](APFloat v) {
-      return arith::ConstantOp::create(b, elementType,
-                                       b.getFloatAttr(elementType, v));
+      return b.createOrFold<arith::ConstantOp>(elementType,
+                                               b.getFloatAttr(elementType, v));
     };
     Value inf = cst(APFloat::getInf(floatSemantics));
-    Value four = arith::ConstantOp::create(b, elementType,
-                                           b.getFloatAttr(elementType, 4.0));
+    Value four = b.createOrFold<arith::ConstantOp>(
+        elementType, b.getFloatAttr(elementType, 4.0));
     Value twoReal = arith::AddFOp::create(b, real, real, fmf);
     Value negTwoReal = arith::MulFOp::create(b, negOne, twoReal, fmf);
 
@@ -807,8 +811,8 @@ struct TanTanhOpConversion : public OpConversionPattern<Op> {
     if (!arith::bitEnumContainsAll(fmf, arith::FastMathFlags::nnan |
                                             arith::FastMathFlags::ninf)) {
       Value absReal = math::AbsFOp::create(b, real, fmf);
-      Value zero = arith::ConstantOp::create(b, elementType,
-                                             b.getFloatAttr(elementType, 0.0));
+      Value zero = b.createOrFold<arith::ConstantOp>(
+          elementType, b.getFloatAttr(elementType, 0.0));
       Value nan = cst(APFloat::getNaN(floatSemantics));
 
       Value absRealIsInf = arith::CmpFOp::create(b, arith::CmpFPredicate::OEQ,
@@ -816,7 +820,8 @@ struct TanTanhOpConversion : public OpConversionPattern<Op> {
       Value imagIsZero =
           arith::CmpFOp::create(b, arith::CmpFPredicate::OEQ, imag, zero, fmf);
       Value absRealIsNotInf = arith::XOrIOp::create(
-          b, absRealIsInf, arith::ConstantIntOp::create(b, true, /*width=*/1));
+          b, absRealIsInf,
+          b.createOrFold<arith::ConstantIntOp>(true, /*width=*/1));
 
       Value imagNumIsNaN = arith::CmpFOp::create(b, arith::CmpFPredicate::UNO,
                                                  imagNum, imagNum, fmf);
@@ -890,14 +895,14 @@ static Value powOpConversionImpl(mlir::ImplicitLocOpBuilder &builder,
   Value cosQ = math::CosOp::create(builder, q, fmf);
   Value sinQ = math::SinOp::create(builder, q, fmf);
 
-  Value inf = arith::ConstantOp::create(
-      builder, elementType,
+  Value inf = builder.createOrFold<arith::ConstantOp>(
+      elementType,
       builder.getFloatAttr(elementType,
                            APFloat::getInf(elementType.getFloatSemantics())));
-  Value zero = arith::ConstantOp::create(
-      builder, elementType, builder.getFloatAttr(elementType, 0.0));
-  Value one = arith::ConstantOp::create(builder, elementType,
-                                        builder.getFloatAttr(elementType, 1.0));
+  Value zero = builder.createOrFold<arith::ConstantOp>(
+      elementType, builder.getFloatAttr(elementType, 0.0));
+  Value one = builder.createOrFold<arith::ConstantOp>(
+      elementType, builder.getFloatAttr(elementType, 1.0));
   Value complexOne = complex::CreateOp::create(builder, type, one, zero);
   Value complexZero = complex::CreateOp::create(builder, type, zero, zero);
   Value complexInf = complex::CreateOp::create(builder, type, inf, zero);
@@ -983,8 +988,8 @@ struct PowiOpConversion : public OpConversionPattern<complex::PowiOp> {
 
     Value floatExponent =
         arith::SIToFPOp::create(builder, elementType, adaptor.getRhs());
-    Value zero = arith::ConstantOp::create(
-        builder, elementType, builder.getFloatAttr(elementType, 0.0));
+    Value zero = builder.createOrFold<arith::ConstantOp>(
+        elementType, builder.getFloatAttr(elementType, 0.0));
     Value complexExponent =
         complex::CreateOp::create(builder, type, floatExponent, zero);
 
@@ -1027,14 +1032,14 @@ struct RsqrtOpConversion : public OpConversionPattern<complex::RsqrtOp> {
     arith::FastMathFlags fmf = op.getFastMathFlagsAttr().getValue();
 
     auto cst = [&](APFloat v) {
-      return arith::ConstantOp::create(b, elementType,
-                                       b.getFloatAttr(elementType, v));
+      return b.createOrFold<arith::ConstantOp>(elementType,
+                                               b.getFloatAttr(elementType, v));
     };
     const auto &floatSemantics = elementType.getFloatSemantics();
     Value zero = cst(APFloat::getZero(floatSemantics));
     Value inf = cst(APFloat::getInf(floatSemantics));
-    Value negHalf = arith::ConstantOp::create(
-        b, elementType, b.getFloatAttr(elementType, -0.5));
+    Value negHalf = b.createOrFold<arith::ConstantOp>(
+        elementType, b.getFloatAttr(elementType, -0.5));
     Value nan = cst(APFloat::getNaN(floatSemantics));
 
     Value real = complex::ReOp::create(b, elementType, adaptor.getComplex());
@@ -1050,8 +1055,8 @@ struct RsqrtOpConversion : public OpConversionPattern<complex::RsqrtOp> {
 
     if (!arith::bitEnumContainsAll(fmf, arith::FastMathFlags::nnan |
                                             arith::FastMathFlags::ninf)) {
-      Value negOne = arith::ConstantOp::create(b, elementType,
-                                               b.getFloatAttr(elementType, -1));
+      Value negOne = b.createOrFold<arith::ConstantOp>(
+          elementType, b.getFloatAttr(elementType, -1));
 
       Value realSignedZero = math::CopySignOp::create(b, zero, real, fmf);
       Value imagSignedZero = math::CopySignOp::create(b, zero, imag, fmf);

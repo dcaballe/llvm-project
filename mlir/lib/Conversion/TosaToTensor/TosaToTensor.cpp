@@ -309,8 +309,8 @@ public:
         continue;
 
       auto dim = tensor::DimOp::create(rewriter, loc, input, index);
-      auto offset = arith::ConstantOp::create(
-          rewriter, loc, rewriter.getIndexAttr(sliceStarts[index]));
+      auto offset = rewriter.createOrFold<arith::ConstantOp>(
+          loc, rewriter.getIndexAttr(sliceStarts[index]));
       dynSizes.push_back(arith::SubIOp::create(rewriter, loc, dim, offset));
     }
 
@@ -361,7 +361,7 @@ public:
 
     Value padConstant = rewriter.createOrFold<tensor::ExtractOp>(
         loc, padOp.getPadConst(),
-        ValueRange({arith::ConstantIndexOp::create(rewriter, loc, 0)}));
+        ValueRange({rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0)}));
 
     if (!padConstant) {
       return rewriter.notifyMatchFailure(
@@ -375,10 +375,10 @@ public:
     highValues.reserve(rank);
 
     for (int i = 0; i < rank; i++) {
-      Value lowVal = arith::ConstantOp::create(
-          rewriter, loc, rewriter.getIndexAttr(paddingVals[2 * i]));
-      Value highVal = arith::ConstantOp::create(
-          rewriter, loc, rewriter.getIndexAttr(paddingVals[2 * i + 1]));
+      Value lowVal = rewriter.createOrFold<arith::ConstantOp>(
+          loc, rewriter.getIndexAttr(paddingVals[2 * i]));
+      Value highVal = rewriter.createOrFold<arith::ConstantOp>(
+          loc, rewriter.getIndexAttr(paddingVals[2 * i + 1]));
       lowValues.push_back(lowVal);
       highValues.push_back(highVal);
     }
@@ -401,8 +401,8 @@ struct ConcatConverter : public OpConversionPattern<tosa::ConcatOp> {
 
     Location loc = op.getLoc();
     int axis = op.getAxis();
-    Value axisValue =
-        arith::ConstantOp::create(rewriter, loc, rewriter.getIndexAttr(axis));
+    Value axisValue = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getIndexAttr(axis));
     int64_t rank = resultType.getRank();
 
     SmallVector<OpFoldResult> strides(rank, rewriter.getIndexAttr(1));

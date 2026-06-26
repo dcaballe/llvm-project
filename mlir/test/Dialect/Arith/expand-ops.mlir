@@ -52,15 +52,15 @@ func.func @ceildivi_index(%arg0: index, %arg1: index) -> (index) {
 func.func @floordivi(%arg0: i32, %arg1: i32) -> (i32) {
   %res = arith.floordivsi %arg0, %arg1 : i32
   return %res : i32
+// CHECK-DAG:   %[[ZERO:.*]] = arith.constant 0 : i32
+// CHECK-DAG:   %[[NEG_ONE:.*]] = arith.constant -1 : i32
 // CHECK:   %[[QUOTIENT:.*]] = arith.divsi %arg0, %arg1 : i32
 // CHECK:   %[[PRODUCT:.*]] = arith.muli %[[QUOTIENT]], %arg1 : i32
 // CHECK:   %[[NOT_EQ_PRODUCT:.*]] = arith.cmpi ne, %arg0, %[[PRODUCT]] : i32
-// CHECK-DAG:   %[[ZERO:.*]] = arith.constant 0 : i32
 // CHECK:   %[[NEG_DIVISOR:.*]] = arith.cmpi slt, %arg0, %[[ZERO]] : i32
 // CHECK:   %[[NEG_DIVIDEND:.*]] = arith.cmpi slt, %arg1, %[[ZERO]] : i32
 // CHECK:   %[[OPPOSITE_SIGN:.*]] = arith.cmpi ne, %[[NEG_DIVISOR]], %[[NEG_DIVIDEND]] : i1
 // CHECK:   %[[CONDITION:.*]] = arith.andi %[[NOT_EQ_PRODUCT]], %[[OPPOSITE_SIGN]] : i1
-// CHECK-DAG:   %[[NEG_ONE:.*]] = arith.constant -1 : i32
 // CHECK:   %[[MINUS_ONE:.*]] = arith.addi %[[QUOTIENT]], %[[NEG_ONE]] : i32
 // CHECK:   %[[RES:.*]] = arith.select %[[CONDITION]], %[[MINUS_ONE]], %[[QUOTIENT]] : i32
 }
@@ -73,16 +73,16 @@ func.func @floordivi(%arg0: i32, %arg1: i32) -> (i32) {
 func.func @floordivi_index(%arg0: index, %arg1: index) -> (index) {
   %res = arith.floordivsi %arg0, %arg1 : index
   return %res : index
+// CHECK-DAG:   %[[ZERO:.*]] = arith.constant 0 : index
+// CHECK-DAG:   %[[NEG_ONE:.*]] = arith.constant -1 : index
 // CHECK:   %[[QUOTIENT:.*]] = arith.divsi %arg0, %arg1 : index
 // CHECK:   %[[PRODUCT:.*]] = arith.muli %[[QUOTIENT]], %arg1 : index
 // CHECK:   %[[NOT_EQ_PRODUCT:.*]] = arith.cmpi ne, %arg0, %[[PRODUCT]] : index
-// CHECK-DAG:   %[[ZERO:.*]] = arith.constant 0 : index
 // CHECK:   %[[NEG_DIVISOR:.*]] = arith.cmpi slt, %arg0, %[[ZERO]] : index
 // CHECK:   %[[NEG_DIVIDEND:.*]] = arith.cmpi slt, %arg1, %[[ZERO]] : index
 // CHECK:   %[[OPPOSITE_SIGN:.*]] = arith.cmpi ne, %[[NEG_DIVISOR]], %[[NEG_DIVIDEND]] : i1
 // CHECK:   %[[CONDITION:.*]] = arith.andi %[[NOT_EQ_PRODUCT]], %[[OPPOSITE_SIGN]] : i1
-// CHECK:   %[[NEG_ONE:.*]] = arith.constant -1 : index
-// CHECK-DAG:   %[[MINUS_ONE:.*]] = arith.addi %[[QUOTIENT]], %[[NEG_ONE]] : index
+// CHECK:   %[[MINUS_ONE:.*]] = arith.addi %[[QUOTIENT]], %[[NEG_ONE]] : index
 // CHECK:   %[[RES:.*]] = arith.select %[[CONDITION]], %[[MINUS_ONE]], %[[QUOTIENT]] : index
 }
 
@@ -95,15 +95,15 @@ func.func @floordivi_index(%arg0: index, %arg1: index) -> (index) {
 func.func @floordivi_vec(%arg0: vector<4xi32>, %arg1: vector<4xi32>) -> (vector<4xi32>) {
   %res = arith.floordivsi %arg0, %arg1 : vector<4xi32>
   return %res : vector<4xi32>
+// CHECK-DAG:   %[[ZERO:.*]] = arith.constant dense<0> : vector<4xi32>
+// CHECK-DAG:   %[[NEG_ONE:.*]] = arith.constant dense<-1> : vector<4xi32>
 // CHECK:   %[[QUOTIENT:.*]] = arith.divsi %arg0, %arg1 : vector<4xi32>
 // CHECK:   %[[PRODUCT:.*]] = arith.muli %[[QUOTIENT]], %arg1 : vector<4xi32>
 // CHECK:   %[[NOT_EQ_PRODUCT:.*]] = arith.cmpi ne, %arg0, %[[PRODUCT]] : vector<4xi32>
-// CHECK-DAG:   %[[ZERO:.*]] = arith.constant dense<0> : vector<4xi32>
 // CHECK:   %[[NEG_DIVISOR:.*]] = arith.cmpi slt, %arg0, %[[ZERO]] : vector<4xi32>
 // CHECK:   %[[NEG_DIVIDEND:.*]] = arith.cmpi slt, %arg1, %[[ZERO]] : vector<4xi32>
 // CHECK:   %[[OPPOSITE_SIGN:.*]] = arith.cmpi ne, %[[NEG_DIVISOR]], %[[NEG_DIVIDEND]] : vector<4xi1>
 // CHECK:   %[[CONDITION:.*]] = arith.andi %[[NOT_EQ_PRODUCT]], %[[OPPOSITE_SIGN]] : vector<4xi1>
-// CHECK-DAG:   %[[NEG_ONE:.*]] = arith.constant dense<-1> : vector<4xi32>
 // CHECK:   %[[MINUS_ONE:.*]] = arith.addi %[[QUOTIENT]], %[[NEG_ONE]] : vector<4xi32>
 // CHECK:   %[[RES:.*]] = arith.select %[[CONDITION]], %[[MINUS_ONE]], %[[QUOTIENT]] : vector<4xi1>, vector<4xi32>
 }
@@ -117,8 +117,8 @@ func.func @ceildivui(%arg0: i32, %arg1: i32) -> (i32) {
   %res = arith.ceildivui %arg0, %arg1 : i32
   return %res : i32
 // CHECK:           [[ZERO:%.+]] = arith.constant 0 : i32
-// CHECK:           [[ISZERO:%.+]] = arith.cmpi eq, %arg0, [[ZERO]] : i32
 // CHECK:           [[ONE:%.+]] = arith.constant 1 : i32
+// CHECK:           [[ISZERO:%.+]] = arith.cmpi eq, %arg0, [[ZERO]] : i32
 // CHECK:           [[SUB:%.+]] = arith.subi %arg0, [[ONE]] : i32
 // CHECK:           [[DIV:%.+]] = arith.divui [[SUB]], %arg1 : i32
 // CHECK:           [[REM:%.+]] = arith.addi [[DIV]], [[ONE]] : i32
@@ -134,8 +134,8 @@ func.func @ceildivui_index(%arg0: index, %arg1: index) -> (index) {
   %res = arith.ceildivui %arg0, %arg1 : index
   return %res : index
 // CHECK:           [[ZERO:%.+]] = arith.constant 0 : index
-// CHECK:           [[ISZERO:%.+]] = arith.cmpi eq, %arg0, [[ZERO]] : index
 // CHECK:           [[ONE:%.+]] = arith.constant 1 : index
+// CHECK:           [[ISZERO:%.+]] = arith.cmpi eq, %arg0, [[ZERO]] : index
 // CHECK:           [[SUB:%.+]] = arith.subi %arg0, [[ONE]] : index
 // CHECK:           [[DIV:%.+]] = arith.divui [[SUB]], %arg1 : index
 // CHECK:           [[REM:%.+]] = arith.addi [[DIV]], [[ONE]] : index
@@ -255,8 +255,8 @@ func.func @truncf_f32_to_f8E8M0FNU(%arg0 : f32) -> f8E8M0FNU {
     return %0 : f8E8M0FNU
 }
 // CHECK-LABEL: @truncf_f32_to_f8E8M0FNU
-// CHECK: %[[BITCAST:.+]] = arith.bitcast %arg0 : f32 to i32
 // CHECK: %[[C23_i32:.+]] = arith.constant 23 : i32
+// CHECK: %[[BITCAST:.+]] = arith.bitcast %arg0 : f32 to i32
 // CHECK: %[[SHRUI:.+]] = arith.shrui %[[BITCAST]], %[[C23_i32]] : i32
 // CHECK: %[[TRUNCI:.+]] = arith.trunci %[[SHRUI]] : i32 to i8
 // CHECK: %[[RESULT:.+]] = arith.bitcast %[[TRUNCI]] : i8 to f8E8M0FNU
@@ -269,9 +269,9 @@ func.func @truncf_f16_to_f8E8M0FNU(%arg0 : f16) -> f8E8M0FNU {
     return %0 : f8E8M0FNU
 }
 // CHECK-LABEL: @truncf_f16_to_f8E8M0FNU
+// CHECK: %[[C23_i32:.+]] = arith.constant 23 : i32
 // CHECK: %[[EXTF:.+]] = arith.extf %arg0 : f16 to f32
 // CHECK: %[[BITCAST:.+]] = arith.bitcast %[[EXTF]] : f32 to i32
-// CHECK: %[[C23_i32:.+]] = arith.constant 23 : i32
 // CHECK: %[[SHRUI:.+]] = arith.shrui %[[BITCAST]], %[[C23_i32]] : i32
 // CHECK: %[[TRUNCI:.+]] = arith.trunci %[[SHRUI]] : i32 to i8
 // CHECK: %[[RESULT:.+]] = arith.bitcast %[[TRUNCI]] : i8 to f8E8M0FNU
@@ -382,12 +382,12 @@ func.func @extf_f8E8M0FNU_to_f32(%arg0 : f8E8M0FNU) -> f32 {
 }
 
 // CHECK-LABEL: @extf_f8E8M0FNU_to_f32
-// CHECK: %[[BITCAST:.+]] = arith.bitcast %arg0 : f8E8M0FNU to i8
-// CHECK: %[[C23_i32:.+]] = arith.constant 23 : i32
-// CHECK: %[[EXTUI:.+]] = arith.extui %[[BITCAST]] : i8 to i32
-// CHECK: %[[SHLI:.+]] = arith.shli %[[EXTUI]], %[[C23_i32]] : i32
+// CHECK-DAG: %[[C23_i32:.+]] = arith.constant 23 : i32
 // CHECK-DAG: %[[CF8NAN:.+]] = arith.constant -1 : i8
 // CHECK-DAG: %[[CF32NAN:.+]] = arith.constant -1 : i32
+// CHECK: %[[BITCAST:.+]] = arith.bitcast %arg0 : f8E8M0FNU to i8
+// CHECK: %[[EXTUI:.+]] = arith.extui %[[BITCAST]] : i8 to i32
+// CHECK: %[[SHLI:.+]] = arith.shli %[[EXTUI]], %[[C23_i32]] : i32
 // CHECK: %[[CMP_NAN:.+]] = arith.cmpi eq, %[[BITCAST]], %[[CF8NAN]] : i8
 // CHECK: %[[SELECT_NAN:.+]] = arith.select %[[CMP_NAN]], %[[CF32NAN]], %[[SHLI]] : i32
 // CHECK: %[[RESULT:.+]] = arith.bitcast %[[SELECT_NAN]] : i32 to f32
@@ -401,8 +401,8 @@ func.func @extf_f8E8M0FNU_to_f32_no_nan(%arg0 : f8E8M0FNU) -> f32 {
 }
 
 // CHECK-LABEL: @extf_f8E8M0FNU_to_f32_no_nan
-// CHECK: %[[BITCAST:.+]] = arith.bitcast %arg0 : f8E8M0FNU to i8
 // CHECK: %[[C23_i32:.+]] = arith.constant 23 : i32
+// CHECK: %[[BITCAST:.+]] = arith.bitcast %arg0 : f8E8M0FNU to i8
 // CHECK: %[[EXTUI:.+]] = arith.extui %[[BITCAST]] : i8 to i32
 // CHECK: %[[SHLI:.+]] = arith.shli %[[EXTUI]], %[[C23_i32]] : i32
 // CHECK: %[[RESULT:.+]] = arith.bitcast %[[SHLI]] : i32 to f32
@@ -416,12 +416,12 @@ func.func @extf_f8E8M0FNU_to_f16(%arg0 : f8E8M0FNU) -> f16 {
 }
 
 // CHECK-LABEL: @extf_f8E8M0FNU_to_f16
-// CHECK: %[[BITCAST:.+]] = arith.bitcast %arg0 : f8E8M0FNU to i8
 // CHECK-DAG: %[[C23_i32:.+]] = arith.constant 23 : i32
-// CHECK: %[[EXTUI:.+]] = arith.extui %[[BITCAST]] : i8 to i32
-// CHECK: %[[SHLI:.+]] = arith.shli %[[EXTUI]], %[[C23_i32]] : i32
 // CHECK-DAG: %[[CF8NAN:.+]] = arith.constant -1 : i8
 // CHECK-DAG: %[[CF32NAN:.+]] = arith.constant -1 : i32
+// CHECK: %[[BITCAST:.+]] = arith.bitcast %arg0 : f8E8M0FNU to i8
+// CHECK: %[[EXTUI:.+]] = arith.extui %[[BITCAST]] : i8 to i32
+// CHECK: %[[SHLI:.+]] = arith.shli %[[EXTUI]], %[[C23_i32]] : i32
 // CHECK: %[[CMP_NAN:.+]] = arith.cmpi eq, %[[BITCAST]], %[[CF8NAN]] : i8
 // CHECK: %[[SELECT_NAN:.+]] = arith.select %[[CMP_NAN]], %[[CF32NAN]], %[[SHLI]] : i32
 // CHECK: %[[F32_RESULT:.+]] = arith.bitcast %[[SELECT_NAN]] : i32 to f32

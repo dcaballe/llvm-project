@@ -69,10 +69,10 @@ func.func @vector_gather(%arg0: tensor<64xf32>, %arg1: tensor<3xf32>) -> tensor<
 // CHECK-LABEL:   func.func @vector_gather(
 // CHECK-SAME:                             %[[VAL_0:.*]]: tensor<64xf32>,
 // CHECK-SAME:                             %[[VAL_1:.*]]: tensor<3xf32>) -> tensor<3xf32> {
-// CHECK:           %[[VAL_2:.*]] = arith.constant dense<0.000000e+00> : vector<4xf32>
-// CHECK:           %[[VAL_3:.*]] = arith.constant dense<[0, 1, 2, 3]> : vector<4xindex>
-// CHECK:           %[[VAL_4:.*]] = arith.constant 0 : index
-// CHECK:           %[[VAL_5:.*]] = arith.constant 3 : index
+// CHECK-DAG:       %[[VAL_2:.*]] = arith.constant dense<0.000000e+00> : vector<4xf32>
+// CHECK-DAG:       %[[VAL_3:.*]] = arith.constant dense<[0, 1, 2, 3]> : vector<4xindex>
+// CHECK-DAG:       %[[VAL_4:.*]] = arith.constant 0 : index
+// CHECK-DAG:       %[[VAL_5:.*]] = arith.constant 3 : index
 // CHECK:           %[[VAL_6:.*]] = vector.create_mask %[[VAL_5]] : vector<4xi1>
 // CHECK:           %[[VAL_7:.*]] = vector.gather %[[VAL_0]][%[[VAL_4]]] [%[[VAL_3]]], %[[VAL_6]], %[[VAL_2]] : tensor<64xf32>, vector<4xindex>, vector<4xi1>, vector<4xf32> into vector<4xf32>
 // CHECK:           %[[VAL_8:.*]] = vector.transfer_write %[[VAL_7]], %[[VAL_1]][%[[VAL_4]]], %[[VAL_6]] {in_bounds = [true]} : vector<4xf32>, tensor<3xf32>

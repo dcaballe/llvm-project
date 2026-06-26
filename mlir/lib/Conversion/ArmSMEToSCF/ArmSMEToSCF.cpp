@@ -59,9 +59,8 @@ FailureOr<scf::ForOp> createLoadStoreForOverTileSlices(
   if (memrefIndices.size() != 2)
     return rewriter.notifyMatchFailure(loc, "invalid number of indices");
 
-  auto minTileSlices = arith::ConstantIndexOp::create(
-      rewriter, loc,
-      arm_sme::getSMETileSliceMinNumElts(tileType.getElementType()));
+  auto minTileSlices = rewriter.createOrFold<arith::ConstantIndexOp>(
+      loc, arm_sme::getSMETileSliceMinNumElts(tileType.getElementType()));
   auto vscale =
       vector::VectorScaleOp::create(rewriter, loc, rewriter.getIndexType());
   auto predicateType =
@@ -97,13 +96,13 @@ FailureOr<scf::ForOp> createLoadStoreForOverTileSlices(
   } else {
     upperBound = numTileSlices;
     // No mask. Create an 'all true' predicate for the tile slice.
-    predicate = arith::ConstantOp::create(
-        rewriter, loc, DenseElementsAttr::get(predicateType, true));
+    predicate = rewriter.createOrFold<arith::ConstantOp>(
+        loc, DenseElementsAttr::get(predicateType, true));
   }
 
   bool hasCarriedArgs = bool(initTile);
-  auto lowerBound = arith::ConstantIndexOp::create(rewriter, loc, 0);
-  auto step = arith::ConstantIndexOp::create(rewriter, loc, 1);
+  auto lowerBound = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
+  auto step = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
   auto forOp =
       scf::ForOp::create(rewriter, loc, lowerBound, upperBound, step,
                          hasCarriedArgs ? ValueRange{initTile} : ValueRange{});
@@ -291,12 +290,12 @@ struct TileLoadOpWithMaskAndPadNonZeroConversion
     auto initTile = arm_sme::GetTileOp::create(rewriter, loc, tileType);
 
     // Create a loop that loads each ZA tile slice from memory.
-    auto step = arith::ConstantIndexOp::create(rewriter, loc, 1);
-    auto minTileSlices = arith::ConstantIndexOp::create(
-        rewriter, loc, arm_sme::getSMETileSliceMinNumElts(tileElementType));
+    auto step = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
+    auto minTileSlices = rewriter.createOrFold<arith::ConstantIndexOp>(
+        loc, arm_sme::getSMETileSliceMinNumElts(tileElementType));
     auto vscale =
         vector::VectorScaleOp::create(rewriter, loc, rewriter.getIndexType());
-    auto lowerBound = arith::ConstantIndexOp::create(rewriter, loc, 0);
+    auto lowerBound = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
     auto numTileSlices =
         arith::MulIOp::create(rewriter, loc, minTileSlices, vscale);
     auto forOp = scf::ForOp::create(rewriter, loc, lowerBound, numTileSlices,

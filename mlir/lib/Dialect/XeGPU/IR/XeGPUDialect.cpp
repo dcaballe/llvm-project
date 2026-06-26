@@ -76,7 +76,7 @@ genCoordinates(OpBuilder &builder, Location loc,
     // Get dist unit offset within `srcShape`.
     SmallVector<Value> base =
         llvm::map_to_vector(unitOffs, [&](int64_t d) -> Value {
-          return arith::ConstantIndexOp::create(builder, loc, d);
+          return builder.createOrFold<arith::ConstantIndexOp>(loc, d);
         });
     // Calculate `subShape` offset within `srcShape`.
     SmallVector<Value> adds =
@@ -90,7 +90,8 @@ genCoordinates(OpBuilder &builder, Location loc,
         llvm::zip_equal(adds, srcShape), [&](const auto &t) -> Value {
           return builder.createOrFold<arith::RemUIOp>(
               loc, std::get<0>(t),
-              arith::ConstantIndexOp::create(builder, loc, std::get<1>(t)));
+              builder.createOrFold<arith::ConstantIndexOp>(loc,
+                                                           std::get<1>(t)));
         });
 
     coordinates.push_back(mods);
@@ -1883,7 +1884,7 @@ Value MemDescType::getLinearOffsets(OpBuilder &builder, Location loc,
   }
 
   // Start with initial value as matrix descriptor's base offset.
-  Value linearOffset = arith::ConstantIndexOp::create(builder, loc, 0);
+  Value linearOffset = builder.createOrFold<arith::ConstantIndexOp>(loc, 0);
   for (size_t i = 0; i < offsets.size(); ++i) {
     OpFoldResult mulResult = mul(offsets[i], strides[i]);
     Value mulVal = getValueOrCreateConstantIndexOp(builder, loc, mulResult);

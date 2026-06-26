@@ -769,8 +769,8 @@ static void initPerThreadArrayAccum(OpBuilder &b, Location loc, Value alloca,
          "per-thread array reduction accumulator must be static ranked");
   Value ident = createIdentityValue(b, loc, baseTy.getElementType(), kind,
                                     /*useOnlyFiniteValue=*/true);
-  Value lb = arith::ConstantIndexOp::create(b, loc, 0);
-  Value step = arith::ConstantIndexOp::create(b, loc, 1);
+  Value lb = b.createOrFold<arith::ConstantIndexOp>(loc, 0);
+  Value step = b.createOrFold<arith::ConstantIndexOp>(loc, 1);
   SmallVector<Value> indices;
   auto buildLoopNest = [&](auto &&self, unsigned dim) -> void {
     if (dim == baseTy.getRank()) {
@@ -778,7 +778,8 @@ static void initPerThreadArrayAccum(OpBuilder &b, Location loc, Value alloca,
       return;
     }
 
-    Value ub = arith::ConstantIndexOp::create(b, loc, baseTy.getShape()[dim]);
+    Value ub =
+        b.createOrFold<arith::ConstantIndexOp>(loc, baseTy.getShape()[dim]);
     auto forOp = scf::ForOp::create(b, loc, lb, ub, step);
     OpBuilder::InsertionGuard g(b);
     b.setInsertionPoint(forOp.getBody()->getTerminator());
@@ -868,7 +869,7 @@ LogicalResult ACCCGToGPULowering::rewrite() {
   });
 
   Location loc = computeRegion->getLoc();
-  Value constantOne = arith::ConstantIndexOp::create(rewriter, loc, 1);
+  Value constantOne = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
 
   auto launchArgument = [&](gpu::Processor processor) -> Value {
     mlir::acc::GPUParallelDimAttr parDim = mlir::acc::GPUParallelDimAttr::get(
@@ -1155,9 +1156,11 @@ LogicalResult ACCCGToGPULowering::rewrite() {
         int64_t newBdz =
             std::max<int64_t>(1, numThreads / (alignedBdx * newBdy));
         newBlockDimX =
-            arith::ConstantIndexOp::create(rewriter, loc, alignedBdx);
-        newBlockDimY = arith::ConstantIndexOp::create(rewriter, loc, newBdy);
-        newBlockDimZ = arith::ConstantIndexOp::create(rewriter, loc, newBdz);
+            rewriter.createOrFold<arith::ConstantIndexOp>(loc, alignedBdx);
+        newBlockDimY =
+            rewriter.createOrFold<arith::ConstantIndexOp>(loc, newBdy);
+        newBlockDimZ =
+            rewriter.createOrFold<arith::ConstantIndexOp>(loc, newBdz);
       } else {
         // numXYThreads = blockDim.x * blockDim.y
         Value numXYThreads =
@@ -1165,10 +1168,10 @@ LogicalResult ACCCGToGPULowering::rewrite() {
         Value numThreads =
             arith::MulIOp::create(rewriter, loc, numXYThreads, curBlockDimZ);
         // blockDim.x = ((blockDim.x + mask) / subgroupSize) * subgroupSize
-        Value cstMask =
-            arith::ConstantIndexOp::create(rewriter, loc, subgroupAlignMask);
+        Value cstMask = rewriter.createOrFold<arith::ConstantIndexOp>(
+            loc, subgroupAlignMask);
         Value cstSubgroupSize =
-            arith::ConstantIndexOp::create(rewriter, loc, subgroupSize);
+            rewriter.createOrFold<arith::ConstantIndexOp>(loc, subgroupSize);
         Value padded =
             arith::AddIOp::create(rewriter, loc, curBlockDimX, cstMask);
         Value subgroupsRequired =
@@ -1178,7 +1181,7 @@ LogicalResult ACCCGToGPULowering::rewrite() {
         // blockDim.y = max(1, numXYThreads / blockDim.x)
         Value quotient =
             arith::DivUIOp::create(rewriter, loc, numXYThreads, newBlockDimX);
-        Value cst1 = arith::ConstantIndexOp::create(rewriter, loc, 1);
+        Value cst1 = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
         newBlockDimY = arith::MaxUIOp::create(rewriter, loc, cst1, quotient);
         // blockDim.z = max(1, numThreads / (blockDim.x * blockDim.y))
         Value newNumXYThreads =
@@ -1619,7 +1622,7 @@ Value ACCCGToGPULowering::emitPredicate(
   for (mlir::acc::GPUParallelDimAttr inactiveParDim : inactiveParDims) {
     Value threadId = getGPUThreadIdFor(inactiveParDim.getProcessor());
     TypedAttr zeroAttr = rewriter.getZeroAttr(threadId.getType());
-    Value zero = arith::ConstantOp::create(rewriter, loc, zeroAttr);
+    Value zero = rewriter.createOrFold<arith::ConstantOp>(loc, zeroAttr);
     Value cmp = arith::CmpIOp::create(rewriter, loc, arith::CmpIPredicate::eq,
                                       threadId, zero);
     if (predicate)
@@ -1678,7 +1681,7 @@ void ACCCGToGPULowering::createPerRowBarrier(Location loc) {
       rewriter, loc, rewriter.getIndexType(), gpu::Dimension::x);
   Value blockDimY = gpu::BlockDimOp::create(
       rewriter, loc, rewriter.getIndexType(), gpu::Dimension::y);
-  Value cst1 = arith::ConstantIndexOp::create(rewriter, loc, 1);
+  Value cst1 = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
   Value isSingleWorker = arith::CmpIOp::create(
       rewriter, loc, arith::CmpIPredicate::eq, blockDimY, cst1);
 
@@ -1692,7 +1695,7 @@ void ACCCGToGPULowering::createPerRowBarrier(Location loc) {
   // Else: blockDim.y > 1 - choose between subgroup sync and named barrier
   rewriter.setInsertionPointToStart(&outerIf.getElseRegion().front());
   Value cstSubgroupSize =
-      arith::ConstantIndexOp::create(rewriter, loc, options.subgroupSize);
+      rewriter.createOrFold<arith::ConstantIndexOp>(loc, options.subgroupSize);
   Value isSubgroupSized = arith::CmpIOp::create(
       rewriter, loc, arith::CmpIPredicate::ule, blockDimX, cstSubgroupSize);
 
@@ -2389,7 +2392,8 @@ void ACCCGToGPULowering::processPredicateRegion(
                   rewriter, loc, rewriter.getIndexType(), gpu::Dimension::x);
               Value threadId = gpu::ThreadIdOp::create(
                   rewriter, loc, rewriter.getIndexType(), gpu::Dimension::x);
-              Value zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
+              Value zero =
+                  rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
               Value isBlock0 = arith::CmpIOp::create(
                   rewriter, loc, arith::CmpIPredicate::eq, blockId, zero);
               Value isThread0 = arith::CmpIOp::create(
@@ -2574,8 +2578,8 @@ Value ACCCGToGPULowering::processPrivatize(acc::PrivatizeOp privatize) {
   }
   Value predicate = emitPredicate(loc, predicateDims);
   if (!predicate) {
-    predicate = arith::ConstantOp::create(
-        rewriter, loc, rewriter.getIntegerAttr(rewriter.getI1Type(), 1));
+    predicate = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getIntegerAttr(rewriter.getI1Type(), 1));
   }
   auto ifOp = scf::IfOp::create(rewriter, loc, predicate,
                                 /*withElseRegion=*/false);
@@ -2885,10 +2889,10 @@ void ACCCGToGPULowering::processPrivateLocal(
 
   Value memBuffer =
       castPointerLikeTypeIfNeeded(rewriter, loc, inputMem, byteMemrefTy);
-  auto c0 = arith::ConstantIndexOp::create(rewriter, loc, 0);
+  auto c0 = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
   MemRefType viewType = MemRefType::get(viewShape, baseTy.getElementType());
-  auto view = memref::ViewOp::create(rewriter, loc, viewType, memBuffer,
-                                     c0.getResult(), viewDynSizes);
+  auto view = memref::ViewOp::create(rewriter, loc, viewType, memBuffer, c0,
+                                     viewDynSizes);
 
   // memref.subview
   StridedLayoutAttr stridedLayout = StridedLayoutAttr::get(
@@ -2903,8 +2907,8 @@ void ACCCGToGPULowering::processPrivateLocal(
   // so later zero-offset views retain this thread's private slice.
   auto metadata =
       memref::ExtractStridedMetadataOp::create(rewriter, loc, subview);
-  Value elementBytes = arith::ConstantIndexOp::create(
-      rewriter, loc, getElementSizeInBytes(loc, baseTy.getElementType()));
+  Value elementBytes = rewriter.createOrFold<arith::ConstantIndexOp>(
+      loc, getElementSizeInBytes(loc, baseTy.getElementType()));
   Value byteOffset =
       arith::MulIOp::create(rewriter, loc, metadata.getOffset(), elementBytes);
   Value privateView = memref::ViewOp::create(rewriter, loc, baseTy, memBuffer,
@@ -3124,10 +3128,11 @@ void ACCCGToGPULowering::processParallelOp(scf::ParallelOp parallelOp) {
       Value tidY = getThreadId(seqLoc, gpu::Dimension::y);
       Value identity;
       if (isa<FloatType>(elemTy)) {
-        identity = arith::ConstantOp::create(
-            rewriter, seqLoc, elemTy, rewriter.getFloatAttr(elemTy, 0.0));
+        identity = rewriter.createOrFold<arith::ConstantOp>(
+            seqLoc, elemTy, rewriter.getFloatAttr(elemTy, 0.0));
       } else {
-        identity = arith::ConstantIntOp::create(rewriter, seqLoc, elemTy, 0);
+        identity =
+            rewriter.createOrFold<arith::ConstantIntOp>(seqLoc, elemTy, 0);
       }
       memref::StoreOp::create(rewriter, seqLoc, identity, reductionSharedBuf,
                               tidY);
@@ -3152,8 +3157,8 @@ void ACCCGToGPULowering::processParallelOp(scf::ParallelOp parallelOp) {
     llvm::for_each(parallelOp.getResults(), [&](Value v) {
       Type valTy = v.getType();
       TypedAttr zeroAttr = rewriter.getZeroAttr(valTy);
-      auto zero = arith::ConstantOp::create(rewriter, parallelOp->getLoc(),
-                                            valTy, zeroAttr);
+      auto zero = rewriter.createOrFold<arith::ConstantOp>(parallelOp->getLoc(),
+                                                           valTy, zeroAttr);
       mapping.map(v, zero);
     });
     loopReductions.push_back(parallelOp);
@@ -3724,8 +3729,8 @@ void ACCCGToGPULowering::processAccumulateArrayOp(
                                       v);
   };
 
-  Value zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
-  Value one = arith::ConstantIndexOp::create(rewriter, loc, 1);
+  Value zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
+  Value one = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
   Value lb =
       boundsOp.getLowerbound() ? toIndex(boundsOp.getLowerbound()) : zero;
   Value step = boundsOp.getStride() ? toIndex(boundsOp.getStride()) : one;
@@ -3758,9 +3763,8 @@ void ACCCGToGPULowering::processAccumulateArrayOp(
         Value dimSize =
             memrefTy.isDynamicDim(dim)
                 ? memref::DimOp::create(rewriter, loc, memref, dim).getResult()
-                : arith::ConstantIndexOp::create(rewriter, loc,
-                                                 memrefTy.getDimSize(dim))
-                      .getResult();
+                : rewriter.createOrFold<arith::ConstantIndexOp>(
+                      loc, memrefTy.getDimSize(dim));
         indices[dim] =
             arith::RemUIOp::create(rewriter, loc, linearIndex, dimSize);
         if (dim != 0)
@@ -4023,7 +4027,7 @@ class RemoveParWidth : public OpRewritePattern<acc::ParWidthOp> {
     if (Value launchArg = op.getLaunchArg()) {
       rewriter.replaceOp(op, launchArg);
     } else {
-      Value one = arith::ConstantIndexOp::create(rewriter, op.getLoc(), 1);
+      Value one = rewriter.createOrFold<arith::ConstantIndexOp>(op.getLoc(), 1);
       rewriter.replaceOp(op, one);
     }
     return success();

@@ -47,8 +47,8 @@ struct CloneOpConversion : public OpConversionPattern<bufferization::CloneOp> {
 
     if (auto unrankedType = dyn_cast<UnrankedMemRefType>(type)) {
       // Constants
-      Value zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
-      Value one = arith::ConstantIndexOp::create(rewriter, loc, 1);
+      Value zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
+      Value one = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
 
       // Dynamically evaluate the size and shape of the unranked memref
       Value rank = memref::RankOp::create(rewriter, loc, op.getInput());

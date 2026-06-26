@@ -152,7 +152,7 @@ createAllocaForTile(RewriterBase &rewriter, Location loc,
       {ShapedType::kDynamic, ShapedType::kDynamic}, tileElementType);
   unsigned minElements = arm_sme::getSMETileSliceMinNumElts(tileElementType);
   auto minElementsOp =
-      arith::ConstantIndexOp::create(rewriter, loc, minElements);
+      rewriter.createOrFold<arith::ConstantIndexOp>(loc, minElements);
   auto vectorLen = arith::MulIOp::create(rewriter, loc, vscale, minElementsOp);
   auto alloca = memref::AllocaOp::create(rewriter, loc, memrefType,
                                          ValueRange{vectorLen, vectorLen});
@@ -294,7 +294,8 @@ struct ConvertArmSMESpillsAndFillsToLLVM : public ConvertToLLVMPattern {
     auto llvmType = getTypeConverter()->convertType(tileMemory.getType());
     auto descriptor =
         UnrealizedConversionCastOp::create(rewriter, loc, llvmType, tileMemory);
-    auto zero = arith::ConstantIntOp::create(rewriter, loc, 0, /*width=*/64);
+    auto zero =
+        rewriter.createOrFold<arith::ConstantIntOp>(loc, 0, /*width=*/64);
     auto sliceIndexI64 = arith::IndexCastOp::create(
         rewriter, loc, rewriter.getI64Type(), sliceIndex);
     return getStridedElementPtr(
@@ -313,8 +314,8 @@ struct ConvertArmSMESpillsAndFillsToLLVM : public ConvertToLLVMPattern {
         rewriter, loc, rewriter.getI32Type(), sliceIndex);
     // Create an all-true predicate for the slice.
     auto predicateType = sliceType.clone(rewriter.getI1Type());
-    auto allTruePredicate = arith::ConstantOp::create(
-        rewriter, loc, DenseElementsAttr::get(predicateType, true));
+    auto allTruePredicate = rewriter.createOrFold<arith::ConstantOp>(
+        loc, DenseElementsAttr::get(predicateType, true));
     // Create padding vector (never used due to all-true predicate).
     auto padVector = LLVM::PoisonOp::create(rewriter, loc, sliceType);
     // Get a pointer to the current slice.
@@ -329,7 +330,7 @@ struct ConvertArmSMESpillsAndFillsToLLVM : public ConvertToLLVMPattern {
         rewriter, loc, tileType, arm_sme::TileSliceLayout::Horizontal,
         allTruePredicate, slicePtr, tileId, sliceIndexI32);
     // Store the current tile slice to memory.
-    auto zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
+    auto zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
     vector::StoreOp::create(rewriter, loc, currentTileSlice, tileAlloca,
                             ValueRange{sliceIndex, zero});
   }
@@ -341,13 +342,13 @@ struct ConvertArmSMESpillsAndFillsToLLVM : public ConvertToLLVMPattern {
                         IntegerAttr tileId) const {
     RewriterBase::InsertionGuard guard(rewriter);
     // Create an scf.for over all tile slices.
-    auto minNumElts =
-        arith::ConstantIndexOp::create(rewriter, loc, sliceType.getDimSize(0));
-    auto lowerBound = arith::ConstantIndexOp::create(rewriter, loc, 0);
+    auto minNumElts = rewriter.createOrFold<arith::ConstantIndexOp>(
+        loc, sliceType.getDimSize(0));
+    auto lowerBound = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
     auto upperBound =
         arith::MulIOp::create(rewriter, loc, minNumElts,
                               vector::VectorScaleOp::create(rewriter, loc));
-    auto step = arith::ConstantIndexOp::create(rewriter, loc, 1);
+    auto step = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
     auto forOp =
         scf::ForOp::create(rewriter, loc, lowerBound, upperBound, step);
     // Emit a swap for each tile slice.
@@ -602,8 +603,8 @@ struct InsertTileSliceConversion
         rewriter, loc, rewriter.getI32Type(), tileSlice);
 
     // Create all active predicate mask.
-    auto one = arith::ConstantOp::create(
-        rewriter, loc, rewriter.getI1Type(),
+    auto one = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getI1Type(),
         rewriter.getIntegerAttr(rewriter.getI1Type(), 1));
     auto predTy = VectorType::get(tileType.getShape()[0], rewriter.getI1Type(),
                                   /*scalableDims=*/{true});
@@ -650,12 +651,12 @@ struct ExtractTileSliceConversion
 
     // Create an 'all true' predicate for the tile slice.
     auto predicateType = sliceType.cloneWith({}, rewriter.getI1Type());
-    auto allTruePredicate = arith::ConstantOp::create(
-        rewriter, loc, DenseElementsAttr::get(predicateType, true));
+    auto allTruePredicate = rewriter.createOrFold<arith::ConstantOp>(
+        loc, DenseElementsAttr::get(predicateType, true));
 
     // Zero destination/fallback for tile slice extraction.
-    auto zeroVector = arith::ConstantOp::create(
-        rewriter, loc, sliceType, rewriter.getZeroAttr(sliceType));
+    auto zeroVector = rewriter.createOrFold<arith::ConstantOp>(
+        loc, sliceType, rewriter.getZeroAttr(sliceType));
 
     // Cast tile slice from index to i32 for intrinsic.
     auto sliceIndexI32 = arith::IndexCastOp::create(
@@ -758,8 +759,8 @@ struct OuterProductOpConversion
     if (!lhsMask || !rhsMask) {
       auto predTy =
           outerProductOp.getLhsType().cloneWith({}, rewriter.getI1Type());
-      Value allActiveMask = arith::ConstantOp::create(
-          rewriter, loc, DenseElementsAttr::get(predTy, true));
+      Value allActiveMask = rewriter.createOrFold<arith::ConstantOp>(
+          loc, DenseElementsAttr::get(predTy, true));
       lhsMask = allActiveMask;
       rhsMask = allActiveMask;
     }
@@ -805,8 +806,8 @@ struct OuterProductWideningOpConversion
     Value rhsMask = op.getRhsMask();
     if (!lhsMask || !rhsMask) {
       auto predTy = op.getLhsType().cloneWith({}, rewriter.getI1Type());
-      Value allActiveMask = arith::ConstantOp::create(
-          rewriter, loc, DenseElementsAttr::get(predTy, true));
+      Value allActiveMask = rewriter.createOrFold<arith::ConstantOp>(
+          loc, DenseElementsAttr::get(predTy, true));
       lhsMask = allActiveMask;
       rhsMask = allActiveMask;
     }
@@ -849,9 +850,8 @@ struct StreamingVLOpConversion
     auto cntsd = arm_sme::aarch64_sme_cntsd::create(rewriter, loc, i64Type);
     auto cntsdIdx = arith::IndexCastOp::create(rewriter, loc,
                                                rewriter.getIndexType(), cntsd);
-    auto scale = arith::ConstantIndexOp::create(
-        rewriter, loc,
-        8 / arm_sme::getSizeInBytes(streamingVlOp.getTypeSize()));
+    auto scale = rewriter.createOrFold<arith::ConstantIndexOp>(
+        loc, 8 / arm_sme::getSizeInBytes(streamingVlOp.getTypeSize()));
     rewriter.replaceOpWithNewOp<arith::MulIOp>(streamingVlOp, cntsdIdx, scale);
     return success();
   }

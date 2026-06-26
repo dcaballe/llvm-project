@@ -312,11 +312,11 @@ static Operation *replaceOpWithPredicatedOp(RewriterBase &rewriter,
   //   srcElement = (pred) ?  prevSrcElements : 0;
   //
   Location loc = asyncCopyOp->getLoc();
-  Value dstElements = arith::ConstantOp::create(
-      rewriter, loc, asyncCopyOp.getDstElementsAttr());
+  Value dstElements = rewriter.createOrFold<arith::ConstantOp>(
+      loc, asyncCopyOp.getDstElementsAttr());
   Value originalSrcElement =
       asyncCopyOp.getSrcElements() ? asyncCopyOp.getSrcElements() : dstElements;
-  Value c0Index = arith::ConstantIndexOp::create(rewriter, loc, 0);
+  Value c0Index = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
   auto srcElements = arith::SelectOp::create(rewriter, loc, predicate,
                                              originalSrcElement, c0Index);
   auto asyncCopyZeroFillOp = DeviceAsyncCopyOp::create(
@@ -874,7 +874,7 @@ SmallVector<Operation *> HopperBuilder::buildPredicateLoadsOnThread0(
     ArrayRef<TypedValue<MemRefType>> sharedMemBuffers,
     TypedValue<MBarrierGroupType> barrier) {
   SmallVector<Operation *> loadOps;
-  Value zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
+  Value zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
   Value tidx = gpu::ThreadIdOp::create(rewriter, loc, gpu::Dimension::x);
   Value cond = arith::CmpIOp::create(rewriter, loc, arith::CmpIPredicate::eq,
                                      tidx, zero);
@@ -919,7 +919,7 @@ HopperBuilder::buildAndInitBarrierInSharedMemory(OpFoldResult numThreads) {
   Value barrier = MBarrierCreateOp::create(
       rewriter, loc,
       MBarrierGroupType::get(rewriter.getContext(), sharedMemorySpace));
-  Value zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
+  Value zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
   nvgpu::MBarrierInitOp::create(
       rewriter, loc, barrier,
       getValueOrCreateConstantIndexOp(rewriter, loc, numThreads), zero,
@@ -963,7 +963,7 @@ HopperBuilder::buildTmaAsyncLoad(TypedValue<TensorMapDescriptorType> globalDesc,
                                  TypedValue<MBarrierGroupType> barrier,
                                  SmallVectorImpl<Operation *> &loadOps) {
   MLIRContext *ctx = rewriter.getContext();
-  Value zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
+  Value zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
   Operation *loadOp =
       TmaAsyncLoadOp::create(rewriter, loc, sharedMemref, barrier, globalDesc,
                              ValueRange{zero, zero}, zero, Value(), Value());
@@ -989,7 +989,7 @@ void HopperBuilder::buildBarrierArriveTx(TypedValue<MBarrierGroupType> barrier,
   OpFoldResult size =
       affine::makeComposedFoldedAffineApply(rewriter, loc, sumExpr, mixedSizes);
   Value sizeVal = getValueOrCreateConstantIndexOp(rewriter, loc, size);
-  Value zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
+  Value zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
   nvgpu::MBarrierArriveExpectTxOp::create(rewriter, loc, barrier, sizeVal, zero,
                                           Value());
 }
@@ -1001,8 +1001,8 @@ void HopperBuilder::buildTryWaitParity(TypedValue<MBarrierGroupType> barrier) {
   // of ticks before retry.
   // TODO: hoist this in a default dialect constant.
   Value ticksBeforeRetry =
-      arith::ConstantIndexOp::create(rewriter, loc, 10000000);
-  Value zero = arith::ConstantIndexOp::create(rewriter, loc, 0);
+      rewriter.createOrFold<arith::ConstantIndexOp>(loc, 10000000);
+  Value zero = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0);
   nvgpu::MBarrierTryWaitParityOp::create(rewriter, loc, barrier, parity,
                                          ticksBeforeRetry, zero);
 }

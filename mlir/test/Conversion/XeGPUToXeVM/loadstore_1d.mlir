@@ -4,8 +4,8 @@ gpu.module @load_store_check {
     // CHECK-LABEL: @load_store(
     // CHECK-SAME: %[[SRC:.*]]: memref<512xf32, 1>, %[[DST:.*]]: memref<256xf32, 1>
     gpu.func @load_store(%src: memref<512xf32, 1>, %dst: memref<256xf32, 1>) kernel {
-        // CHECK: %[[C512:.*]] = arith.constant 512 : i64
-        // CHECK: %[[C384:.*]] = arith.constant 384 : i64
+        // CHECK-DAG: %[[C512:.*]] = arith.constant 512 : i64
+        // CHECK-DAG: %[[C384:.*]] = arith.constant 384 : i64
 
         // CHECK: %[[SRCCE:.*]] = memref.memory_space_cast %[[SRC]] : memref<512xf32, 1> to memref<512xf32>
         %srcce = memref.memory_space_cast %src : memref<512xf32, 1> to memref<512xf32>

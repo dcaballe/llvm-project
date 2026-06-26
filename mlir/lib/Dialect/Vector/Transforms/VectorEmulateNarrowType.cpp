@@ -187,9 +187,12 @@ static FailureOr<Operation *> getCompressedMaskOp(OpBuilder &rewriter,
               }
               compressedMaskValues.push_back(combinedValue);
             }
-            return arith::ConstantOp::create(
-                rewriter, loc,
-                DenseElementsAttr::get(newMaskType, compressedMaskValues));
+            return cast<arith::ConstantOp>(
+                rewriter
+                    .createOrFold<arith::ConstantOp>(
+                        loc, DenseElementsAttr::get(newMaskType,
+                                                    compressedMaskValues))
+                    .getDefiningOp());
           });
 
   if (!newMask)
@@ -310,7 +313,7 @@ static Value dynamicallyExtractSubVector(OpBuilder &rewriter, Location loc,
                  : arith::AddIOp::create(
                        rewriter, loc, rewriter.getIndexType(),
                        dyn_cast<Value>(offset),
-                       arith::ConstantIndexOp::create(rewriter, loc, i));
+                       rewriter.createOrFold<arith::ConstantIndexOp>(loc, i));
     auto extractOp = vector::ExtractOp::create(rewriter, loc, src, extractLoc);
     dest = vector::InsertOp::create(rewriter, loc, extractOp, dest, i);
   }
@@ -355,7 +358,7 @@ static Value dynamicallyInsertSubVector(RewriterBase &rewriter, Location loc,
         i == 0 ? destOffsetVal
                : arith::AddIOp::create(
                      rewriter, loc, rewriter.getIndexType(), destOffsetVal,
-                     arith::ConstantIndexOp::create(rewriter, loc, i));
+                     rewriter.createOrFold<arith::ConstantIndexOp>(loc, i));
     auto extractOp = vector::ExtractOp::create(rewriter, loc, src, i);
     dest = vector::InsertOp::create(rewriter, loc, extractOp, dest, insertLoc);
   }
@@ -498,9 +501,8 @@ static Value extractSliceIntoByte(ConversionPatternRewriter &rewriter,
   assert(8 % vectorElementType.getIntOrFloatBitWidth() == 0 &&
          "vector element must be a valid sub-byte type");
   auto emulatedPerContainerElem = 8 / vectorElementType.getIntOrFloatBitWidth();
-  auto emptyByteVector = arith::ConstantOp::create(
-      rewriter, loc,
-      VectorType::get({emulatedPerContainerElem}, vectorElementType),
+  Value emptyByteVector = rewriter.createOrFold<arith::ConstantOp>(
+      loc, VectorType::get({emulatedPerContainerElem}, vectorElementType),
       rewriter.getZeroAttr(
           VectorType::get({emulatedPerContainerElem}, vectorElementType)));
   auto extracted = staticallyExtractSubvector(rewriter, loc, vector,
@@ -772,9 +774,8 @@ struct ConvertVectorStore final : OpConversionPattern<vector::StoreOp> {
         std::fill_n(frontMaskValues.end() - frontSubWidthStoreElem,
                     *foldedNumFrontPadElems, true);
       }
-      auto frontMask = arith::ConstantOp::create(
-          rewriter, loc,
-          DenseElementsAttr::get(subWidthStoreMaskType, frontMaskValues));
+      Value frontMask = rewriter.createOrFold<arith::ConstantOp>(
+          loc, DenseElementsAttr::get(subWidthStoreMaskType, frontMaskValues));
 
       currentSourceIndex = emulatedPerContainerElem - (*foldedNumFrontPadElems);
       auto value =
@@ -782,7 +783,7 @@ struct ConvertVectorStore final : OpConversionPattern<vector::StoreOp> {
                                frontSubWidthStoreElem, *foldedNumFrontPadElems);
 
       storeFunc(rewriter, loc, memrefBase, currentDestIndex,
-                cast<VectorValue>(value), frontMask.getResult());
+                cast<VectorValue>(value), frontMask);
     }
 
     if (currentSourceIndex >= origElements) {
@@ -792,7 +793,7 @@ struct ConvertVectorStore final : OpConversionPattern<vector::StoreOp> {
 
     // Increment the destination index by 1 to align to the emulated width
     // boundary.
-    auto constantOne = arith::ConstantIndexOp::create(rewriter, loc, 1);
+    auto constantOne = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
     currentDestIndex = arith::AddIOp::create(
         rewriter, loc, rewriter.getIndexType(), currentDestIndex, constantOne);
 
@@ -821,7 +822,7 @@ struct ConvertVectorStore final : OpConversionPattern<vector::StoreOp> {
       currentSourceIndex += numNonFullWidthElements;
       currentDestIndex = arith::AddIOp::create(
           rewriter, loc, rewriter.getIndexType(), currentDestIndex,
-          arith::ConstantIndexOp::create(rewriter, loc, fullWidthStoreSize));
+          rewriter.createOrFold<arith::ConstantIndexOp>(loc, fullWidthStoreSize));
     }
 
     // 3. Partial width store for the trailing output byte.
@@ -836,12 +837,11 @@ struct ConvertVectorStore final : OpConversionPattern<vector::StoreOp> {
       // Generate back mask.
       auto maskValues = SmallVector<bool>(emulatedPerContainerElem, false);
       std::fill_n(maskValues.begin(), remainingElements, 1);
-      auto backMask = arith::ConstantOp::create(
-          rewriter, loc,
-          DenseElementsAttr::get(subWidthStoreMaskType, maskValues));
+      Value backMask = rewriter.createOrFold<arith::ConstantOp>(
+          loc, DenseElementsAttr::get(subWidthStoreMaskType, maskValues));
 
       storeFunc(rewriter, loc, memrefBase, currentDestIndex,
-                cast<VectorValue>(subWidthStorePart), backMask.getResult());
+                cast<VectorValue>(subWidthStorePart), backMask);
     }
 
     rewriter.eraseOp(op);
@@ -950,7 +950,7 @@ struct ConvertVectorMaskedStore final
     auto numElements = (origElements + emulatedPerContainerElem - 1) /
                        emulatedPerContainerElem;
     auto newType = VectorType::get(numElements, containerElemTy);
-    auto passThru = arith::ConstantOp::create(rewriter, loc, newType,
+    auto passThru = rewriter.createOrFold<arith::ConstantOp>(loc, newType,
                                               rewriter.getZeroAttr(newType));
 
     auto newLoad = vector::MaskedLoadOp::create(
@@ -1072,8 +1072,8 @@ struct ConvertVectorLoad final : OpConversionPattern<vector::LoadOp> {
                            numElements, emulatedElemTy, containerElemTy);
 
     if (!foldedIntraVectorOffset) {
-      auto resultVector = arith::ConstantOp::create(
-          rewriter, loc, op.getType(), rewriter.getZeroAttr(op.getType()));
+      Value resultVector = rewriter.createOrFold<arith::ConstantOp>(
+          loc, op.getType(), rewriter.getZeroAttr(op.getType()));
       result = dynamicallyExtractSubVector(
           rewriter, loc, dyn_cast<TypedValue<VectorType>>(result), resultVector,
           linearizedInfo.intraDataOffset, origElements);
@@ -1202,8 +1202,8 @@ struct ConvertVectorMaskedLoad final
     auto newBitcastType =
         VectorType::get(numElements * emulatedPerContainerElem, emulatedElemTy);
 
-    auto emptyVector = arith::ConstantOp::create(
-        rewriter, loc, newBitcastType, rewriter.getZeroAttr(newBitcastType));
+    Value emptyVector = rewriter.createOrFold<arith::ConstantOp>(
+        loc, newBitcastType, rewriter.getZeroAttr(newBitcastType));
     if (!foldedIntraVectorOffset) {
       passthru = dynamicallyInsertSubVector(
           rewriter, loc, passthru, emptyVector, linearizedInfo.intraDataOffset,
@@ -1231,7 +1231,7 @@ struct ConvertVectorMaskedLoad final
         numElements * emulatedPerContainerElem, rewriter.getI1Type());
     // TODO: try to fold if op's mask is constant
     auto emptyMask =
-        arith::ConstantOp::create(rewriter, loc, newSelectMaskType,
+        rewriter.createOrFold<arith::ConstantOp>(loc, newSelectMaskType,
                                   rewriter.getZeroAttr(newSelectMaskType));
     if (!foldedIntraVectorOffset) {
       mask = dynamicallyInsertSubVector(rewriter, loc, mask, emptyMask,
@@ -1377,8 +1377,8 @@ struct ConvertVectorTransferRead final
 
     Value result = bitCast->getResult(0);
     if (!foldedIntraVectorOffset) {
-      auto zeros = arith::ConstantOp::create(
-          rewriter, loc, op.getType(), rewriter.getZeroAttr(op.getType()));
+      Value zeros = rewriter.createOrFold<arith::ConstantOp>(
+          loc, op.getType(), rewriter.getZeroAttr(op.getType()));
       result = dynamicallyExtractSubVector(rewriter, loc, bitCast, zeros,
                                            linearizedInfo.intraDataOffset,
                                            origElements);
@@ -1756,21 +1756,20 @@ Value BitCastRewriter::genericRewriteStep(
 
   // Intersect with the mask.
   VectorType shuffledVectorType = shuffleOp.getResultVectorType();
-  auto constOp = arith::ConstantOp::create(
-      rewriter, loc,
-      DenseElementsAttr::get(shuffledVectorType, metadata.masks));
+  Value constOp = rewriter.createOrFold<arith::ConstantOp>(
+      loc, DenseElementsAttr::get(shuffledVectorType, metadata.masks));
   Value andValue = arith::AndIOp::create(rewriter, loc, shuffleOp, constOp);
 
   // Align right on 0.
-  auto shiftRightConstantOp = arith::ConstantOp::create(
-      rewriter, loc,
+  Value shiftRightConstantOp = rewriter.createOrFold<arith::ConstantOp>(
+      loc,
       DenseElementsAttr::get(shuffledVectorType, metadata.shiftRightAmounts));
   Value shiftedRight =
       arith::ShRUIOp::create(rewriter, loc, andValue, shiftRightConstantOp);
 
   // Shift bits left into their final position.
-  auto shiftLeftConstantOp = arith::ConstantOp::create(
-      rewriter, loc,
+  Value shiftLeftConstantOp = rewriter.createOrFold<arith::ConstantOp>(
+      loc,
       DenseElementsAttr::get(shuffledVectorType, metadata.shiftLeftAmounts));
   Value shiftedLeft =
       arith::ShLIOp::create(rewriter, loc, shiftedRight, shiftLeftConstantOp);
@@ -1828,14 +1827,14 @@ static Value extractNBitsPerByteAndSignExtendToI8(PatternRewriter &rewriter,
   assert(bitIdx >= 0 && bitsToShiftLeft >= 0 && numBits > 0 && numBits <= 8 &&
          "Invalid bitIdx range");
   if (bitsToShiftLeft != 0) {
-    Value shiftLeftValues = arith::ConstantOp::create(
-        rewriter, loc, DenseElementsAttr::get(srcType, bitsToShiftLeft));
+    Value shiftLeftValues = rewriter.createOrFold<arith::ConstantOp>(
+        loc, DenseElementsAttr::get(srcType, bitsToShiftLeft));
     shl = arith::ShLIOp::create(rewriter, loc, src, shiftLeftValues);
   }
 
   int8_t bitsToShiftRight = 8 - numBits;
-  Value shiftRightValues = arith::ConstantOp::create(
-      rewriter, loc, DenseElementsAttr::get(srcType, bitsToShiftRight));
+  Value shiftRightValues = rewriter.createOrFold<arith::ConstantOp>(
+      loc, DenseElementsAttr::get(srcType, bitsToShiftRight));
   Value shr = arith::ShRSIOp::create(rewriter, loc, shl, shiftRightValues);
   return shr;
 }
@@ -1870,16 +1869,16 @@ static Value extractNBitsPerByteAndExtendToI8(PatternRewriter &rewriter,
   int8_t bitsToShiftRight = bitIdx;
   Value shr = src;
   if (bitsToShiftRight != 0) {
-    Value shiftRightValues = arith::ConstantOp::create(
-        rewriter, loc, DenseElementsAttr::get(srcType, bitsToShiftRight));
+    Value shiftRightValues = rewriter.createOrFold<arith::ConstantOp>(
+        loc, DenseElementsAttr::get(srcType, bitsToShiftRight));
     shr = arith::ShRUIOp::create(rewriter, loc, src, shiftRightValues);
   }
   if (bitIdx + numBits == 8) {
     return shr;
   }
   uint8_t lowBitsMask = (1 << numBits) - 1;
-  Value lowBitsMaskValues = arith::ConstantOp::create(
-      rewriter, loc, DenseElementsAttr::get(srcType, lowBitsMask));
+  Value lowBitsMaskValues = rewriter.createOrFold<arith::ConstantOp>(
+      loc, DenseElementsAttr::get(srcType, lowBitsMask));
   return arith::AndIOp::create(rewriter, loc, shr, lowBitsMaskValues);
 }
 
@@ -1956,15 +1955,15 @@ static Value rewriteI8ToI4Trunc(PatternRewriter &rewriter, Location loc,
   // 2. Zero out the upper side of each low i8 element.
   constexpr int8_t i8LowBitMask = 0x0F;
   VectorType deinterI8VecType = deinterleaveOp.getResultVectorType();
-  Value zeroOutMask = arith::ConstantOp::create(
-      rewriter, loc, DenseElementsAttr::get(deinterI8VecType, i8LowBitMask));
+  Value zeroOutMask = rewriter.createOrFold<arith::ConstantOp>(
+      loc, DenseElementsAttr::get(deinterI8VecType, i8LowBitMask));
   Value zeroOutLow = arith::AndIOp::create(
       rewriter, loc, deinterleaveOp.getRes1(), zeroOutMask);
 
   // 3. Move high i4 values to upper side of the byte.
   constexpr int8_t bitsToShift = 4;
-  auto shiftValues = arith::ConstantOp::create(
-      rewriter, loc, DenseElementsAttr::get(deinterI8VecType, bitsToShift));
+  Value shiftValues = rewriter.createOrFold<arith::ConstantOp>(
+      loc, DenseElementsAttr::get(deinterI8VecType, bitsToShift));
   Value shlHigh = arith::ShLIOp::create(rewriter, loc, deinterleaveOp.getRes2(),
                                         shiftValues);
 

@@ -342,7 +342,8 @@ struct ComposeCollapseOfExpandOp : public OpRewritePattern<CollapseOpTy> {
         if (numStaticElems != 1) {
           result = arith::MulIOp::create(
               rewriter, loc, result,
-              arith::ConstantIndexOp::create(rewriter, loc, numStaticElems),
+              rewriter.createOrFold<arith::ConstantIndexOp>(loc,
+                                                            numStaticElems),
               arith::IntegerOverflowFlags::nsw);
         }
         newOutputShape.push_back(result);

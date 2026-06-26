@@ -68,7 +68,7 @@ static SmallVector<Value> getMixedAsValues(OpBuilder b, const Location &loc,
       values.emplace_back(*(dyn++));
     } else {
       TypedAttr val = type == i64 ? b.getI64IntegerAttr(s) : b.getIndexAttr(s);
-      values.emplace_back(arith::ConstantOp::create(b, loc, type, val));
+      values.emplace_back(b.createOrFold<arith::ConstantOp>(loc, type, val));
     }
   }
   return values;
@@ -94,8 +94,8 @@ linearToMultiIndex(Location loc, OpBuilder b, Value linearIndex,
 Value multiToLinearIndex(Location loc, OpBuilder b, ValueRange multiIndex,
                          ValueRange dimensions) {
 
-  Value linearIndex = arith::ConstantIndexOp::create(b, loc, 0);
-  Value stride = arith::ConstantIndexOp::create(b, loc, 1);
+  Value linearIndex = b.createOrFold<arith::ConstantIndexOp>(loc, 0);
+  Value stride = b.createOrFold<arith::ConstantIndexOp>(loc, 1);
 
   for (int i = multiIndex.size() - 1; i >= 0; --i) {
     Value off = arith::MulIOp::create(b, loc, multiIndex[i], stride);
@@ -149,7 +149,7 @@ struct ConvertShardingOp : public OpConversionPattern<ShardingOp> {
                                     maxNAxes};
     Value resSplitAxes = tensor::EmptyOp::create(rewriter, loc, shape, i16);
     auto attr = IntegerAttr::get(i16, -1);
-    Value fillValue = arith::ConstantOp::create(rewriter, loc, i16, attr);
+    Value fillValue = rewriter.createOrFold<arith::ConstantOp>(loc, i16, attr);
     resSplitAxes =
         linalg::FillOp::create(rewriter, loc, fillValue, resSplitAxes)
             .getResult(0);
@@ -166,7 +166,8 @@ struct ConvertShardingOp : public OpConversionPattern<ShardingOp> {
       std::array<int64_t, 2> sizes = {1, size};
       auto tensorType = RankedTensorType::get({size}, i16);
       auto attrs = DenseIntElementsAttr::get(tensorType, axes.asArrayRef());
-      auto vals = arith::ConstantOp::create(rewriter, loc, tensorType, attrs);
+      auto vals =
+          rewriter.createOrFold<arith::ConstantOp>(loc, tensorType, attrs);
       resSplitAxes = tensor::InsertSliceOp::create(rewriter, loc, vals,
                                                    resSplitAxes, empty, empty,
                                                    empty, offs, sizes, strides);
@@ -210,8 +211,8 @@ struct ConvertShardingOp : public OpConversionPattern<ShardingOp> {
 
       resOffsets = tensor::EmptyOp::create(
           rewriter, loc, std::array<int64_t, 2>{nSplits, maxSplitSize}, i64);
-      Value zero = arith::ConstantOp::create(
-          rewriter, loc, i64, rewriter.getI64IntegerAttr(ShapedType::kDynamic));
+      Value zero = rewriter.createOrFold<arith::ConstantOp>(
+          loc, i64, rewriter.getI64IntegerAttr(ShapedType::kDynamic));
       resOffsets =
           linalg::FillOp::create(rewriter, loc, zero, resOffsets).getResult(0);
       SmallVector<Value> offsets =
@@ -304,14 +305,14 @@ struct ConvertNeighborsLinearIndicesOp
     SmallVector<Value> dims;
     llvm::transform(
         gridOp.getShape(), std::back_inserter(dims), [&](int64_t i) {
-          return arith::ConstantIndexOp::create(rewriter, loc, i).getResult();
+          return rewriter.createOrFold<arith::ConstantIndexOp>(loc, i);
         });
     Value dimSz = dims[axes[0]];
-    Value one = arith::ConstantIndexOp::create(rewriter, loc, 1);
-    Value minus1 = arith::ConstantIndexOp::create(rewriter, loc, -1);
-    Value atBorder =
-        arith::CmpIOp::create(rewriter, loc, arith::CmpIPredicate::sle, orgIdx,
-                              arith::ConstantIndexOp::create(rewriter, loc, 0));
+    Value one = rewriter.createOrFold<arith::ConstantIndexOp>(loc, 1);
+    Value minus1 = rewriter.createOrFold<arith::ConstantIndexOp>(loc, -1);
+    Value atBorder = arith::CmpIOp::create(
+        rewriter, loc, arith::CmpIPredicate::sle, orgIdx,
+        rewriter.createOrFold<arith::ConstantIndexOp>(loc, 0));
     auto down = scf::IfOp::create(
         rewriter, loc, atBorder,
         [&](OpBuilder &builder, Location loc) {
@@ -420,10 +421,10 @@ struct ConvertShardShapeOp : public OpConversionPattern<ShardShapeOp> {
     // computed statically.
     int64_t pos = 0;
     SmallVector<Value> shardShape;
-    Value zero =
-        arith::ConstantOp::create(rewriter, loc, rewriter.getZeroAttr(index));
-    Value one =
-        arith::ConstantOp::create(rewriter, loc, rewriter.getOneAttr(index));
+    Value zero = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getZeroAttr(index));
+    Value one = rewriter.createOrFold<arith::ConstantOp>(
+        loc, rewriter.getOneAttr(index));
 
     // Iterate over the dimensions of the tensor shape, get their split Axes,
     // and compute the sharded shape.
@@ -433,8 +434,8 @@ struct ConvertShardShapeOp : public OpConversionPattern<ShardShapeOp> {
         auto axes = splitAxes[i];
         // The current dimension might not be sharded.
         // Create a value from the static position in shardDimsOffsets.
-        Value posVal = arith::ConstantOp::create(rewriter, loc,
-                                                 rewriter.getIndexAttr(pos));
+        Value posVal = rewriter.createOrFold<arith::ConstantOp>(
+            loc, rewriter.getIndexAttr(pos));
         // Get the index of the local shard in the grid axis.
         Value idx = multiIdx[axes[0]];
         auto numShards =
@@ -456,8 +457,8 @@ struct ConvertShardShapeOp : public OpConversionPattern<ShardShapeOp> {
           Value sz = arith::SubIOp::create(rewriter, loc, nextOff, off);
           shardShape.emplace_back(sz);
         } else {
-          Value numShardsVal = arith::ConstantOp::create(
-              rewriter, loc, rewriter.getIndexAttr(numShards));
+          Value numShardsVal = rewriter.createOrFold<arith::ConstantOp>(
+              loc, rewriter.getIndexAttr(numShards));
           // Compute shard dim size by distributing odd elements to trailing
           // shards:
           // sz = dim / numShards
@@ -824,7 +825,7 @@ struct ConvertAllGatherOp : public CommOpPattern<AllGatherOp> {
         mpi::CommSizeOp::create(ib, ib.getI32Type(), comm).getSize();
     nRanksV = arith::IndexCastOp::create(ib, ib.getIndexType(), nRanksV);
     int64_t nRanks = outputDimOnAxis / inputDimOnAxis;
-    Value nRanksC = arith::ConstantIndexOp::create(ib, nRanks);
+    Value nRanksC = ib.createOrFold<arith::ConstantIndexOp>(nRanks);
     Value notError =
         arith::CmpIOp::create(ib, arith::CmpIPredicate::eq, nRanksV, nRanksC);
     cf::AssertOp::create(ib, notError,
@@ -944,10 +945,9 @@ struct ConvertUpdateHaloOp : public OpConversionPattern<UpdateHaloOp> {
     auto toValue = [&rewriter, &loc](OpFoldResult &v) -> Value {
       if (auto value = dyn_cast<Value>(v))
         return value;
-      return arith::ConstantOp::create(
-          rewriter, loc,
-          rewriter.getIndexAttr(
-              cast<IntegerAttr>(cast<Attribute>(v)).getInt()));
+      return rewriter.createOrFold<arith::ConstantOp>(
+          loc, rewriter.getIndexAttr(
+                   cast<IntegerAttr>(cast<Attribute>(v)).getInt()));
     };
 
     auto dest = adaptor.getDestination();
@@ -1004,9 +1004,9 @@ struct ConvertUpdateHaloOp : public OpConversionPattern<UpdateHaloOp> {
     }
 
     auto tagAttr = rewriter.getI32IntegerAttr(91); // we just pick something
-    auto tag = arith::ConstantOp::create(rewriter, loc, tagAttr);
+    auto tag = rewriter.createOrFold<arith::ConstantOp>(loc, tagAttr);
     auto zeroAttr = rewriter.getI32IntegerAttr(0); // for detecting v<0
-    auto zero = arith::ConstantOp::create(rewriter, loc, zeroAttr);
+    auto zero = rewriter.createOrFold<arith::ConstantOp>(loc, zeroAttr);
 
     SmallVector<Type> indexResultTypes(gridOp.getShape().size(),
                                        rewriter.getIndexType());
@@ -1095,10 +1095,9 @@ struct ConvertUpdateHaloOp : public OpConversionPattern<UpdateHaloOp> {
         OpFoldResult &v = haloSizes[currHaloDim * 2 + upOrDown];
         Value haloSz = dyn_cast<Value>(v);
         if (!haloSz)
-          haloSz = arith::ConstantOp::create(
-              rewriter, loc,
-              rewriter.getI32IntegerAttr(
-                  cast<IntegerAttr>(cast<Attribute>(v)).getInt()));
+          haloSz = rewriter.createOrFold<arith::ConstantOp>(
+              loc, rewriter.getI32IntegerAttr(
+                       cast<IntegerAttr>(cast<Attribute>(v)).getInt()));
         auto hasSize = arith::CmpIOp::create(
             rewriter, loc, arith::CmpIPredicate::sgt, haloSz, zero);
         scf::IfOp::create(rewriter, loc, hasSize,

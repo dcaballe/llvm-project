@@ -156,13 +156,13 @@ static Value getSubByteWriteMask(Location loc, OpFoldResult linearizedIndices,
   auto dstIntegerType = builder.getIntegerType(dstBits);
   auto maskRightAlignedAttr =
       builder.getIntegerAttr(dstIntegerType, (1 << srcBits) - 1);
-  Value maskRightAligned = arith::ConstantOp::create(
-      builder, loc, dstIntegerType, maskRightAlignedAttr);
+  Value maskRightAligned = builder.createOrFold<arith::ConstantOp>(
+      loc, dstIntegerType, maskRightAlignedAttr);
   Value writeMaskInverse =
       arith::ShLIOp::create(builder, loc, maskRightAligned, bitwidthOffset);
   auto flipValAttr = builder.getIntegerAttr(dstIntegerType, -1);
   Value flipVal =
-      arith::ConstantOp::create(builder, loc, dstIntegerType, flipValAttr);
+      builder.createOrFold<arith::ConstantOp>(loc, dstIntegerType, flipValAttr);
   return arith::XOrIOp::create(builder, loc, writeMaskInverse, flipVal);
 }
 
@@ -375,8 +375,8 @@ struct ConvertMemRefLoad final : OpConversionPattern<memref::LoadOp> {
             : IntegerType::get(rewriter.getContext(),
                                resultTy.getIntOrFloatBitWidth());
     if (conversionTy == convertedElementType) {
-      auto mask = arith::ConstantOp::create(
-          rewriter, loc, convertedElementType,
+      auto mask = rewriter.createOrFold<arith::ConstantOp>(
+          loc, convertedElementType,
           rewriter.getIntegerAttr(convertedElementType, (1 << srcBits) - 1));
 
       result = arith::AndIOp::create(rewriter, loc, bitsLoad, mask);
