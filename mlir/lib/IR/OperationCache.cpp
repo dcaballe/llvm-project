@@ -12,6 +12,158 @@
 
 using namespace mlir;
 
+bool BlockScopedConstantLikeCache::isCacheable(Operation *op) const {
+  return op && op->hasTrait<OpTrait::ConstantLike>();
+}
+
+OperationCache::CacheLookupResult
+BlockScopedConstantLikeCache::lookupOrInsertIntoCache(
+    Operation *op, Block *scopeBlock, Block::iterator insertionPoint) {
+  if (!isCacheable(op))
+    return {nullptr, false};
+
+  // Operation needs to be scoped to its insertion block.
+  if (!scopeBlock) {
+    LDBG() << "[BlockScopedConstantLikeCache]: Can't lookup or insert op "
+              "with no scope: "
+           << *op << "\n";
+    return {nullptr, false};
+  }
+
+  // Look up the scoped operation.
+  ScopedCacheOp key = {scopeBlock, op};
+  Operation *&cachedOp = constantOpCache[key];
+
+  if (cachedOp) {
+    assert(cachedOp->getBlock() == scopeBlock &&
+           "cached op was moved to a different block and was not invalidated");
+    assert(OperationEquivalence::isEquivalentTo(
+               cachedOp, op, OperationEquivalence::IgnoreLocations) &&
+           "cached op was modified and was not invalidated");
+
+    // A found op is only reusable if it dominates the caller's insertion point
+    // within the block. If it doesn't dominate, decline to reuse it.
+    if (!cachedOp->isBeforeInBlock(insertionPoint)) {
+      LDBG() << "[BlockScopedConstantLikeCache]: Equivalent op found but not "
+                "reusable at the insertion point: "
+             << *cachedOp << "\n";
+      return {nullptr, false};
+    }
+
+    LDBG() << "[BlockScopedConstantLikeCache]: Op found in cache: " << *cachedOp
+           << "\n";
+    return {cachedOp, false};
+  }
+
+  // No cached operation found so add it to the cache. The caller will insert
+  // the op into the block following the cache insertion policy.
+  cachedOp = op;
+
+  // This cache policy hoists new constant-like ops toward the beginning of the
+  // block to maximize reuse but the caller will use the result at
+  // `insertionPoint` so the inserted op must dominate it. Honor the hoist
+  // point only when it does not fall after `insertionPoint`. Otherwise insert
+  // right at `insertionPoint`.
+  Block::iterator hoistPoint = getInsertionPoint(scopeBlock);
+  bool hoistDominates =
+      insertionPoint == scopeBlock->end() ||
+      (hoistPoint != scopeBlock->end() &&
+       hoistPoint->isBeforeInBlock(insertionPoint));
+  Block::iterator actualInsertPoint = hoistPoint;
+
+  if (!hoistDominates) {
+    // The cache policy's insertion point does not dominate the caller's
+    // insertion point, so it cannot be honored here. Fall back to the caller's
+    // insertion point.
+    LDBG() << "[BlockScopedConstantLikeCache]: insertion policy could not be "
+              "honored; its point does not dominate the requested insertion "
+              "point, falling back to it\n";
+    actualInsertPoint = insertionPoint;
+  }
+
+  LDBG() << "[BlockScopedConstantLikeCache]: Op added to cache: " << *op
+         << "\n";
+
+  return {op, /*inserted=*/true, scopeBlock, actualInsertPoint};
+}
+
+Block::iterator
+BlockScopedConstantLikeCache::getInsertionPoint(Block *block) const {
+  // Fast path: we've already inserted at least one cached op into `block`, so
+  // the next op should land immediately after the last one we recorded
+  // (preserving chronological order of insertions). Defensive: verify the
+  // recorded op is still in this block; otherwise fall back to the slow path.
+  // This guards against out-of-band erasures/moves by code that isn't aware of
+  // the cache.
+  auto cacheIt = cacheInsertionPoints.find(block);
+  if (cacheIt != cacheInsertionPoints.end()) {
+    Operation *lastCached = cacheIt->second;
+    if (lastCached && lastCached->getBlock() == block)
+      return std::next(Block::iterator(lastCached));
+  }
+
+  // Slow path: nothing recorded yet. Fall back to walking past any
+  // constant-like ops already at the block's begin (these may have been
+  // hoisted by a prior run or by a pass that didn't use this cache). The
+  // returned iterator points at the first non-constant op.
+  auto it = block->begin();
+  while (it != block->end() && it->hasTrait<OpTrait::ConstantLike>())
+    ++it;
+  return it;
+}
+
+void BlockScopedConstantLikeCache::notifyInserted(Operation *op, Block *block) {
+  assert(op && block && "null op/block passed to notifyInserted");
+  assert(op->getBlock() == block &&
+         "op was not actually inserted into the expected block");
+  assert(constantOpCache.lookup(ScopedCacheOp{block, op}) == op &&
+         "notifyInserted called for an op not recorded in the cache");
+
+  // Advance the cache's insertion point only when the op landed immediately
+  // after the current insertion point (cache insertion's policy). If the cached
+  // op landed somewhere else to satisfy dominance requirements, keep the
+  // current insertion point.
+  Operation *&cacheInsertionPoint = cacheInsertionPoints[block];
+  if (cacheInsertionPoint && cacheInsertionPoint->getBlock() == block &&
+      std::next(Block::iterator(cacheInsertionPoint)) != Block::iterator(op)) {
+    return;
+  }
+
+  cacheInsertionPoint = op;
+}
+
+void BlockScopedConstantLikeCache::invalidate(Operation *op, Block *scopeBlock) {
+  if (!isCacheable(op))
+    return;
+
+  // If no scope block is provided, use the current block of the operation.
+  if (!scopeBlock) {
+    scopeBlock = op->getBlock();
+    // If the operation is not scoped to a block, we can't invalidate it.
+    if (!scopeBlock) {
+      LDBG() << "[BlockScopedConstantLikeCache]: Can't invalidate op without "
+                "scope: "
+             << *op << "\n";
+      return;
+    }
+  }
+
+  ScopedCacheOp key = {scopeBlock, op};
+  constantOpCache.erase(key);
+
+  // If the erased op was the cache insertion point for its block, drop it
+  // so it'll be recomputed on the next use.
+  auto cacheIt = cacheInsertionPoints.find(scopeBlock);
+  if (cacheIt != cacheInsertionPoints.end() && cacheIt->second == op)
+    cacheInsertionPoints.erase(cacheIt);
+}
+
+void BlockScopedConstantLikeCache::clear() {
+  LDBG() << "[BlockScopedConstantLikeCache]: Cache cleared\n";
+  constantOpCache.clear();
+  cacheInsertionPoints.clear();
+}
+
 bool IsolatedRegionScopedConstantLikeCache::isCacheable(Operation *op) const {
   return op && op->hasTrait<OpTrait::ConstantLike>();
 }

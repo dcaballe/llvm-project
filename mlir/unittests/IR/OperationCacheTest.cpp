@@ -393,4 +393,118 @@ TEST(OperationCacheTest, DeclinesWhileEnclosingOpIsDetached) {
   detached->erase();
 }
 
+//===----------------------------------------------------------------------===//
+// Block scoping.
+//===----------------------------------------------------------------------===//
+
+TEST(OperationCacheTest, DedupWithinBlockAndScoping) {
+  MLIRContext ctx;
+  ctx.loadDialect<test::TestDialect>();
+  OpBuilder b(&ctx);
+  Location loc = b.getUnknownLoc();
+  Block block, otherBlock;
+  BlockScopedConstantLikeCache cache;
+
+  b.setInsertionPointToEnd(&block);
+  Operation *c0a = makeConstant(b, loc, 0);
+  Operation *c0b = makeConstant(b, loc, 0); // Equivalent to c0a.
+  Operation *c1 = makeConstant(b, loc, 1);  // Different value.
+
+  auto r0a = cache.lookupOrInsertIntoCache(c0a, &block, block.end());
+  EXPECT_TRUE(r0a.insertedInCache());
+  EXPECT_EQ(r0a.op, c0a);
+
+  // Equivalent op in the same block is deduplicated to the first one.
+  auto r0b = cache.lookupOrInsertIntoCache(c0b, &block, block.end());
+  EXPECT_TRUE(r0b.foundInCache());
+  EXPECT_EQ(r0b.op, c0a);
+
+  // Different value is not deduplicated.
+  EXPECT_TRUE(cache.lookupOrInsertIntoCache(c1, &block, block.end()).insertedInCache());
+
+  // The same value in a different block is not deduplicated (block-scoped).
+  b.setInsertionPointToEnd(&otherBlock);
+  Operation *c0other = makeConstant(b, loc, 0);
+  EXPECT_TRUE(cache.lookupOrInsertIntoCache(c0other, &otherBlock, otherBlock.end()).insertedInCache());
+}
+
+TEST(OperationCacheTest, InsertionPointHoistsConstants) {
+  MLIRContext ctx;
+  ctx.loadDialect<test::TestDialect>();
+  OpBuilder b(&ctx);
+  Location loc = b.getUnknownLoc();
+  Block block;
+  BlockScopedConstantLikeCache cache;
+
+  // Empty block: the insertion point is the block begin.
+  EXPECT_EQ(cache.getInsertionPoint(&block), block.begin());
+
+  // After a cached op is inserted and announced, subsequent cached ops land
+  // immediately after it (chronological order at the top of the block).
+  b.setInsertionPointToStart(&block);
+  Operation *c0 = makeConstant(b, loc, 0);
+  cache.lookupOrInsertIntoCache(c0, &block, block.end());
+  cache.notifyInserted(c0, &block);
+  EXPECT_EQ(cache.getInsertionPoint(&block), std::next(Block::iterator(c0)));
+}
+
+TEST(OperationCacheTest, InsertionPointDominatesRequestedPoint) {
+  MLIRContext ctx;
+  ctx.loadDialect<test::TestDialect>();
+  OpBuilder b(&ctx);
+  Location loc = b.getUnknownLoc();
+  Block block;
+  b.setInsertionPointToEnd(&block);
+  BlockScopedConstantLikeCache cache;
+
+  // Cache an op at the block top so the policy's hoist point is *after* it,
+  // then cache a new op with the insertion point set *at* that first op (i.e.
+  // above the hoist point).
+  Operation *c0 = makeConstant(b, loc, 0);
+  cache.lookupOrInsertIntoCache(c0, &block, block.end());
+  cache.notifyInserted(c0, &block);
+  Operation *c1 = makeConstant(b, loc, 1);
+
+  auto r = cache.lookupOrInsertIntoCache(c1, &block, Block::iterator(c0));
+  ASSERT_TRUE(r.insertedInCache());
+
+  // A block-scoped cache always reports the block it was scoped to.
+  EXPECT_EQ(r.insertionBlock, &block);
+
+  // The policy alone would return std::next(c0); it must be clamped to the
+  // requested insertion point so the op dominates it.
+  EXPECT_EQ(r.insertionPoint, Block::iterator(c0));
+  EXPECT_NE(r.insertionPoint, std::next(Block::iterator(c0)));
+}
+
+TEST(OperationCacheTest, ClampedInsertionKeepsCacheInsertionPoint) {
+  MLIRContext ctx;
+  ctx.loadDialect<test::TestDialect>();
+  OpBuilder b(&ctx);
+  Location loc = b.getUnknownLoc();
+  Block block;
+  BlockScopedConstantLikeCache cache;
+
+  // Two normally-hoisted ops: the cache's insertion point advances past the
+  // last one (`c1`), so the next op lands right after it.
+  b.setInsertionPointToStart(&block);
+  Operation *c0 = makeConstant(b, loc, 0);
+  cache.lookupOrInsertIntoCache(c0, &block, block.end());
+  cache.notifyInserted(c0, &block);
+  b.setInsertionPointToEnd(&block);
+  Operation *c1 = makeConstant(b, loc, 1);
+  cache.lookupOrInsertIntoCache(c1, &block, block.end());
+  cache.notifyInserted(c1, &block);
+  EXPECT_EQ(cache.getInsertionPoint(&block), std::next(Block::iterator(c1)));
+
+  // A clamped op lands before the cache's insertion point. That point stays at
+  // `c1` so later ops keep hoisting after `c1`, not after the clamped op.
+  b.setInsertionPointToStart(&block);
+  Operation *clamped = makeConstant(b, loc, 2);
+  cache.lookupOrInsertIntoCache(clamped, &block, block.end());
+  cache.notifyInserted(clamped, &block);
+  EXPECT_EQ(cache.getInsertionPoint(&block), std::next(Block::iterator(c1)));
+  EXPECT_NE(cache.getInsertionPoint(&block), std::next(Block::iterator(clamped)));
+}
+
 } // namespace

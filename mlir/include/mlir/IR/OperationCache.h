@@ -113,6 +113,54 @@ struct ScopedOpCacheInfo {
 };
 } // namespace detail
 
+/// A block-scoped cache of constant-like operations that implements the
+/// following policy:
+///   * Cacheability: only ops with the `ConstantLike` trait are cached.
+///   * Scope: block-scoped. Equivalent cacheable ops created in the same block
+///     via `createOrFold` are deduplicated. No caching happens across blocks.
+///   * Insertion: newly cached ops are inserted at the beginning of the block
+///     following creation order (best-effort).
+class BlockScopedConstantLikeCache : public OperationCache {
+public:
+  bool isCacheable(Operation *op) const override;
+
+  CacheLookupResult
+  lookupOrInsertIntoCache(Operation *op, Block *scopeBlock,
+                          Block::iterator insertionPoint) override;
+
+  Block::iterator getInsertionPoint(Block *block) const;
+
+  void notifyInserted(Operation *op, Block *block) override;
+
+  void invalidate(Operation *op, Block *scopeBlock = nullptr) override;
+
+  void invalidate(Block *block) override {
+    for (Operation &op : *block)
+      invalidate(&op, block);
+    cacheInsertionPoints.erase(block);
+  }
+
+  void clear() override;
+
+private:
+  /// Key for block-scoped constant op cache.
+  using ScopedCacheOpInfo = detail::ScopedOpCacheInfo<Block *>;
+  using ScopedCacheOp = ScopedCacheOpInfo::ScopedOp;
+
+  // TODO: Consider a different data structure for a more efficient full block
+  // invalidation?
+  using ScopedCacheMapTy =
+      llvm::DenseMap<ScopedCacheOp, Operation *, ScopedCacheOpInfo>;
+
+  /// Block-scoped cache for constant-like ops.
+  ScopedCacheMapTy constantOpCache;
+
+  /// Cache insertion points per block. A null insertion point triggers
+  /// insertion point computation by walking past any pre-existing constant-like
+  /// ops at the beginning of the block.
+  llvm::DenseMap<Block *, Operation *> cacheInsertionPoints;
+};
+
 /// A cache of constant-like operations scoped to the closest enclosing region
 /// that is isolated from above. That is usually a function body, but it is also
 /// any such region nested inside one, for example a `gpu.module` body. It
