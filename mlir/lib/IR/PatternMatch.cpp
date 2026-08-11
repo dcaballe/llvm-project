@@ -163,12 +163,23 @@ void RewriterBase::eraseOp(Operation *op) {
 
   // Fast path: If no listener is attached, the op can be dropped in one go.
   if (!rewriteListener) {
+    // Invalidate cached ops before bulk-erasing.
+    if (operationCache) {
+      if (op->getNumRegions() == 0) {
+        operationCache->invalidate(op);
+      } else {
+        op->walk(
+            [&](Operation *nested) { operationCache->invalidate(nested); });
+      }
+    }
     op->erase();
     return;
   }
 
   // Helper function that erases a single op.
   auto eraseSingleOp = [&](Operation *op) {
+    if (operationCache)
+      operationCache->invalidate(op);
 #ifndef NDEBUG
     // All nested ops should have been erased already.
     assert(
@@ -231,6 +242,10 @@ void RewriterBase::eraseOp(Operation *op) {
 
 void RewriterBase::eraseBlock(Block *block) {
   assert(block->use_empty() && "expected 'block' to have no uses");
+
+  // Invalidate block from cache before performing any modification.
+  if (operationCache)
+    operationCache->invalidate(block);
 
   for (auto &op : llvm::make_early_inc_range(llvm::reverse(*block))) {
     assert(op.use_empty() && "expected 'op' to have no uses");
@@ -354,6 +369,12 @@ void RewriterBase::inlineBlockBefore(Block *source, Block *dest,
   // Move operations from the source block to the dest block and erase the
   // source block.
   if (!listener) {
+    // Invalidate top-level ops before moving them to a different block, since
+    // cache keys include the parent block pointer.
+    if (operationCache)
+      for (Operation &op : *source)
+        operationCache->invalidate(&op);
+
     // Fast path: If no listener is attached, move all operations at once.
     dest->getOperations().splice(before, source->getOperations());
   } else {
@@ -384,6 +405,10 @@ void RewriterBase::mergeBlocks(Block *source, Block *dest,
 /// Split the operations starting at "before" (inclusive) out of the given
 /// block into a new block, and return it.
 Block *RewriterBase::splitBlock(Block *block, Block::iterator before) {
+  // Invalidate ops from constant cache.
+  if (operationCache)
+    operationCache->invalidate(block);
+
   // Fast path: If no listener is attached, split the block directly.
   if (!listener)
     return block->splitBlock(before);
@@ -446,6 +471,10 @@ void RewriterBase::moveOpBefore(Operation *op, Operation *existingOp) {
 
 void RewriterBase::moveOpBefore(Operation *op, Block *block,
                                 Block::iterator iterator) {
+  // Invalidate op from cache before performing any modification.
+  if (operationCache)
+    operationCache->invalidate(op);
+
   Block *currentBlock = op->getBlock();
   Block::iterator nextIterator = std::next(op->getIterator());
   op->moveBefore(block, iterator);

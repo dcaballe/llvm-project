@@ -32,9 +32,11 @@ class Value;
 /// generated along the way.
 class OperationFolder {
 public:
-  OperationFolder(MLIRContext *ctx, OpBuilder::Listener *listener = nullptr)
+  OperationFolder(
+      MLIRContext *ctx, OpBuilder::Listener *listener = nullptr,
+      OperationCache *operationCache = nullptr)
       : erasedFoldedLocation(UnknownLoc::get(ctx)), interfaces(ctx),
-        rewriter(ctx, listener) {}
+        rewriter(ctx, listener, operationCache) {}
 
   /// Tries to perform folding on the given `op`, including unifying
   /// deduplicated constants. If successful, replaces `op`'s uses with

@@ -13,6 +13,7 @@ add_mlir_unittest(MLIRIRTests
   InterfaceAttachmentTest.cpp
   LocationTest.cpp
   MemrefLayoutTest.cpp
+  OperationCacheTest.cpp
   OperationSupportTest.cpp
   PatternMatchTest.cpp
   RemarkTest.cpp  
@@ -32,4 +33,5 @@ target_include_directories(MLIRIRTests PRIVATE "${MLIR_BINARY_DIR}/test/lib/Dial
 mlir_target_link_libraries(MLIRIRTests PRIVATE MLIRIR)
 target_link_libraries(MLIRIRTests PRIVATE MLIRBytecodeWriter)
 target_link_libraries(MLIRIRTests PRIVATE MLIRTestDialect)
+target_link_libraries(MLIRIRTests PRIVATE MLIRArithDialect)
 target_link_libraries(MLIRIRTests PRIVATE MLIRRemarkStreamer)

@@ -27,6 +27,7 @@ add_mlir_library(MLIRIR
   Location.cpp
   MLIRContext.cpp
   ODSSupport.cpp
+  OperationCache.cpp
   Operation.cpp
   OperationSupport.cpp
   PatternLoggingListener.cpp

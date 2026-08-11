@@ -9,6 +9,7 @@
 #ifndef MLIR_IR_BUILDERS_H
 #define MLIR_IR_BUILDERS_H
 
+#include "mlir/IR/OperationCache.h"
 #include "mlir/IR/OpDefinition.h"
 #include "llvm/Support/Compiler.h"
 #include <optional>
@@ -213,8 +214,13 @@ public:
   struct Listener;
 
   /// Create a builder with the given context.
-  explicit OpBuilder(MLIRContext *ctx, Listener *listener = nullptr)
-      : Builder(ctx), listener(listener) {}
+  ///
+  /// If an `opCache` is provided, operation cache is enabled in `createOrFold`.
+  /// Cacheable operations and their insertion points are defined by the cache
+  /// implementation. The builder does not take ownership of the cache.
+  explicit OpBuilder(MLIRContext *ctx, Listener *listener = nullptr,
+                     OperationCache *opCache = nullptr)
+      : Builder(ctx), listener(listener), operationCache(opCache) {}
 
   /// Create a builder and set the insertion point to the start of the region.
   explicit OpBuilder(Region *region, Listener *listener = nullptr)
@@ -227,14 +233,20 @@ public:
 
   /// Create a builder and set insertion point to the given operation, which
   /// will cause subsequent insertions to go right before it.
-  explicit OpBuilder(Operation *op, Listener *listener = nullptr)
-      : OpBuilder(op->getContext(), listener) {
+  ///
+  /// If an `opCache` is provided, operation cache is enabled in `createOrFold`.
+  /// Cacheable operations and their insertion points are defined by the cache
+  /// implementation. The builder does not take ownership of the cache.
+  explicit OpBuilder(Operation *op, Listener *listener = nullptr,
+                     OperationCache *opCache = nullptr)
+      : OpBuilder(op->getContext(), listener, opCache) {
     setInsertionPoint(op);
   }
 
   OpBuilder(Block *block, Block::iterator insertPoint,
-            Listener *listener = nullptr)
-      : OpBuilder(block->getParent()->getContext(), listener) {
+            Listener *listener = nullptr,
+            OperationCache *opCache = nullptr)
+      : OpBuilder(block->getParent()->getContext(), listener, opCache) {
     setInsertionPoint(block, insertPoint);
   }
 
@@ -317,6 +329,11 @@ public:
 
   /// Sets the listener of this builder to the one provided.
   void setListener(Listener *newListener) { listener = newListener; }
+
+  /// Sets the cache used by this builder.
+  void setOperationCache(OperationCache *newCache) {
+    operationCache = newCache;
+  }
 
   /// Returns the current listener of this builder, or nullptr if this builder
   /// doesn't have a listener.
@@ -534,13 +551,48 @@ public:
                          getCheckRegisteredInfo<OpTy>(location.getContext()));
     OpTy::build(*this, state, std::forward<Args>(args)...);
     Operation *op = Operation::create(state);
-    if (block)
-      block->getOperations().insert(insertPoint, op);
+
+    if (block) {
+      OperationCache::CacheLookupResult cacheResult;
+      if (operationCache) {
+        // Look up an equivalent op that can be reused at this insertion point.
+        // Otherwise, if the op is cacheable, record it in the cache.
+        cacheResult = operationCache->lookupOrInsertIntoCache(
+            op, block, getInsertionPoint());
+
+        if (cacheResult.foundInCache()) {
+          // The cache returned a reusable equivalent op. Erase the new op and
+          // return results from the cached op.
+          op->erase();
+          results.assign(cacheResult.op->getResults().begin(),
+                         cacheResult.op->getResults().end());
+          return;
+        }
+      }
+
+      if (cacheResult.insertedInCache()) {
+        // Insert the newly cached op at the cache's insertion point and notify
+        // the cache of the insertion. The cache picks the block too, which may
+        // differ from the builder's when its scope spans several blocks.
+        Block *cacheBlock = cacheResult.insertionBlock;
+        assert(cacheBlock && "cache must report the block to insert into");
+        cacheBlock->getOperations().insert(cacheResult.insertionPoint, op);
+        operationCache->notifyInserted(op, cacheBlock);
+      } else {
+        // Otherwise the op goes at the builder's insertion point.
+        block->getOperations().insert(insertPoint, op);
+      }
+    }
 
     // Attempt to fold the operation.
     if (succeeded(tryFold(op, results)) && !results.empty()) {
       // Erase the operation, if the fold removed the need for this operation.
       // Note: The fold already populated the results in this case.
+
+      // Invalidate from cache before erasing because the op may have been
+      // inserted into the cache above.
+      if (operationCache)
+        operationCache->invalidate(op, block);
       op->erase();
       return;
     }
@@ -575,8 +627,9 @@ public:
 
   /// Attempts to fold the given operation and places new results within
   /// `results`. Returns success if the operation was folded, failure otherwise.
-  /// If the fold was in-place, `results` will not be filled. Optionally, newly
-  /// materialized constant operations can be returned to the caller.
+  /// If the fold was in-place, `results` will not be filled. Optionally, the
+  /// constant operation backing each folded result can be returned to the
+  /// caller, whether newly materialized or reused from the operation cache.
   ///
   /// Note: This function does not erase the operation on a successful fold.
   LogicalResult
@@ -615,9 +668,33 @@ public:
                          Region::iterator before);
   void cloneRegionBefore(Region &region, Block *before);
 
+  /// Invalidate the operation from the builder cache.
+  void invalidateFromCache(Operation *op) {
+    if (operationCache)
+      operationCache->invalidate(op);
+  }
+  void invalidateFromCache(Block *block) {
+    if (operationCache)
+      operationCache->invalidate(block);
+  }
+
+  /// Clear the entire operation cache.
+  void clearCache() {
+    if (operationCache)
+      operationCache->clear();
+  }
+
+  /// Returns the operation cache used by this builder.
+  OperationCache *getOperationCache() {
+    return operationCache;
+  }
+
 protected:
   /// The optional listener for events of this builder.
   Listener *listener;
+
+  /// Operation cache used by this builder. If null, operation caching is disabled.
+  OperationCache *operationCache = nullptr;
 
 private:
   /// The current block this builder is inserting into.

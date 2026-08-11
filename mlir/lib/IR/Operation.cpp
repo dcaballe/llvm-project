@@ -393,6 +393,22 @@ bool Operation::isBeforeInBlock(Operation *other) {
   return orderIndex < other->orderIndex;
 }
 
+bool Operation::isBeforeInBlock(Block::iterator other) {
+  assert(block && "Operations without parent blocks have no order.");
+  bool otherIsEnd = other == block->end();
+  assert((otherIsEnd || other->block == block) &&
+         "Expected other operation to have the same parent block.");
+
+  // Other points to the first operation in the block.
+  if (other == block->begin())
+    return false;
+  // Other points to the end of the block.
+  if (otherIsEnd)
+    return true;
+
+  return isBeforeInBlock(&*other);
+}
+
 /// Update the order index of this operation of this operation if necessary,
 /// potentially recomputing the order of the parent block.
 void Operation::updateOrderIfNecessary() {

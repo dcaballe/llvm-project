@@ -625,7 +625,12 @@ public:
   /// `cancelOpModification`. This is a minor efficiency win (it avoids creating
   /// a new operation and removing the old one) but also often allows simpler
   /// code in the client.
-  virtual void startOpModification(Operation *op) {}
+  virtual void startOpModification(Operation *op) {
+    // Invalidate op from the operation cache before it is modified in place
+    // so its cache key can be computed.
+    if (operationCache)
+      operationCache->invalidate(op);
+  }
 
   /// This method is used to signal the end of an in-place modification of the
   /// given operation. This can only be called on operations that were provided
@@ -754,10 +759,12 @@ public:
   }
 
 protected:
-  /// Initialize the builder.
+  /// Initialize the builder. Operation caching is enabled if a valid cache is
+  /// provided.
   explicit RewriterBase(MLIRContext *ctx,
-                        OpBuilder::Listener *listener = nullptr)
-      : OpBuilder(ctx, listener) {}
+                        OpBuilder::Listener *listener = nullptr,
+                        OperationCache *opCache = nullptr)
+      : OpBuilder(ctx, listener, opCache) {}
   explicit RewriterBase(const OpBuilder &otherBuilder)
       : OpBuilder(otherBuilder) {}
   explicit RewriterBase(Operation *op, OpBuilder::Listener *listener = nullptr)
@@ -779,8 +786,10 @@ private:
 /// such as a `PatternRewriter`, is not available.
 class IRRewriter : public RewriterBase {
 public:
-  explicit IRRewriter(MLIRContext *ctx, OpBuilder::Listener *listener = nullptr)
-      : RewriterBase(ctx, listener) {}
+  explicit IRRewriter(
+      MLIRContext *ctx, OpBuilder::Listener *listener = nullptr,
+      OperationCache *opCache = nullptr)
+      : RewriterBase(ctx, listener, opCache) {}
   explicit IRRewriter(const OpBuilder &builder) : RewriterBase(builder) {}
   explicit IRRewriter(Operation *op, OpBuilder::Listener *listener = nullptr)
       : RewriterBase(op, listener) {}

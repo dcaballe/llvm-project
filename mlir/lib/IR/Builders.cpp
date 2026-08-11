@@ -547,13 +547,48 @@ OpBuilder::tryFold(Operation *op, SmallVectorImpl<Value> &results,
     results.push_back(constOp->getResult(0));
   }
 
-  // If we were successful, insert any generated constants.
-  for (Operation *cst : generatedConstants)
-    insert(cst);
+  // Insert the generated constants. If the op cache is set, dedup each op
+  // before any other step to retrieve the final working op.
+  SmallVector<Operation *> foldConstants;
+  for (Operation *cst : generatedConstants) {
+    OperationCache::CacheLookupResult cached;
+    if (operationCache && block)
+      cached = operationCache->lookupOrInsertIntoCache(cst, block, insertPoint);
 
-  // Return materialized constant operations.
+    if (cached.foundInCache()) {
+      // Reuse the equivalent cached constant and drop the detached duplicate.
+      // Its only reference is in `results` because it was never linked into the
+      // IR, so redirect that and erase it. Report the reused constant so the
+      // caller still sees the constant backing this result.
+      Value dup = cst->getResult(0);
+      Value reused = cached.op->getResult(0);
+      for (Value &v : results)
+        if (v == dup)
+          v = reused;
+      cst->erase();
+      foldConstants.push_back(cached.op);
+      continue;
+    }
+
+    if (cached.insertedInCache()) {
+      // Newly cached. Place it at the block and insertion point the cache
+      // lookup returned and notify the cache and listener.
+      Block *cacheBlock = cached.insertionBlock;
+      assert(cacheBlock && "cache must report the block to insert into");
+      cacheBlock->getOperations().insert(cached.insertionPoint, cst);
+      operationCache->notifyInserted(cst, cacheBlock);
+      if (listener)
+        listener->notifyOperationInserted(cst, /*previous=*/{});
+    } else {
+      // Not cached. Insert at the builder's point.
+      insert(cst);
+    }
+    foldConstants.push_back(cst);
+  }
+
+  // Return the constant backing each folded result, reused or newly inserted.
   if (materializedConstants)
-    *materializedConstants = std::move(generatedConstants);
+    *materializedConstants = std::move(foldConstants);
 
   return success();
 }

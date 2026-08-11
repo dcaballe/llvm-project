@@ -445,6 +445,9 @@ public:
   void commit(RewriterBase &rewriter) override {
     assert(block && "expected block");
 
+    // Invalidate block from cache before performing any modification.
+    rewriter.invalidateFromCache(block);
+
     // Notify the listener that the block and its contents are being erased.
     if (auto *listener =
             dyn_cast_or_null<RewriterBase::Listener>(rewriter.getListener()))
@@ -1303,6 +1306,9 @@ void ReplaceOperationRewrite::commit(RewriterBase &rewriter) {
   if (listener)
     notifyIRErased(listener, *op);
 
+  // Invalidate operation from cache before performing any modification.
+  rewriter.invalidateFromCache(op);
+
   // Do not erase the operation yet. It may still be referenced in `mapping`.
   // Just unlink it for now and erase it during cleanup.
   if (!op->getBlock())
@@ -1487,6 +1493,12 @@ void ConversionPatternRewriterImpl::resetState(RewriterState state,
 
 void ConversionPatternRewriterImpl::undoRewrites(unsigned numRewritesToKeep,
                                                  StringRef patternName) {
+  // Conservatively clear the whole operation cache if pattern rollback is
+  // enabled.
+  // TODO: Implement a more selective invalidation strategy based on the
+  // patterns being rolled back.
+  rewriter.clearCache();
+
   for (auto &rewrite :
        llvm::reverse(llvm::drop_begin(rewrites, numRewritesToKeep)))
     rewrite->rollback();
@@ -2039,6 +2051,9 @@ void ConversionPatternRewriterImpl::replaceValueUses(
 }
 
 void ConversionPatternRewriterImpl::eraseBlock(Block *block) {
+  // Invalidate block from cache before performing any modification.
+  notifyingRewriter.invalidateFromCache(block);
+
   if (!config.allowPatternRollback) {
     // Pattern rollback is not allowed: materialize all IR changes immediately.
     // Update internal data structures, so that there are no dangling pointers
@@ -2200,6 +2215,10 @@ void ConversionPatternRewriter::eraseOp(Operation *op) {
         << "** Erase   : '" << op->getName() << "'(" << op << ")\n";
   });
 
+  // Invalidate operation from cache before performing any modification.
+  if (operationCache)
+    operationCache->invalidate(op);
+
   // If the current insertion point is before the erased operation, we adjust
   // the insertion point to be after the operation.
   if (getInsertionPoint() == op->getIterator())
@@ -2210,6 +2229,10 @@ void ConversionPatternRewriter::eraseOp(Operation *op) {
 }
 
 void ConversionPatternRewriter::eraseBlock(Block *block) {
+  // Invalidate block from cache before performing any modification.
+  if (operationCache)
+    operationCache->invalidate(block);
+
   impl->eraseBlock(block);
 }
 
@@ -2301,6 +2324,10 @@ void ConversionPatternRewriter::inlineBlockBefore(Block *source, Block *dest,
     replaceAllUsesWith(std::get<0>(it), std::get<1>(it));
 
   if (fastPath) {
+    // Invalidate block from cache before performing any modification.
+    if (operationCache)
+      operationCache->invalidate(source);
+
     // Move all ops at once.
     dest->getOperations().splice(before, source->getOperations());
   } else {
@@ -2319,6 +2346,10 @@ void ConversionPatternRewriter::inlineBlockBefore(Block *source, Block *dest,
 }
 
 void ConversionPatternRewriter::startOpModification(Operation *op) {
+  // Invalidate operation from cache before performing any modification.
+  if (operationCache)
+    operationCache->invalidate(op);
+
   if (!impl->config.allowPatternRollback) {
     // Pattern rollback is not allowed: no extra bookkeeping is needed.
     PatternRewriter::startOpModification(op);
